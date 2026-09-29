@@ -1,0 +1,5 @@
+import t, c
+import lib.core.Handles.HandlesStruct as HandlesStruct
+
+def main() -> int:
+    return 0

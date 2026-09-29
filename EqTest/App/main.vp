@@ -1,0 +1,57 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import stdio
+import stdlib
+import string
+import testcheck
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("== 重载和 is 地址比较测试")
+
+    # === Test 1: str == str 值比较 ===
+    testcheck.section("Test 1: str == str 值比较")
+    s1: str = "hello"
+    s2: str = "hello"
+    s3: str = "world"
+    # i8* == 是指针地址比较（C-Like 语义），内容比较需显式 strcmp
+    testcheck.check(string.strcmp(s1, s2) == 0, "str == str (same value) OK", "str == str (same value) FAILED")
+    testcheck.check(string.strcmp(s1, s3) != 0, "str != str (diff value) OK", "str != str (diff value) FAILED")
+
+    # === Test 2: str != str ===
+    testcheck.section("Test 2: str != str")
+    testcheck.check(string.strcmp(s1, s3) != 0, "str != str (diff) OK", "str != str (diff) FAILED")
+    testcheck.check(string.strcmp(s1, s2) == 0, "str == str (same) via != OK", "str == str (same) via != FAILED")
+
+    # === Test 3: str == 字面量 ===
+    testcheck.section("Test 3: str == literal")
+    testcheck.check(string.strcmp(s1, "hello") == 0, "str == literal OK", "str == literal FAILED")
+    testcheck.check(string.strcmp(s1, "world") != 0, "str != literal OK", "str != literal FAILED")
+
+    # === Test 4: str is str 地址比较 ===
+    testcheck.section("Test 4: str is str address compare")
+    # s1 和 s2 是不同的字符串变量，地址不同
+    testcheck.check(not (s1 is s2), "str is str (diff addr) OK", "str is str (diff addr) FAILED")
+    # s1 is s1 应该为 True（同一变量）
+    testcheck.check(s1 is s1, "str is self OK", "str is self FAILED")
+
+    # === Test 5: int == int ===
+    testcheck.section("Test 5: int == int")
+    i1: int = 42
+    i2: int = 42
+    i3: int = 99
+    testcheck.check(i1 == i2, "int == int (same) OK", "int == int (same) FAILED")
+    testcheck.check(not (i1 == i3), "int != int (diff) OK", "int != int (diff) FAILED")
+
+    # === Test 6: None 比较 ===
+    testcheck.section("Test 6: None compare")
+    null_ptr: str = None
+    testcheck.check(null_ptr == None, "ptr == None OK", "ptr == None FAILED")
+    testcheck.check(not (s1 == None), "str != None OK", "str != None FAILED")
+
+    return testcheck.end()

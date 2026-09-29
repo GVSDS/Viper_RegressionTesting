@@ -1,0 +1,160 @@
+# ============================================================
+# main.vp — ProbeGen：代际不稳定性最小探针（勿当普通功能测试改动）
+#
+# 背景：同一份源码在 TPC→TPV1→TPV2→TPV3 逐代自举出的编译器二进制下
+#       产出的 IR 不一致，部分甚至非法。本工程把已定位的 5+1 个"代际
+#       不稳定构造"各用一段最小代码覆盖，用两代编译器各编一次，即可在
+#       同一份产物里一次性暴露全部差异点，并作为后续修复的回归用例。
+#
+# 运行（两条命令，各用独立 build_dir，互不覆盖）：
+#   第 1 代（TPC 产出）：
+#     TransPyV\output\TransPyV.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\.tpv_build_g1
+#   第 2 代（TPV1 产出）：
+#     TransPyV\.tpv_build\output\TransPyV.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\.tpv_build_g2
+#   --build-dir 依据：TransPyV\App\main.vp:163 注册该参数，:299-304 在
+#   resolve_paths 之前覆盖 Config.BuildDir（相对路径基于工程目录解析，
+#   注释见 main.vp:300-301）；产物 = <build_dir>\temp + <build_dir>\output
+#   （TransPyV\App\lib\Projectrans\Config.vp:432-443）。
+#   注意 TPC 的 Projectrans.py 没有 --build-dir，只有
+#   --project/--src/--temp/--output（TransPyC\lib\Projectrans\Config.py:139-146）；
+#   本探针由 Viper 编译器 TransPyV.exe 驱动，故 --build-dir 可用。
+#
+# 判定：两棵树
+#   Test\ProbeGen\.tpv_build_g1\temp\<sha1 前 2 位（slice=1）>\<sha1>.{stub,text}.ll
+#   Test\ProbeGen\.tpv_build_g2\temp\<同上>
+#   探针自身模块文件名两侧相同（module_name = 源码 SHA1，与编译器代际无关），
+#   可逐 P 点直接 diff；includes 模块若被译为本地产物亦同名可比对。
+#
+# ⚠ [P6] 在第二代及以后会直接把编译打断（App\lib\core\Gen\AssignGenMixin.vp:2213
+#   "SyntaxError: subscript ptr is None"）。若要单独拿到 P1..P5 的第二代 IR，
+#   需临时注释掉 [P6] 段；P6 自身的证据就是那条报错。
+# ============================================================
+import t
+from stdint import *
+import w32.win32console as w32console
+
+
+# ============================================================
+# [P1] 嵌套联合形参
+# VOIDPTR 本身是 typedef 联合 t.CPtr（includes/stdint.vp:40），
+# 再与 t.CPtr 联合 ⇒ 一侧 i8**、另一侧 i8*。
+# 先例（同形）：includes/w32/win32sync.vp:65
+#   extern def InitOnceExecuteOnce(InitOnce: INIT_ONCE | t.CPtr, InitFn: VOIDPTR,
+#                                  Parameter: VOIDPTR, Context: VOIDPTR | t.CPtr) -> BOOL
+# VOIDPTR 引入方式先例：includes/w32/win32sync.vp:2（from stdint import *）
+# extern def 写法先例（语言推荐写法）：wiki/08-c-operations.md:238-249
+# 只声明不调用：extern 声明未调用不产生链接引用，不影响链接
+# 先例：Test/Extern2Test/App/main.vp:18-35（三个仅声明不调用的外部声明）
+# ============================================================
+extern def ProbeNestedUnion(Context: VOIDPTR | t.CPtr) -> BOOL
+
+
+# ============================================================
+# [P2] 结构体按值形参
+# 形参是既有 Win32 结构体 COORD（includes/w32/win32console.vp:35-37，X/Y: SHORT），
+# 不带 | t.CPtr ⇒ 一侧按值 %COORD、另一侧 %COORD*。
+# 先例（同形）：includes/w32/win32console.vp:86
+#   extern def SetConsoleScreenBufferSize(hConsoleOutput: HANDLE, dwSize: COORD) -> BOOL
+# 限定名类类型标注先例：TransPyV/App/main.vp:142（argparse.ArgumentParser）
+#                      Test/ArgparseTest/App/main.vp:12（memhub.MemBuddy）
+# 模块别名导入先例：TransPyV/App/main.vp:20（import w32.win32console as w32cmd）
+# ============================================================
+extern def ProbeCoordByVal(dwSize: w32console.COORD) -> BOOL
+
+
+# ============================================================
+# [P5] 局部 t.CUInt8T = 1 的字面量"蓄池"：
+# 把局部值写进全局，避免整段被当成死代码/被窥孔吞掉。
+# 全局小整型先例：ViperApps/ViperOS/VKernel/Kernel/services/desktop.vp:62
+#                  （_cursor_buttons: uint8 = 0）
+# ============================================================
+U8Sink: t.CUInt8T = 0
+
+
+# ============================================================
+# [P3] CChar → int 提升：参数 t.CChar、返回 int，直接 return
+# 一侧应生成 zext i8 %s to i32，另一侧若退化成 ret i8 即丢提升（缺陷）。
+# 先例（同形）：includes/builtins.vp:12-13
+#   def ord(s: t.CChar) -> int:
+#       return s
+# ============================================================
+def ProbeOrd(s: t.CChar) -> int:
+    return s
+
+
+# ============================================================
+# [P4] double 比较：参数/返回 double，含 if a < b
+# 一侧 fcmp olt double，另一侧若成 icmp slt double（非法）即缺陷。
+# 先例（同形）：includes/builtins.vp:18-21
+#   def min(a: double, b: double) -> double:
+#       if a < b:
+#           return a
+#       return b
+# ============================================================
+def ProbeMin(a: double, b: double) -> double:
+    if a < b:
+        return a
+    return b
+
+
+# ============================================================
+# [P5] 局部 t.CUInt8T = 1 字面量赋值（字面量定型：一侧 store i8 1, i8*；
+#      另一侧 store i32 1, i8*（非法）或 trunc + store）
+# 局部声明先例：includes/atom.vp:13（result: t.CUInt8T = 1）
+# 局部值落全局（global 声明 + 赋值）先例：
+#   Test/ArgparseTest/App/main.vp:17（global _mbuddy）→ :26（_mbuddy = ...）
+# ============================================================
+def ProbeU8Literal() -> t.CUInt8T:
+    global U8Sink
+    result: t.CUInt8T = 1
+    U8Sink = result
+    return result
+
+
+# ============================================================
+# [P6] 类字段联合 + 下标写
+# 字段为 t.CChar | t.CPtr 联合，必须先判空再按下标写；
+# 第二/三代在 App\lib\core\Gen\AssignGenMixin.vp:2213 抛
+#   "SyntaxError: subscript ptr is None"。
+# 先例（同形）：includes/viperio.vp:5-20
+#   class Buf:
+#       data: t.CChar | t.CPtr
+#       def clear(self):
+#           if self.data != None and self.capacity > 0:
+#               self.data[0] = 0
+# 联合类型字段/变量初始化 None 先例：Test/SimdTest/App/main.vp:13
+#   （arena: t.CUInt8T | t.CPtr = None）
+# 无参构造 __init__(self) 先例：TransPyV/App/lib/core/Gen/Translator.vp:75/252-255
+#   （class Translator: def __init__(self): ...；实例化 TransPyV/App/main.vp:471）
+# ============================================================
+class Box:
+    p: t.CChar | t.CPtr
+
+    def __init__(self):
+        self.p = None
+
+    def Clear(self):
+        if self.p != None:
+            self.p[0] = 0
+        pass
+
+
+# ============================================================
+# 入口：main 保持最小（引用到上面各构造，保证它们真的被翻译；返回 0）
+# @t.CExport + main() -> int 先例：ViperApps/ViperTemplateProject/App/main.vp:7-8
+#                                  ViperApps/ViperCPW/App/main.vp:181-184
+# 字符字面量先例：Test/CharTest/App/main.vp:24（lit: char = 'Z'）
+# 类实例化先例：Test/StructTest/App/main.vp:21（p: Point = Point()）
+# double 字面量先例：Test/G7/App/main.vp:39（node.FloatVal = 3.14）
+# P1/P2 是 extern 声明，不调用（调用会产生未解析符号，见各自注释）；
+# 其差异体现在本模块的 declare 上。
+# ============================================================
+@t.CExport
+def main() -> int:
+    Ch: t.CChar = 'A'
+    BoxInst: Box = Box()
+    BoxInst.Clear()
+    ProbeOrd(Ch)
+    ProbeMin(1.0, 2.0)
+    ProbeU8Literal()
+    return 0

@@ -1,0 +1,43 @@
+import t, c
+from t import CInt, CPtr, CChar, CFloat64T
+import viperlib
+import stdlib
+import vector
+import memhub
+
+POOL_SIZE: t.CDefine = 4096
+
+def vector_main() -> CInt:
+    buf: str = stdlib.malloc(256)
+    pool_mem: t.CPtr = stdlib.malloc(POOL_SIZE)
+    pool: memhub.MemPool | CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
+
+    vi: vector.Vector | CPtr = vector.Vector(pool, 10, CInt(0))
+    vi.push(CInt(10))
+    vi.push(CInt(20))
+    vi.push(CInt(30))
+    viperlib.snprintf(buf, 256, "Vector[int]: len=%d, [0]=%d, [1]=%d, [2]=%d", vi.len(), vi.get(0), vi.get(1), vi.get(2))
+    print(buf)
+
+    vi.set(1, CInt(99))
+    viperlib.snprintf(buf, 256, "Vector[int]: set[1]=99, [1]=%d", vi.get(1))
+    print(buf)
+
+    vi.clear()
+    viperlib.snprintf(buf, 256, "Vector[int]: cleared, len=%d", vi.len())
+    print(buf)
+
+    vi.free()
+
+    vd: vector.Vector | CPtr = vector.Vector(pool, 8, CFloat64T(0.0))
+    vd.push(CFloat64T(1.5))
+    vd.push(CFloat64T(2.7))
+    vd.push(CFloat64T(3.14))
+    viperlib.snprintf(buf, 256, "Vector[double]: len=%d, [0]=%.1f, [1]=%.1f, [2]=%.2f", vd.len(), vd.get(0), vd.get(1), vd.get(2))
+    print(buf)
+
+    vd.free()
+
+    stdlib.free(pool_mem)
+    stdlib.free(buf)
+    return 0

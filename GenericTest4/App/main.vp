@@ -1,0 +1,109 @@
+import t
+import stdio
+import testcheck
+
+# ============================================================
+# Test 1: 泛型类手动传类型参数 - Box[t.CInt](v)
+# ============================================================
+class Box[T]():
+    value: T
+
+    def __init__(self, v: T):
+        self.value = T(v)
+
+    def get(self) -> T:
+        return self.value
+
+    def set(self, v: T):
+        self.value = T(v)
+
+def test_explicit_box():
+    testcheck.section("Test 1: Box[t.CInt](42)")
+    b = Box[t.CInt](42)
+    v: t.CInt = b.get()
+    testcheck.check(v == 42, "Box[t.CInt](42).get() = 42", "expect 42")
+
+# ============================================================
+# Test 2: 泛型类手动传类型参数 - Pair[t.CInt, t.CInt]
+# ============================================================
+class Pair[T1, T2]():
+    first: T1
+    second: T2
+
+    def __init__(self, a: T1, b: T2):
+        self.first = T1(a)
+        self.second = T2(b)
+
+    def sum_as_int(self) -> t.CInt:
+        return t.CInt(self.first) + t.CInt(self.second)
+
+def test_explicit_pair():
+    testcheck.section("Test 2: Pair[t.CInt, t.CInt](10, 20)")
+    p = Pair[t.CInt, t.CInt](10, 20)
+    r: t.CInt = p.sum_as_int()
+    testcheck.check(r == 30, "Pair[t.CInt,t.CInt](10,20).sum = 30", "expect 30")
+
+# ============================================================
+# Test 3: 泛型类手动传 + 自动推导混合
+# ============================================================
+class Wrapper[T]():
+    data: T
+
+    def __init__(self, v: T):
+        self.data = T(v)
+
+    def get(self) -> T:
+        return self.data
+
+def test_mixed_generic_class():
+    testcheck.section("Test 3: mixed explicit and inferred")
+    # 手动传
+    w1 = Wrapper[t.CInt](100)
+    # 自动推导
+    w2 = Wrapper(200)
+    r1: t.CInt = w1.get()
+    r2: t.CInt = w2.get()
+    testcheck.check(r1 == 100 and r2 == 200, "Wrapper[t.CInt](100)=100 Wrapper(200)=200", "expect 100 200")
+
+# ============================================================
+# Test 4: 泛型类手动传 - 方法调用
+# ============================================================
+class Counter[T]():
+    count: T
+
+    def __init__(self, start: T):
+        self.count = T(start)
+
+    def increment(self):
+        self.count = self.count + T(1)
+
+    def get_count(self) -> T:
+        return self.count
+
+def test_explicit_counter():
+    testcheck.section("Test 4: Counter[t.CInt](0) with methods")
+    c = Counter[t.CInt](0)
+    c.increment()
+    c.increment()
+    c.increment()
+    r: t.CInt = c.get_count()
+    testcheck.check(r == 3, "Counter[t.CInt](0) +3 = 3", "expect 3")
+
+# ============================================================
+# Test 5: 泛型类手动传 - set 方法
+# ============================================================
+def test_explicit_box_set():
+    testcheck.section("Test 5: Box[t.CInt] set method")
+    b = Box[t.CInt](10)
+    b.set(99)
+    v: t.CInt = b.get()
+    testcheck.check(v == 99, "Box[t.CInt].set(99) get = 99", "expect 99")
+
+def main() -> t.CInt:
+    testcheck.begin("GenericTest4: 泛型结构体手动传类型参数")
+    test_explicit_box()
+    test_explicit_pair()
+    test_mixed_generic_class()
+    test_explicit_counter()
+    test_explicit_box_set()
+    return testcheck.end()

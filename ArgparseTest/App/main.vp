@@ -1,0 +1,204 @@
+import t, c
+from stdint import *
+import stdio
+import stdlib
+import string
+import memhub
+import argparse
+import testcheck
+
+
+# 全局 MBuddy 指针
+_mbuddy: memhub.MemBuddy | t.CPtr
+
+
+@t.CExport
+def main() -> int:
+    global _mbuddy
+    testcheck.begin("ArgparseTest: 命令行参数解析")
+
+    # 初始化内存管理器
+    arena: bytes = stdlib.malloc(16 * 1024 * 1024)
+    if arena is None:
+        testcheck.fail("malloc arena failed")
+        return 1
+
+    _mbuddy = memhub.MemBuddy(arena, 16 * 1024 * 1024)
+    argparse._mbuddy = _mbuddy
+
+    # 构造模拟 argv: myprog --input test.txt -c 42 --verbose output.dat
+    argv_buf: bytes = _mbuddy.alloc(8 * 7)  # 7 个指针
+    argv: str | t.CPtr = (str | t.CPtr)(argv_buf)
+
+    # argv[0] = "myprog"
+    s0: bytes = _mbuddy.alloc(16)
+    string.strcpy(s0, "myprog")
+    argv0: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv))
+    argv0[0] = s0
+
+    # argv[1] = "--input"
+    s1: bytes = _mbuddy.alloc(16)
+    string.strcpy(s1, "--input")
+    argv1: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 8)
+    argv1[0] = s1
+
+    # argv[2] = "test.txt"
+    s2: bytes = _mbuddy.alloc(16)
+    string.strcpy(s2, "test.txt")
+    argv2: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 16)
+    argv2[0] = s2
+
+    # argv[3] = "-c"
+    s3: bytes = _mbuddy.alloc(8)
+    string.strcpy(s3, "-c")
+    argv3: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 24)
+    argv3[0] = s3
+
+    # argv[4] = "42"
+    s4: bytes = _mbuddy.alloc(8)
+    string.strcpy(s4, "42")
+    argv4: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 32)
+    argv4[0] = s4
+
+    # argv[5] = "--verbose"
+    s5: bytes = _mbuddy.alloc(16)
+    string.strcpy(s5, "--verbose")
+    argv5: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 40)
+    argv5[0] = s5
+
+    # argv[6] = "output.dat"
+    s6: bytes = _mbuddy.alloc(16)
+    string.strcpy(s6, "output.dat")
+    argv6: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv) + 48)
+    argv6[0] = s6
+
+    argc: INT = 7
+
+    # ============================================================
+    # Test 1: 基本解析 (--input, -c, --verbose, output)
+    # ============================================================
+    testcheck.section("Test 1: 基本解析")
+    parser = argparse.ArgumentParser("myprog", "A test program for argparse", pool=_mbuddy)
+    parser.add_argument("--input", "-i", argparse.STRING, 0, None, True, argparse.STORE, "input file path")
+    parser.add_argument("--count", "-c", argparse.INT, 1, None, False, argparse.STORE, "repeat count")
+    parser.add_argument("--verbose", "-v", argparse.BOOL, 0, None, False, argparse.STORE_TRUE, "enable verbose output")
+    parser.add_argument("output", None, argparse.STRING, 0, None, False, argparse.STORE, "output file path")
+
+    args = parser.parse_args(argc, argv)
+    if args is not None:
+        testcheck.ok("parse_args returned non-NULL")
+        inp: str = args.get_str("input")
+        cnt: INT = args.get_int("count")
+        verb: INT = args.get_bool("verbose")
+        out: str = args.get_str("output")
+        testcheck.check(string.strcmp(inp, "test.txt") == 0, "input = test.txt", "input mismatch")
+        testcheck.check(cnt == 42, "count = 42", "count mismatch")
+        testcheck.check(verb == True, "verbose = True", "verbose mismatch")
+        testcheck.check(string.strcmp(out, "output.dat") == 0, "output = output.dat", "output mismatch")
+        argparse.release(args)
+    else:
+        testcheck.fail("parse_args returned NULL")
+
+    # ============================================================
+    # Test 2: --name=value 语法
+    # ============================================================
+    testcheck.section("Test 2: --name=value 语法")
+
+    argv2_buf: bytes = _mbuddy.alloc(8 * 3)
+    argv2: str | t.CPtr = (str | t.CPtr)(argv2_buf)
+
+    a0: bytes = _mbuddy.alloc(16)
+    string.strcpy(a0, "myprog")
+    a0_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv2))
+    a0_ptr[0] = a0
+
+    a1: bytes = _mbuddy.alloc(32)
+    string.strcpy(a1, "--input=hello.txt")
+    a1_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv2) + 8)
+    a1_ptr[0] = a1
+
+    a2: bytes = _mbuddy.alloc(16)
+    string.strcpy(a2, "output2.dat")
+    a2_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv2) + 16)
+    a2_ptr[0] = a2
+    args2 = parser.parse_args(3, argv2)
+    if args2 is not None:
+        testcheck.ok("parse_args returned non-NULL")
+        inp2: str = args2.get_str("input")
+        cnt2: INT = args2.get_int("count")
+        out2: str = args2.get_str("output")
+        testcheck.check(string.strcmp(inp2, "hello.txt") == 0, "input = hello.txt", "input mismatch")
+        testcheck.check(cnt2 == 1, "count = 1 (default)", "count mismatch")
+        testcheck.check(string.strcmp(out2, "output2.dat") == 0, "output = output2.dat", "output mismatch")
+        argparse.release(args2)
+    else:
+        testcheck.fail("parse_args returned NULL")
+
+    # ============================================================
+    # Test 3: -v COUNT 计数动作
+    # ============================================================
+    testcheck.section("Test 3: COUNT 计数动作")
+
+    argv3_buf: bytes = _mbuddy.alloc(8 * 4)
+    argv3_arr: str | t.CPtr = (str | t.CPtr)(argv3_buf)
+
+    b0: bytes = _mbuddy.alloc(8)
+    string.strcpy(b0, "myprog")
+    b0_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv3_arr))
+    b0_ptr[0] = b0
+
+    b1: bytes = _mbuddy.alloc(8)
+    string.strcpy(b1, "-v")
+    b1_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv3_arr) + 8)
+    b1_ptr[0] = b1
+
+    b2: bytes = _mbuddy.alloc(8)
+    string.strcpy(b2, "-v")
+    b2_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv3_arr) + 16)
+    b2_ptr[0] = b2
+
+    b3: bytes = _mbuddy.alloc(16)
+    string.strcpy(b3, "output3.dat")
+    b3_ptr: str | t.CPtr = (str | t.CPtr)(t.CUInt64T(argv3_arr) + 24)
+    b3_ptr[0] = b3
+
+    parser2 = argparse.ArgumentParser("myprog", "Count test", pool=_mbuddy)
+    parser2.add_argument("--verbose", "-v", argparse.BOOL, 0, None, False, argparse.COUNT, "verbosity level")
+    parser2.add_argument("output", None, argparse.STRING, 0, None, False, argparse.STORE, "output file")
+
+    args3 = parser2.parse_args(4, argv3_arr)
+    if args3 is not None:
+        testcheck.ok("parse_args returned non-NULL")
+        verb3: INT = args3.get_int("verbose")
+        out3: str = args3.get_str("output")
+        testcheck.check(verb3 == 2, "verbose = 2 (counted)", "verbose count mismatch")
+        testcheck.check(string.strcmp(out3, "output3.dat") == 0, "output = output3.dat", "output mismatch")
+        argparse.release(args3)
+    else:
+        testcheck.fail("parse_args returned NULL")
+
+    # ============================================================
+    # Test 4: 关键字参数调用 add_argument
+    # ============================================================
+    testcheck.section("Test 4: 关键字参数")
+
+    parser3 = argparse.ArgumentParser("myprog", "Keyword arg test", pool=_mbuddy)
+    parser3.add_argument("--input", short="-i", arg_type=argparse.STRING, default=0, default_str=None, required=False, action=argparse.STORE, help="input file")
+    parser3.add_argument("--count", short="-c", arg_type=argparse.INT, default=1, required=False, action=argparse.STORE, help="count")
+    parser3.add_argument("--verbose", short="-v", arg_type=argparse.BOOL, default=0, required=False, action=argparse.STORE_TRUE, help="verbose")
+    parser3.add_argument("output", arg_type=argparse.STRING, default=0, required=False, action=argparse.STORE, help="output file")
+
+    args4 = parser3.parse_args(argc, argv)
+    if args4 is not None:
+        testcheck.ok("parse_args returned non-NULL")
+        inp4: str = args4.get_str("input")
+        cnt4: INT = args4.get_int("count")
+        out4: str = args4.get_str("output")
+        testcheck.check(string.strcmp(inp4, "test.txt") == 0, "input = test.txt", "input mismatch")
+        testcheck.check(cnt4 == 42, "count = 42", "count mismatch")
+        testcheck.check(string.strcmp(out4, "output.dat") == 0, "output = output.dat", "output mismatch")
+        argparse.release(args4)
+    else:
+        testcheck.fail("parse_args returned NULL")
+
+    return testcheck.end()

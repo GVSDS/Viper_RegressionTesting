@@ -1,0 +1,41 @@
+import t, c
+from stdint import *
+import stdio
+import coro
+
+
+class MyError(Exception):
+    pass
+
+
+async def leaf(x: int) -> int:
+    return x + 1
+
+
+async def boom() -> int:
+    raise MyError("boom msg")
+    return 0
+
+
+async def task() -> int:
+    fin: int = 0
+    try:
+        fin = 1
+        await boom()
+    finally:
+        fin = fin + 1
+        stdio.printf("finally ran, fin = %d\n", fin)
+    return 99
+
+
+def main() -> t.CInt:
+    n: t.CInt = 0
+    for i in range(3):
+        tt: coro.Coroutine = c.Addr(task())
+        r: t.CInt = coro.coro_run(tt)
+        e: t.CInt = coro.coro_exception(tt)
+        m: t.CPtr = coro.coro_exception_msg(tt)
+        stdio.printf("[%d] r = %d, exc = %d, msg = %s\n", i, r, e, m)
+        coro.coro_destroy(tt)
+        n = n + 1
+    return 0

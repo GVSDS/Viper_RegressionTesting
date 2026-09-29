@@ -1,0 +1,402 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CPtr, CChar, CInt32T, CUInt64T, CFloat64T, CExport, State
+import viperlib
+import stdlib
+import testcheck
+
+
+# === OOP 继承 + 虚方法 ===
+
+@t.CVTable
+class Shape:
+    x: CFloat64T
+    y: CFloat64T
+
+    def __init__(self, x: CFloat64T, y: CFloat64T):
+        self.x = x
+        self.y = y
+    def area(self) -> CFloat64T:
+        return 0.0
+    def perimeter(self) -> CFloat64T:
+        return 0.0
+    def describe(self) -> CFloat64T:
+        return self.area() + self.perimeter()
+
+@t.CVTable
+class Circle(Shape):
+    r: CFloat64T
+
+    def __init__(self, x: CFloat64T, y: CFloat64T, r: CFloat64T):
+        self.x = x
+        self.y = y
+        self.r = r
+    def area(self) -> CFloat64T:
+        return 3.14159265 * self.r * self.r
+    def perimeter(self) -> CFloat64T:
+        return 2.0 * 3.14159265 * self.r
+    def scale(self, factor: CFloat64T) -> 'Circle' | CPtr:
+        self.r = self.r * factor
+        return self
+    def move(self, dx: CFloat64T, dy: CFloat64T) -> 'Circle' | CPtr:
+        self.x = self.x + dx
+        self.y = self.y + dy
+        return self
+
+@t.CVTable
+class Rect(Shape):
+    w: CFloat64T
+    h: CFloat64T
+
+    def __init__(self, x: CFloat64T, y: CFloat64T, w: CFloat64T, h: CFloat64T):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+    def area(self) -> CFloat64T:
+        return self.w * self.h
+    def perimeter(self) -> CFloat64T:
+        return 2.0 * (self.w + self.h)
+    def scale(self, factor: CFloat64T) -> 'Rect' | CPtr:
+        self.w = self.w * factor
+        self.h = self.h * factor
+        return self
+
+
+# === 运算符重载 + 链式调用（堆分配） ===
+
+class Vec2:
+    x: CFloat64T
+    y: CFloat64T
+
+    def __new__() -> 'Vec2' | CPtr:
+        return stdlib.malloc(16)
+
+    def __init__(self, x: CFloat64T, y: CFloat64T):
+        self.x = x
+        self.y = y
+
+    def __add__(self, b: 'Vec2' | CPtr) -> 'Vec2' | CPtr:
+        return Vec2(self.x + b.x, self.y + b.y)
+
+    def __sub__(self, b: 'Vec2' | CPtr) -> 'Vec2' | CPtr:
+        return Vec2(self.x - b.x, self.y - b.y)
+
+    def __mul__(self, s: CFloat64T) -> 'Vec2' | CPtr:
+        return Vec2(self.x * s, self.y * s)
+
+    def __neg__(self) -> 'Vec2' | CPtr:
+        return Vec2(-self.x, -self.y)
+
+    def dot(self, b: 'Vec2' | CPtr) -> CFloat64T:
+        return self.x * b.x + self.y * b.y
+
+    def len_sq(self) -> CFloat64T:
+        return self.x * self.x + self.y * self.y
+
+
+class Vec3:
+    x: CFloat64T
+    y: CFloat64T
+    z: CFloat64T
+
+    def __new__() -> 'Vec3' | CPtr:
+        return stdlib.malloc(24)
+
+    def __init__(self, x: CFloat64T, y: CFloat64T, z: CFloat64T):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __add__(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+        return Vec3(self.x + b.x, self.y + b.y, self.z + b.z)
+
+    def __sub__(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+        return Vec3(self.x - b.x, self.y - b.y, self.z - b.z)
+
+    def __mul__(self, s: CFloat64T) -> 'Vec3' | CPtr:
+        return Vec3(self.x * s, self.y * s, self.z * s)
+
+    def __neg__(self) -> 'Vec3' | CPtr:
+        return Vec3(-self.x, -self.y, -self.z)
+
+    def dot(self, b: 'Vec3' | CPtr) -> CFloat64T:
+        return self.x * b.x + self.y * b.y + self.z * b.z
+
+    def cross(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+        return Vec3(self.y * b.z - self.z * b.y,
+                     self.z * b.x - self.x * b.z,
+                     self.x * b.y - self.y * b.x)
+
+    def len_sq(self) -> CFloat64T:
+        return self.dot(self)
+
+
+# === 独立类（非继承） ===
+
+@t.CVTable
+class Dog:
+    name_val: CInt
+    health: CInt32T
+    bark_power: CInt32T
+
+    def __init__(self, name_val: CInt, bark_power: CInt32T):
+        self.name_val = name_val
+        self.health = CInt32T(100)
+        self.bark_power = bark_power
+    def speak(self) -> CInt:
+        return 1
+    def bite(self) -> CInt32T:
+        return self.bark_power
+    def take_damage(self, dmg: CInt32T) -> 'Dog' | CPtr:
+        self.health = self.health - dmg
+        return self
+    def is_alive(self) -> CInt:
+        if self.health > 0:
+            return 1
+        return 0
+
+@t.CVTable
+class Cat:
+    name_val: CInt
+    health: CInt32T
+    lives: CInt32T
+
+    def __init__(self, name_val: CInt, lives: CInt32T):
+        self.name_val = name_val
+        self.health = CInt32T(80)
+        self.lives = lives
+    def speak(self) -> CInt:
+        return 2
+    def scratch(self) -> CInt32T:
+        return CInt32T(15)
+    def take_damage(self, dmg: CInt32T) -> 'Cat' | CPtr:
+        self.health = self.health - dmg
+        return self
+    def is_alive(self) -> CInt:
+        if self.health > 0:
+            return 1
+        return 0
+
+
+# === 嵌套对象组合（堆分配） ===
+
+class Transform:
+    px: CFloat64T
+    py: CFloat64T
+    pz: CFloat64T
+    scale_x: CFloat64T
+    scale_y: CFloat64T
+    scale_z: CFloat64T
+
+    def __new__() -> 'Transform' | CPtr:
+        return stdlib.malloc(48)
+
+    def __init__(self, px: CFloat64T, py: CFloat64T, pz: CFloat64T):
+        self.px = px
+        self.py = py
+        self.pz = pz
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        self.scale_z = 1.0
+
+    def apply_scale(self, sx: CFloat64T, sy: CFloat64T, sz: CFloat64T) -> 'Transform' | CPtr:
+        self.scale_x = self.scale_x * sx
+        self.scale_y = self.scale_y * sy
+        self.scale_z = self.scale_z * sz
+        return self
+
+    def world_position(self) -> 'Vec3' | CPtr:
+        return Vec3(self.px * self.scale_x, self.py * self.scale_y, self.pz * self.scale_z)
+
+
+# === 多层继承（子类只重写需要的方法） ===
+
+@t.CVTable
+class Vehicle:
+    speed: CInt32T
+    fuel: CInt32T
+
+    def __init__(self, speed: CInt32T):
+        self.speed = speed
+        self.fuel = CInt32T(100)
+    def move(self) -> CInt:
+        self.fuel = self.fuel - CInt32T(10)
+        return self.speed
+    def is_running(self) -> CInt:
+        if self.fuel > 0:
+            return 1
+        return 0
+
+@t.CVTable
+class Car(Vehicle):
+    doors: CInt32T
+
+    def __init__(self, speed: CInt32T, doors: CInt32T):
+        self.speed = speed
+        self.fuel = CInt32T(100)
+        self.doors = doors
+    def honk(self) -> CInt:
+        return 1
+
+@t.CVTable
+class ElectricCar(Car):
+    battery: CInt32T
+
+    def __init__(self, speed: CInt32T, doors: CInt32T, battery: CInt32T):
+        self.speed = speed
+        self.fuel = CInt32T(100)
+        self.doors = doors
+        self.battery = battery
+    def charge(self):
+        self.battery = self.battery + CInt32T(20)
+    def move(self) -> CInt:
+        self.battery = self.battery - CInt32T(5)
+        return self.speed
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("OopInheritTest: OOP 继承与多态专项测试")
+
+    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+
+    # === OOP 继承测试 ===
+    testcheck.section("OOP 继承测试")
+    c1 = Circle(0.0, 0.0, 5.0)
+    viperlib.snprintf(buf, 256, "Circle area=%.2f perim=%.2f", c1.area(), c1.perimeter())
+    print(buf)
+
+    r1 = Rect(0.0, 0.0, 4.0, 3.0)
+    viperlib.snprintf(buf, 256, "Rect area=%.2f perim=%.2f", r1.area(), r1.perimeter())
+    print(buf)
+
+    # 链式调用: scale -> move
+    c2 = Circle(1.0, 2.0, 3.0)
+    c2.scale(2.0).move(10.0, 20.0)
+    viperlib.snprintf(buf, 256, "Circle after scale+move: x=%.1f y=%.1f r=%.1f area=%.2f",
+                      c2.x, c2.y, c2.r, c2.area())
+    print(buf)
+
+    r2 = Rect(0.0, 0.0, 10.0, 5.0)
+    r2.scale(2.0).scale(0.5)
+    viperlib.snprintf(buf, 256, "Rect after double scale: w=%.1f h=%.1f area=%.2f",
+                      r2.w, r2.h, r2.area())
+    print(buf)
+    testcheck.ok("OOP 继承测试完成")
+
+    # === Vec2 运算符重载 + 链式调用（堆分配） ===
+    testcheck.section("Vec2 运算符重载 + 链式调用")
+    v1 = Vec2(3.0, 4.0)
+    v2 = Vec2(1.0, 2.0)
+    v3 = v1 + v2
+    viperlib.snprintf(buf, 256, "Vec2 add: (%.1f, %.1f)", v3.x, v3.y)
+    print(buf)
+
+    v4 = v1 - v2
+    viperlib.snprintf(buf, 256, "Vec2 sub: (%.1f, %.1f)", v4.x, v4.y)
+    print(buf)
+
+    v5 = v1 * 2.0
+    viperlib.snprintf(buf, 256, "Vec2 mul: (%.1f, %.1f)", v5.x, v5.y)
+    print(buf)
+
+    v6 = -v1
+    viperlib.snprintf(buf, 256, "Vec2 neg: (%.1f, %.1f)", v6.x, v6.y)
+    print(buf)
+
+    d = v1.dot(v2)
+    viperlib.snprintf(buf, 256, "Vec2 dot: %.1f", d)
+    print(buf)
+
+    # 链式运算: (v1 + v2) * 3.0
+    v_chain = (v1 + v2) * 3.0
+    viperlib.snprintf(buf, 256, "Vec2 chain (v1+v2)*3: (%.1f, %.1f)", v_chain.x, v_chain.y)
+    print(buf)
+    testcheck.ok("Vec2 运算符重载测试完成")
+
+    # === Vec3 运算符重载 + 链式调用（堆分配） ===
+    testcheck.section("Vec3 运算符重载 + 链式调用")
+    a1 = Vec3(1.0, 0.0, 0.0)
+    a2 = Vec3(0.0, 1.0, 0.0)
+    cross_v = a1.cross(a2)
+    viperlib.snprintf(buf, 256, "Vec3 cross: (%.1f, %.1f, %.1f)", cross_v.x, cross_v.y, cross_v.z)
+    print(buf)
+
+    dot_v = a1.dot(a2)
+    viperlib.snprintf(buf, 256, "Vec3 dot: %.1f", dot_v)
+    print(buf)
+
+    # 链式: (a + b).dot(c)
+    a3 = Vec3(1.0, 2.0, 3.0)
+    a4 = Vec3(4.0, 5.0, 6.0)
+    a5 = Vec3(7.0, 8.0, 9.0)
+    chain_dot = (a3 + a4).dot(a5)
+    viperlib.snprintf(buf, 256, "Vec3 chain dot: %.1f", chain_dot)
+    print(buf)
+
+    # 链式: (a * 2.0 - b).cross(c)
+    chain_cross = (a3 * 2.0 - a4).cross(a5)
+    viperlib.snprintf(buf, 256, "Vec3 chain cross: (%.1f, %.1f, %.1f)", chain_cross.x, chain_cross.y, chain_cross.z)
+    print(buf)
+
+    # len_sq 链式
+    lsq = a3.len_sq()
+    viperlib.snprintf(buf, 256, "Vec3 len_sq: %.1f", lsq)
+    print(buf)
+    testcheck.ok("Vec3 运算符重载测试完成")
+
+    # === Dog/Cat 虚方法 ===
+    testcheck.section("Dog/Cat 虚方法")
+    dog = Dog(1, CInt32T(30))
+    cat = Cat(2, CInt32T(9))
+
+    viperlib.snprintf(buf, 256, "Dog speak=%d bite=%d alive=%d", dog.speak(), dog.bite(), dog.is_alive())
+    print(buf)
+    viperlib.snprintf(buf, 256, "Cat speak=%d scratch=%d alive=%d", cat.speak(), cat.scratch(), cat.is_alive())
+    print(buf)
+
+    dog.take_damage(CInt32T(40)).take_damage(CInt32T(30))
+    viperlib.snprintf(buf, 256, "Dog after 70dmg: health=%d alive=%d", dog.health, dog.is_alive())
+    print(buf)
+
+    cat.take_damage(CInt32T(50))
+    viperlib.snprintf(buf, 256, "Cat after 50dmg: health=%d alive=%d", cat.health, cat.is_alive())
+    print(buf)
+    testcheck.ok("Dog/Cat 虚方法测试完成")
+
+    # === Transform 嵌套组合（堆分配，链式调用） ===
+    testcheck.section("Transform 嵌套组合")
+    tr = Transform(10.0, 20.0, 30.0)
+    tr.apply_scale(2.0, 3.0, 4.0)
+    pos = tr.world_position()
+    viperlib.snprintf(buf, 256, "Transform pos: (%.1f, %.1f, %.1f)", pos.x, pos.y, pos.z)
+    print(buf)
+
+    tr2 = Transform(5.0, 10.0, 15.0)
+    tr2.apply_scale(2.0, 2.0, 2.0)
+    pos2 = tr2.world_position()
+    viperlib.snprintf(buf, 256, "Transform2 pos: (%.1f, %.1f, %.1f)", pos2.x, pos2.y, pos2.z)
+    print(buf)
+    testcheck.ok("Transform 嵌套组合测试完成")
+
+    # === 多层继承 ===
+    testcheck.section("多层继承")
+    ec = ElectricCar(CInt32T(120), CInt32T(4), CInt32T(80))
+    viperlib.snprintf(buf, 256, "ECar speed=%d doors=%d battery=%d", ec.speed, ec.doors, ec.battery)
+    print(buf)
+    ec.charge()
+    viperlib.snprintf(buf, 256, "ECar after charge: battery=%d", ec.battery)
+    print(buf)
+    spd = ec.move()
+    viperlib.snprintf(buf, 256, "ECar move: speed=%d battery=%d", spd, ec.battery)
+    print(buf)
+    viperlib.snprintf(buf, 256, "ECar honk=%d running=%d", ec.honk(), ec.is_running())
+    print(buf)
+    testcheck.ok("多层继承测试完成")
+
+    stdlib.free(buf)
+    return testcheck.end()

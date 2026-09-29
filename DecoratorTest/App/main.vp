@@ -1,0 +1,299 @@
+import t
+from stdio import printf
+import testcheck
+
+# ============================================================
+# 自定义装饰器处理函数
+# 调用约定 (v4)：
+#   i32 decor_name(i8* ctx, i8* func_name, i32 phase,
+#                  i8* args_ptr, i8* ret_ptr, i8* decor_args_ptr)
+#
+#   ctx: 栈帧局部上下文（32字节），每次调用独立，线程/递归安全
+#   args_ptr: 可读写，装饰器可修改函数入参
+#   ret_ptr: 后置阶段可读写，装饰器可修改返回值
+#   返回值（前置阶段）：
+#     0  = 跳过原函数调用
+#     1  = 正常调用一次
+#     N  = 循环调用 N 次
+# ============================================================
+
+# @log 装饰器：打印函数进入/退出，返回 1（正常调用一次）
+def log(ctx: t.CPtr, func_name: str, phase: t.CInt,
+        args_ptr: t.CPtr,
+        ret_ptr: t.CPtr,
+        decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    if phase == 0:
+        printf("[LOG] >> %s enter\n", func_name)
+        return 1
+    else:
+        printf("[LOG] << %s exit\n", func_name)
+        return 0
+
+# @trace 装饰器：详细追踪
+def trace(ctx: t.CPtr, func_name: str, phase: t.CInt,
+          args_ptr: t.CPtr,
+          ret_ptr: t.CPtr,
+          decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    if phase == 0:
+        printf("[TRACE] calling %s...\n", func_name)
+        return 1
+    else:
+        printf("[TRACE] %s returned\n", func_name)
+        return 0
+
+# @timing 装饰器：使用全局变量记录计时
+# 注意：理想情况下应使用 ctx 栈帧局部上下文替代全局变量，
+# 但 Viper 当前前端尚不支持 i8* 到 i32* 的指针转型，
+# 因此暂时使用全局变量演示计时逻辑
+_timing_tmp: t.CInt = 0
+
+def timing(ctx: t.CPtr, func_name: str, phase: t.CInt,
+           args_ptr: t.CPtr,
+           ret_ptr: t.CPtr,
+           decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    global _timing_tmp
+    if phase == 0:
+        _timing_tmp = 100
+        printf("[TIMING] %s start at t=%d\n", func_name, _timing_tmp)
+        return 1
+    else:
+        elapsed: t.CInt = 105 - _timing_tmp
+        printf("[TIMING] %s took %d ms\n", func_name, elapsed)
+        return 0
+
+# @repeat 装饰器（带参数，流程劫持）：循环调用原函数 N 次
+def repeat(ctx: t.CPtr, func_name: str, phase: t.CInt,
+           args_ptr: t.CPtr,
+           ret_ptr: t.CPtr,
+           decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    if phase == 0:
+        printf("[REPEAT] %s will run 3 times\n", func_name)
+        return 3
+    else:
+        printf("[REPEAT] %s all iterations done\n", func_name)
+        return 0
+
+# @skip 装饰器：跳过原函数调用（流程劫持，返回 0）
+_skip_count: t.CInt = 0
+
+def skip(ctx: t.CPtr, func_name: str, phase: t.CInt,
+         args_ptr: t.CPtr,
+         ret_ptr: t.CPtr,
+         decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    global _skip_count
+    if phase == 0:
+        _skip_count = _skip_count + 1
+        printf("[SKIP] %s skipped! (call #%d)\n", func_name, _skip_count)
+        return 0
+    else:
+        printf("[SKIP] %s post (ret_ptr=%p)\n", func_name, ret_ptr)
+        return 0
+
+# @count_calls 装饰器：统计函数被调用次数（递归保护测试用）
+_call_count: t.CInt = 0
+
+def count_calls(ctx: t.CPtr, func_name: str, phase: t.CInt,
+                args_ptr: t.CPtr,
+                ret_ptr: t.CPtr,
+                decor_args_ptr: t.CPtr) -> t.CInt | t.CExport:
+    global _call_count
+    if phase == 0:
+        _call_count = _call_count + 1
+        printf("[COUNT] %s call #%d\n", func_name, _call_count)
+        return 1
+    else:
+        printf("[COUNT] %s done (total calls: %d)\n", func_name, _call_count)
+        return 0
+
+
+# ============================================================
+# 测试 1：单个装饰器 @log
+# ============================================================
+
+@log
+def add(a: t.CInt, b: t.CInt) -> t.CInt | t.CExport:
+    return a + b
+
+
+# ============================================================
+# 测试 2：链式装饰器 @log @trace => log(trace(f))
+# 执行顺序：log_pre → trace_pre → f → trace_post → log_post
+# ============================================================
+
+@log
+@trace
+def multiply(a: t.CInt, b: t.CInt) -> t.CInt | t.CExport:
+    return a * b
+
+
+# ============================================================
+# 测试 3：装饰器修饰 void 返回函数
+# ============================================================
+
+@log
+def greet(name: str) -> t.CVoid | t.CExport:
+    printf("Hello, %s!\n", name)
+
+
+# ============================================================
+# 测试 4：装饰器修饰无参数函数
+# ============================================================
+
+@log
+def get_value() -> t.CInt | t.CExport:
+    return 42
+
+
+# ============================================================
+# 测试 5：@timing 装饰器
+# ============================================================
+
+@timing
+export def compute(x: t.CInt) -> t.CInt:
+    return x * x + 1
+
+
+# ============================================================
+# 测试 6：带参数装饰器 @repeat(3) — 流程劫持，循环调用 3 次
+# ============================================================
+
+@repeat(3)
+export def echo(msg: str):
+    printf("  echo: %s\n", msg)
+
+
+# ============================================================
+# 测试 7：链式 @timing @log
+# ============================================================
+
+@timing
+@log
+export def power(base: t.CInt, exp: t.CInt) -> t.CInt:
+    result: t.CInt = 1
+    i: t.CInt = 0
+    while i < exp:
+        result = result * base
+        i = i + 1
+    return result
+
+
+# ============================================================
+# 测试 8：@skip 装饰器 — 流程劫持，跳过原函数调用
+# ============================================================
+
+@skip
+def dangerous() -> t.CInt | t.CExport:
+    printf("This should NOT be printed!\n")
+    return 999
+
+
+# ============================================================
+# 测试 9：@repeat(3) 修饰有返回值的函数
+# ============================================================
+
+@repeat(3)
+def accumulate(x: t.CInt) -> t.CInt | t.CExport:
+    printf("  accumulate(%d)\n", x)
+    return x * 10
+
+
+# ============================================================
+# 测试 10：递归装饰保护 — @count_calls 修饰递归函数
+# v4 递归保护：最外层 wrapper 检查全局标志位，
+# 递归调用时跳过所有装饰逻辑，仅最外层调用触发装饰器
+# ============================================================
+
+@count_calls
+def factorial(n: t.CInt) -> t.CInt | t.CExport:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+
+# ============================================================
+# 测试 11：@log 修饰递归函数 — 验证递归保护
+# 递归保护确保只有最外层调用打印 LOG，内部递归不触发
+# ============================================================
+
+@log
+def fib(n: t.CInt) -> t.CInt | t.CExport:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+
+# ============================================================
+# 主函数
+# ============================================================
+
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("Decorator Test v4")
+
+    # 测试 1：单个 @log
+    testcheck.section("Test 1: single @log")
+    r1: t.CInt = add(3, 4)
+    printf("add(3,4) = %d\n", r1)
+    testcheck.check(r1 == 7, "add(3,4) = 7", "add(3,4) expect 7")
+
+    # 测试 2：链式 @log @trace
+    testcheck.section("Test 2: chained @log @trace")
+    r2: t.CInt = multiply(5, 6)
+    printf("multiply(5,6) = %d\n", r2)
+    testcheck.check(r2 == 30, "multiply(5,6) = 30", "multiply(5,6) expect 30")
+
+    # 测试 3：void 返回
+    testcheck.section("Test 3: @log on void function")
+    greet("Viper")
+    testcheck.ok("@log on void function greet")
+
+    # 测试 4：无参数
+    testcheck.section("Test 4: @log on no-arg function")
+    r4: t.CInt = get_value()
+    printf("get_value() = %d\n", r4)
+    testcheck.check(r4 == 42, "get_value() = 42", "get_value() expect 42")
+
+    # 测试 5：@timing
+    testcheck.section("Test 5: @timing")
+    r5: t.CInt = compute(7)
+    printf("compute(7) = %d\n", r5)
+    testcheck.check(r5 == 50, "compute(7) = 50", "compute(7) expect 50")
+
+    # 测试 6：@repeat(3) — 流程劫持，循环 3 次
+    testcheck.section("Test 6: @repeat(3) flow hijack")
+    echo("hello")
+    testcheck.ok("@repeat(3) flow hijack echo")
+
+    # 测试 7：链式 @timing @log
+    testcheck.section("Test 7: chained @timing @log")
+    r7: t.CInt = power(2, 10)
+    printf("power(2,10) = %d\n", r7)
+    testcheck.check(r7 == 1024, "power(2,10) = 1024", "power(2,10) expect 1024")
+
+    # 测试 8：@skip — 跳过原函数调用
+    testcheck.section("Test 8: @skip flow hijack")
+    r8: t.CInt = dangerous()
+    printf("dangerous() = %d (should be 0, skipped)\n", r8)
+    testcheck.check(r8 == 0, "dangerous() skipped = 0", "dangerous() expect 0")
+
+    # 测试 9：@repeat(3) 有返回值
+    testcheck.section("Test 9: @repeat(3) with return value")
+    r9: t.CInt = accumulate(5)
+    printf("accumulate(5) = %d (last iteration result)\n", r9)
+    testcheck.check(r9 == 50, "accumulate(5) = 50", "accumulate(5) expect 50")
+
+    # 测试 10：递归装饰保护 — @count_calls
+    testcheck.section("Test 10: recursive decoration protection")
+    global _call_count
+    _call_count = 0
+    r10: t.CInt = factorial(5)
+    printf("factorial(5) = %d (should be 120)\n", r10)
+    printf("  decorator call count = %d (should be 1, not 5)\n", _call_count)
+    testcheck.check(r10 == 120 and _call_count == 1, "factorial(5)=120, calls=1", "factorial(5) expect 120, calls=1")
+
+    # 测试 11：@log 递归保护 — fib
+    testcheck.section("Test 11: @log on recursive fib")
+    r11: t.CInt = fib(6)
+    printf("fib(6) = %d (should be 8)\n", r11)
+    testcheck.check(r11 == 8, "fib(6) = 8", "fib(6) expect 8")
+
+    return testcheck.end()

@@ -1,0 +1,160 @@
+from stdint import *
+import w32.win32console
+import t, c
+import testcheck
+
+
+def add_inline(a: t.CInt, b: t.CInt) -> t.CDefine:
+    return a + b
+
+def mul_inline(a: t.CInt, b: t.CInt) -> t.CDefine:
+    return a * b
+
+
+class AppError(Exception):
+	pass
+
+class DiskError(AppError):
+	pass
+
+class NetworkError(AppError):
+	pass
+
+class TimeoutError(NetworkError):
+	pass
+
+
+def raise_disk():
+	raise DiskError("disk read failed")
+
+def raise_network():
+	raise NetworkError("connection refused")
+
+def raise_timeout():
+	raise TimeoutError("operation timed out")
+
+
+def main() -> t.CInt | t.CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("TestFBProject: 异常处理与LLVMIR测试")
+
+    testcheck.section("Test 1: Raise and catch exact custom exception")
+    try:
+        raise DiskError("disk error")
+    except DiskError as e:
+        print("caught DiskError:", e)
+        testcheck.ok("Test 1: caught DiskError")
+    except:
+        testcheck.fail("Test 1: caught by generic except")
+
+    testcheck.section("Test 2: Catch parent catches child")
+    try:
+        raise_disk()
+    except AppError as e:
+        print("caught AppError (child DiskError):", e)
+        testcheck.ok("Test 2: caught AppError (child DiskError)")
+    except:
+        testcheck.fail("Test 2: caught by generic except")
+
+    testcheck.section("Test 3: Catch parent catches nested child")
+    try:
+        raise_timeout()
+    except AppError as e:
+        print("caught AppError (grandchild TimeoutError):", e)
+        testcheck.ok("Test 3: caught AppError (grandchild TimeoutError)")
+    except:
+        testcheck.fail("Test 3: caught by generic except")
+
+    testcheck.section("Test 4: Catch mid-level parent")
+    try:
+        raise_timeout()
+    except NetworkError as e:
+        print("caught NetworkError (child TimeoutError):", e)
+        testcheck.ok("Test 4: caught NetworkError (child TimeoutError)")
+    except:
+        testcheck.fail("Test 4: caught by generic except")
+
+    testcheck.section("Test 5: Exact catch before parent")
+    try:
+        raise_network()
+    except NetworkError as e:
+        print("caught NetworkError:", e)
+        testcheck.ok("Test 5: caught NetworkError")
+    except AppError as e:
+        testcheck.fail("Test 5: caught AppError (should be NetworkError first)")
+    except:
+        testcheck.fail("Test 5: caught by generic except")
+
+    testcheck.section("Test 6: Parent catch when exact not present")
+    try:
+        raise_network()
+    except DiskError as e:
+        testcheck.fail("Test 6: caught DiskError (wrong)")
+    except AppError as e:
+        print("caught AppError (no NetworkError handler):", e)
+        testcheck.ok("Test 6: caught AppError (no NetworkError handler)")
+    except:
+        testcheck.fail("Test 6: caught by generic except")
+
+    testcheck.section("Test 7: Generic except fallback")
+    try:
+        raise_disk()
+    except RuntimeError as e:
+        testcheck.fail("Test 7: caught RuntimeError (wrong)")
+    except:
+        testcheck.ok("Test 7: caught by generic except")
+
+    testcheck.section("Test 8: Cross-function with inheritance")
+    try:
+        raise_timeout()
+    except NetworkError as e:
+        print("caught NetworkError (cross-func TimeoutError):", e)
+        testcheck.ok("Test 8: caught NetworkError (cross-func TimeoutError)")
+    except:
+        testcheck.fail("Test 8: caught by generic except")
+
+    testcheck.section("Test 9: Built-in exception still works")
+    try:
+        raise ValueError("test")
+    except ValueError as e:
+        print("caught ValueError:", e)
+        testcheck.ok("Test 9: caught ValueError")
+    except:
+        testcheck.fail("Test 9: caught by generic except")
+
+    testcheck.section("Test 10: Mixed built-in and custom")
+    try:
+        raise RuntimeError("test")
+    except DiskError as e:
+        testcheck.fail("Test 10: caught DiskError (wrong)")
+    except RuntimeError as e:
+        print("caught RuntimeError:", e)
+        testcheck.ok("Test 10: caught RuntimeError")
+    except:
+        testcheck.fail("Test 10: caught by generic except")
+
+    testcheck.section("Test LLVMIR: inline LLVM IR add")
+    x: t.CInt = 10
+    y: t.CInt = 20
+    r: t.CInt
+    c.LLVMIR(f"{c.LOut(r)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
+    print("LLVMIR add result:", r)
+    testcheck.check(r == 30, "LLVMIR add (10+20=30)", "LLVMIR add result mismatch")
+
+    testcheck.section("Test CDefine function macro")
+    s: t.CInt = add_inline(3, 4)
+    print("add_inline(3, 4) =", s)
+    testcheck.check(s == 7, "add_inline(3, 4) = 7", "add_inline result mismatch")
+    m: t.CInt = mul_inline(5, 6)
+    print("mul_inline(5, 6) =", m)
+    testcheck.check(m == 30, "mul_inline(5, 6) = 30", "mul_inline result mismatch")
+
+    testcheck.section("Test LLVMIR with LOut")
+    out_val: t.CInt = 0
+    c.LLVMIR(f"{c.LOut(out_val)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
+    print("LLVMIR LOut result:", out_val)
+    testcheck.check(out_val == 30, "LLVMIR LOut (10+20=30)", "LLVMIR LOut result mismatch")
+
+    return testcheck.end()

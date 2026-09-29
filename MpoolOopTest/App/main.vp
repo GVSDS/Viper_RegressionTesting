@@ -1,0 +1,11 @@
+import t, c
+import testcheck
+import mpooltest
+
+
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("MpoolOopTest: MemPool OOP 测试")
+    testcheck.section("MPool OOP")
+    mpooltest.mpool_main()
+    testcheck.ok("MPool OOP 测试完成")
+    return testcheck.end()

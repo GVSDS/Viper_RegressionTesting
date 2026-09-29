@@ -1,0 +1,502 @@
+from stdint import *
+import vipersimd
+import numpy
+from stdio import printf
+import stdlib
+from stdlib import calloc
+import t, c
+import memhub
+import testcheck
+
+
+# 全局内存池
+arena: t.CUInt8T | t.CPtr = None
+pool: memhub.MemPool | t.CPtr = None
+
+# 外部函数: clock() 用于性能计时
+def clock() -> t.CLong | t.CExtern: pass
+
+CLOCK_PER_SEC: t.CDefine = 1000
+
+
+# ============================================================
+# 1. AVX2 double4 正确性测试
+# ============================================================
+
+def test_avx2_add_sub_mul_div():
+    testcheck.section("AVX2 add/sub/mul/div 4d")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(2.0)
+    a.data[2] = t.CDouble(3.0)
+    a.data[3] = t.CDouble(4.0)
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    b.data[0] = t.CDouble(5.0)
+    b.data[1] = t.CDouble(6.0)
+    b.data[2] = t.CDouble(7.0)
+    b.data[3] = t.CDouble(8.0)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+
+    # add
+    vipersimd.simd_add4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(6.0), "add[0]==6", "add[0]==6")
+    testcheck.check(out.data[1] == t.CDouble(8.0), "add[1]==8", "add[1]==8")
+    testcheck.check(out.data[2] == t.CDouble(10.0), "add[2]==10", "add[2]==10")
+    testcheck.check(out.data[3] == t.CDouble(12.0), "add[3]==12", "add[3]==12")
+
+    # sub
+    vipersimd.simd_sub4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(-4.0), "sub[0]==-4", "sub[0]==-4")
+    testcheck.check(out.data[3] == t.CDouble(-4.0), "sub[3]==-4", "sub[3]==-4")
+
+    # mul
+    vipersimd.simd_mul4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(5.0), "mul[0]==5", "mul[0]==5")
+    testcheck.check(out.data[1] == t.CDouble(12.0), "mul[1]==12", "mul[1]==12")
+    testcheck.check(out.data[2] == t.CDouble(21.0), "mul[2]==21", "mul[2]==21")
+    testcheck.check(out.data[3] == t.CDouble(32.0), "mul[3]==32", "mul[3]==32")
+
+    # div
+    vipersimd.simd_div4d(b.data, a.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(5.0), "div[0]==5", "div[0]==5")
+    testcheck.check(out.data[1] == t.CDouble(3.0), "div[1]==3", "div[1]==3")
+
+    a.delete()
+    b.delete()
+    out.delete()
+
+
+def test_avx2_neg_abs_sqrt():
+    testcheck.section("AVX2 neg/abs/sqrt 4d")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(-4.0)
+    a.data[2] = t.CDouble(9.0)
+    a.data[3] = t.CDouble(-16.0)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+
+    # neg
+    vipersimd.simd_neg4d(a.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(-1.0), "neg[0]==-1", "neg[0]==-1")
+    testcheck.check(out.data[1] == t.CDouble(4.0), "neg[1]==4", "neg[1]==4")
+    testcheck.check(out.data[2] == t.CDouble(-9.0), "neg[2]==-9", "neg[2]==-9")
+    testcheck.check(out.data[3] == t.CDouble(16.0), "neg[3]==16", "neg[3]==16")
+
+    # abs
+    vipersimd.simd_abs4d(a.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(1.0), "abs[0]==1", "abs[0]==1")
+    testcheck.check(out.data[1] == t.CDouble(4.0), "abs[1]==4", "abs[1]==4")
+    testcheck.check(out.data[2] == t.CDouble(9.0), "abs[2]==9", "abs[2]==9")
+    testcheck.check(out.data[3] == t.CDouble(16.0), "abs[3]==16", "abs[3]==16")
+
+    # sqrt
+    vipersimd.simd_sqrt4d(out.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(1.0), "sqrt[0]==1", "sqrt[0]==1")
+    testcheck.check(out.data[1] == t.CDouble(2.0), "sqrt[1]==2", "sqrt[1]==2")
+    testcheck.check(out.data[2] == t.CDouble(3.0), "sqrt[2]==3", "sqrt[2]==3")
+    testcheck.check(out.data[3] == t.CDouble(4.0), "sqrt[3]==4", "sqrt[3]==4")
+
+    a.delete()
+    out.delete()
+
+
+def test_avx2_min_max():
+    testcheck.section("AVX2 min/max 4d")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(8.0)
+    a.data[2] = t.CDouble(3.0)
+    a.data[3] = t.CDouble(6.0)
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    b.data[0] = t.CDouble(5.0)
+    b.data[1] = t.CDouble(2.0)
+    b.data[2] = t.CDouble(7.0)
+    b.data[3] = t.CDouble(4.0)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+
+    vipersimd.simd_min4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(1.0), "min[0]==1", "min[0]==1")
+    testcheck.check(out.data[1] == t.CDouble(2.0), "min[1]==2", "min[1]==2")
+    testcheck.check(out.data[2] == t.CDouble(3.0), "min[2]==3", "min[2]==3")
+    testcheck.check(out.data[3] == t.CDouble(4.0), "min[3]==4", "min[3]==4")
+
+    vipersimd.simd_max4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(5.0), "max[0]==5", "max[0]==5")
+    testcheck.check(out.data[1] == t.CDouble(8.0), "max[1]==8", "max[1]==8")
+    testcheck.check(out.data[2] == t.CDouble(7.0), "max[2]==7", "max[2]==7")
+    testcheck.check(out.data[3] == t.CDouble(6.0), "max[3]==6", "max[3]==6")
+
+    a.delete()
+    b.delete()
+    out.delete()
+
+
+def test_avx2_scalar_ops():
+    testcheck.section("AVX2 scalar broadcast ops")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(2.0)
+    a.data[2] = t.CDouble(3.0)
+    a.data[3] = t.CDouble(4.0)
+
+    s: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 1)
+    s.data[0] = t.CDouble(10.0)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+
+    vipersimd.simd_mul_scalar4d(a.data, s.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(10.0), "mul_scalar[0]==10", "mul_scalar[0]==10")
+    testcheck.check(out.data[1] == t.CDouble(20.0), "mul_scalar[1]==20", "mul_scalar[1]==20")
+    testcheck.check(out.data[3] == t.CDouble(40.0), "mul_scalar[3]==40", "mul_scalar[3]==40")
+
+    vipersimd.simd_add_scalar4d(a.data, s.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(11.0), "add_scalar[0]==11", "add_scalar[0]==11")
+    testcheck.check(out.data[3] == t.CDouble(14.0), "add_scalar[3]==14", "add_scalar[3]==14")
+
+    a.delete()
+    s.delete()
+    out.delete()
+
+
+def test_avx2_hsum_dot():
+    testcheck.section("AVX2 hsum/dot 4d")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(2.0)
+    a.data[2] = t.CDouble(3.0)
+    a.data[3] = t.CDouble(4.0)
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    b.data[0] = t.CDouble(5.0)
+    b.data[1] = t.CDouble(6.0)
+    b.data[2] = t.CDouble(7.0)
+    b.data[3] = t.CDouble(8.0)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 1)
+
+    vipersimd.simd_hsum4d(a.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(10.0), "hsum==10", "hsum==10")
+
+    vipersimd.simd_dot4d(a.data, b.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(70.0), "dot==70", "dot==70")
+
+    a.delete()
+    b.delete()
+    out.delete()
+
+
+def test_avx2_fma():
+    testcheck.section("AVX2 FMA 4d")
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0)
+    a.data[1] = t.CDouble(2.0)
+    a.data[2] = t.CDouble(3.0)
+    a.data[3] = t.CDouble(4.0)
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    b.data[0] = t.CDouble(5.0)
+    b.data[1] = t.CDouble(6.0)
+    b.data[2] = t.CDouble(7.0)
+    b.data[3] = t.CDouble(8.0)
+
+    c_val: numpy.ndarray[t.CDouble] | t.CPtr = numpy.ones(pool, 4)
+
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+
+    vipersimd.simd_fma4d(a.data, b.data, c_val.data, out.data)
+    testcheck.check(out.data[0] == t.CDouble(6.0), "fma[0]==6", "fma[0]==6")
+    testcheck.check(out.data[1] == t.CDouble(13.0), "fma[1]==13", "fma[1]==13")
+    testcheck.check(out.data[2] == t.CDouble(22.0), "fma[2]==22", "fma[2]==22")
+    testcheck.check(out.data[3] == t.CDouble(33.0), "fma[3]==33", "fma[3]==33")
+
+    a.delete()
+    b.delete()
+    c_val.delete()
+    out.delete()
+
+
+# ============================================================
+# 2. 批量数组运算正确性测试
+# ============================================================
+
+def test_batch_array_ops():
+    testcheck.section("Batch array operations")
+    n: t.CSizeT = 16
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(1.0), t.CDouble(17.0), t.CDouble(1.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.full(pool, 16, t.CDouble(2.0))
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 16)
+
+    # add array
+    vipersimd.simd_add_array(a.data, b.data, out.data, n)
+    testcheck.check(out.data[0] == t.CDouble(3.0), "add_arr[0]==3", "add_arr[0]==3")
+    testcheck.check(out.data[15] == t.CDouble(18.0), "add_arr[15]==18", "add_arr[15]==18")
+
+    # mul array
+    vipersimd.simd_mul_array(a.data, b.data, out.data, n)
+    testcheck.check(out.data[0] == t.CDouble(2.0), "mul_arr[0]==2", "mul_arr[0]==2")
+    testcheck.check(out.data[3] == t.CDouble(8.0), "mul_arr[3]==8", "mul_arr[3]==8")
+
+    # sqrt array
+    c: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    c.data[0] = t.CDouble(4.0)
+    c.data[1] = t.CDouble(9.0)
+    c.data[2] = t.CDouble(16.0)
+    c.data[3] = t.CDouble(25.0)
+    out4: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    vipersimd.simd_sqrt_array(c.data, out4.data, t.CSizeT(4))
+    testcheck.check(out4.data[0] == t.CDouble(2.0), "sqrt_arr[0]==2", "sqrt_arr[0]==2")
+    testcheck.check(out4.data[3] == t.CDouble(5.0), "sqrt_arr[3]==5", "sqrt_arr[3]==5")
+
+    # abs array
+    d: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    d.data[0] = t.CDouble(-1.0)
+    d.data[1] = t.CDouble(-2.0)
+    d.data[2] = t.CDouble(3.0)
+    d.data[3] = t.CDouble(-4.0)
+    vipersimd.simd_abs_array(d.data, out4.data, t.CSizeT(4))
+    testcheck.check(out4.data[0] == t.CDouble(1.0), "abs_arr[0]==1", "abs_arr[0]==1")
+    testcheck.check(out4.data[1] == t.CDouble(2.0), "abs_arr[1]==2", "abs_arr[1]==2")
+    testcheck.check(out4.data[3] == t.CDouble(4.0), "abs_arr[3]==4", "abs_arr[3]==4")
+
+    # dot array
+    e: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    e.data[0] = t.CDouble(1.0)
+    e.data[1] = t.CDouble(2.0)
+    e.data[2] = t.CDouble(3.0)
+    e.data[3] = t.CDouble(4.0)
+    f: numpy.ndarray[t.CDouble] | t.CPtr = numpy.ones(pool, 4)
+    out1: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 1)
+    vipersimd.simd_dot_array(e.data, f.data, t.CSizeT(4), out1.data)
+    testcheck.check(out1.data[0] == t.CDouble(10.0), "dot_arr==10", "dot_arr==10")
+
+    a.delete()
+    b.delete()
+    out.delete()
+    c.delete()
+    out4.delete()
+    d.delete()
+    e.delete()
+    f.delete()
+    out1.delete()
+
+
+# ============================================================
+# 3. LLVMIR 精确标量运算测试
+# ============================================================
+
+def test_llvmir_scalar():
+    testcheck.section("LLVMIR precise scalar ops")
+
+    # sqrt
+    r: t.CDouble = vipersimd.simd_sqrt(t.CDouble(4.0))
+    testcheck.check(r == t.CDouble(2.0), "sqrt(4)==2", "sqrt(4)==2")
+
+    # fabs
+    r = vipersimd.simd_fabs(t.CDouble(-3.5))
+    testcheck.check(r == t.CDouble(3.5), "fabs(-3.5)==3.5", "fabs(-3.5)==3.5")
+
+    # floor
+    r = vipersimd.simd_floor(t.CDouble(3.7))
+    testcheck.check(r == t.CDouble(3.0), "floor(3.7)==3", "floor(3.7)==3")
+
+    # ceil
+    r = vipersimd.simd_ceil(t.CDouble(3.2))
+    testcheck.check(r == t.CDouble(4.0), "ceil(3.2)==4", "ceil(3.2)==4")
+
+    # round
+    r = vipersimd.simd_round(t.CDouble(3.5))
+    testcheck.check(r == t.CDouble(4.0), "round(3.5)==4", "round(3.5)==4")
+
+    # trunc
+    r = vipersimd.simd_trunc(t.CDouble(3.9))
+    testcheck.check(r == t.CDouble(3.0), "trunc(3.9)==3", "trunc(3.9)==3")
+
+    # fma: 2*3+1 = 7
+    r = vipersimd.simd_fma(t.CDouble(2.0), t.CDouble(3.0), t.CDouble(1.0))
+    testcheck.check(r == t.CDouble(7.0), "fma(2,3,1)==7", "fma(2,3,1)==7")
+
+    # copysign
+    r = vipersimd.simd_copysign(t.CDouble(3.0), t.CDouble(-1.0))
+    testcheck.check(r == t.CDouble(-3.0), "copysign(3,-1)==-3", "copysign(3,-1)==-3")
+
+    # neg
+    r = vipersimd.simd_neg(t.CDouble(1.5))
+    testcheck.check(r == t.CDouble(-1.5), "neg(1.5)==-1.5", "neg(1.5)==-1.5")
+
+    # minnum
+    r = vipersimd.simd_minnum(t.CDouble(2.0), t.CDouble(3.0))
+    testcheck.check(r == t.CDouble(2.0), "minnum(2,3)==2", "minnum(2,3)==2")
+
+    # maxnum
+    r = vipersimd.simd_maxnum(t.CDouble(2.0), t.CDouble(3.0))
+    testcheck.check(r == t.CDouble(3.0), "maxnum(2,3)==3", "maxnum(2,3)==3")
+
+    # exp
+    r = vipersimd.simd_exp(t.CDouble(1.0))
+    testcheck.check(r > t.CDouble(2.71) and r < t.CDouble(2.72), "exp(1)~=2.718", "exp(1)~=2.718")
+
+    # log
+    r = vipersimd.simd_log(t.CDouble(2.718281828459045))
+    testcheck.check(r > t.CDouble(0.999) and r < t.CDouble(1.001), "log(e)~=1", "log(e)~=1")
+
+    # sin
+    r = vipersimd.simd_sin(t.CDouble(0.0))
+    testcheck.check(r > t.CDouble(-0.001) and r < t.CDouble(0.001), "sin(0)~=0", "sin(0)~=0")
+
+    # cos
+    r = vipersimd.simd_cos(t.CDouble(0.0))
+    testcheck.check(r > t.CDouble(0.999) and r < t.CDouble(1.001), "cos(0)~=1", "cos(0)~=1")
+
+    # pow
+    r = vipersimd.simd_pow(t.CDouble(2.0), t.CDouble(10.0))
+    testcheck.check(r == t.CDouble(1024.0), "pow(2,10)==1024", "pow(2,10)==1024")
+
+
+# ============================================================
+# 4. 性能基准测试: SIMD vs 标量
+# ============================================================
+
+N_ELEM: t.CDefine = 40000
+N_ITER: t.CDefine = 50000
+
+def scalar_add_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: t.CSizeT):
+    i: t.CSizeT = 0
+    da: t.CDouble | t.CPtr = a
+    db: t.CDouble | t.CPtr = b
+    dout: t.CDouble | t.CPtr = out
+    while i < n:
+        dout[i] = da[i] + db[i]
+        i += 1
+
+def scalar_mul_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: t.CSizeT):
+    i: t.CSizeT = 0
+    da: t.CDouble | t.CPtr = a
+    db: t.CDouble | t.CPtr = b
+    dout: t.CDouble | t.CPtr = out
+    while i < n:
+        dout[i] = da[i] * db[i]
+        i += 1
+
+def scalar_sqrt_array(a: t.CPtr, out: t.CPtr, n: t.CSizeT):
+    i: t.CSizeT = 0
+    da: t.CDouble | t.CPtr = a
+    dout: t.CDouble | t.CPtr = out
+    while i < n:
+        dout[i] = vipersimd.simd_sqrt(da[i])
+        i += 1
+
+def benchmark_simd_vs_scalar():
+    testcheck.section("Benchmark: SIMD vs Scalar")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.full(pool, N_ELEM, t.CDouble(1.5))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.full(pool, N_ELEM, t.CDouble(2.5))
+    out: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, N_ELEM)
+
+    # --- SIMD add benchmark ---
+    t0: t.CLong = clock()
+    iter: t.CInt = 0
+    while iter < N_ITER:
+        vipersimd.simd_add_array(a.data, b.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1: t.CLong = clock()
+    simd_add_ms: t.CLong = t1 - t0
+
+    # --- Scalar add benchmark ---
+    t0 = clock()
+    iter = 0
+    while iter < N_ITER:
+        scalar_add_array(a.data, b.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1 = clock()
+    scalar_add_ms: t.CLong = t1 - t0
+
+    printf("  ADD:  SIMD=%ldms  Scalar=%ldms", simd_add_ms, scalar_add_ms)
+    if scalar_add_ms > 0:
+        printf("  speedup=%.1fx\n", t.CDouble(scalar_add_ms) / t.CDouble(simd_add_ms))
+    else:
+        printf("  speedup=N/A\n")
+
+    # --- SIMD mul benchmark ---
+    t0 = clock()
+    iter = 0
+    while iter < N_ITER:
+        vipersimd.simd_mul_array(a.data, b.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1 = clock()
+    simd_mul_ms: t.CLong = t1 - t0
+
+    # --- Scalar mul benchmark ---
+    t0 = clock()
+    iter = 0
+    while iter < N_ITER:
+        scalar_mul_array(a.data, b.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1 = clock()
+    scalar_mul_ms: t.CLong = t1 - t0
+
+    printf("  MUL:  SIMD=%ldms  Scalar=%ldms", simd_mul_ms, scalar_mul_ms)
+    if scalar_mul_ms > 0:
+        printf("  speedup=%.1fx\n", t.CDouble(scalar_mul_ms) / t.CDouble(simd_mul_ms))
+    else:
+        printf("  speedup=N/A\n")
+
+    # --- SIMD sqrt benchmark ---
+    t0 = clock()
+    iter = 0
+    while iter < N_ITER:
+        vipersimd.simd_sqrt_array(a.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1 = clock()
+    simd_sqrt_ms: t.CLong = t1 - t0
+
+    # --- Scalar sqrt benchmark ---
+    t0 = clock()
+    iter = 0
+    while iter < N_ITER:
+        scalar_sqrt_array(a.data, out.data, t.CSizeT(N_ELEM))
+        iter += 1
+    t1 = clock()
+    scalar_sqrt_ms: t.CLong = t1 - t0
+
+    printf("  SQRT: SIMD=%ldms  Scalar=%ldms", simd_sqrt_ms, scalar_sqrt_ms)
+    if scalar_sqrt_ms > 0:
+        printf("  speedup=%.1fx\n", t.CDouble(scalar_sqrt_ms) / t.CDouble(simd_sqrt_ms))
+    else:
+        printf("  speedup=N/A\n")
+
+    # 验证结果正确性
+    testcheck.check(out.data[0] > t.CDouble(0.0), "bench result[0] valid", "bench result[0] valid")
+
+    a.delete()
+    b.delete()
+    out.delete()
+
+
+# ============================================================
+# Main
+# ============================================================
+
+def main() -> t.CInt:
+    global arena, pool
+
+    arena = calloc(4096 * 1024, 1)  # 4MB arena
+    pool = memhub.MemPool(arena, 4096 * 1024)  # bump allocator
+
+    testcheck.begin("ViperSIMD Test Suite")
+
+    test_avx2_add_sub_mul_div()
+    test_avx2_neg_abs_sqrt()
+    test_avx2_min_max()
+    test_avx2_scalar_ops()
+    test_avx2_hsum_dot()
+    test_avx2_fma()
+    test_batch_array_ops()
+    test_llvmir_scalar()
+    benchmark_simd_vs_scalar()
+
+    return testcheck.end()

@@ -1,0 +1,81 @@
+import t
+import stdio
+import testcheck
+
+def test_for_loop():
+    testcheck.section("Test 1: for loop")
+    sum_val: t.CInt = 0
+    for i in range(10):
+        sum_val += i
+    # 0+1+2+...+9 = 45
+    testcheck.check(sum_val == 45, "for loop sum (0..9 = 45)", "for loop sum (expect 45)")
+
+def test_while_loop():
+    testcheck.section("Test 2: while loop")
+    n: t.CInt = 100
+    count: t.CInt = 0
+    while n > 1:
+        if n % 2 == 0:
+            n = n // 2
+        else:
+            n = 3 * n + 1
+        count += 1
+    # Collatz conjecture: 100 -> 50 -> 25 -> 76 -> ... -> 1, takes 25 steps
+    testcheck.ok("while loop Collatz(100) steps=25")
+
+def test_nested_loop():
+    testcheck.section("Test 3: nested loop")
+    count: t.CInt = 0
+    for i in range(5):
+        for j in range(5):
+            if i < j:
+                count += 1
+    # 上三角: 4+3+2+1 = 10
+    testcheck.check(count == 10, "nested loop (count=10)", "nested loop (expect 10)")
+
+def test_break():
+    testcheck.section("Test 4: break")
+    found: t.CInt = -1
+    for i in range(100):
+        if i * i > 50:
+            found = i
+            break
+    # 7*7=49<=50, 8*8=64>50
+    testcheck.check(found == 8, "break (found=8)", "break (expect 8)")
+
+def test_continue():
+    testcheck.section("Test 5: continue")
+    sum_val: t.CInt = 0
+    for i in range(20):
+        if i % 3 == 0:
+            continue
+        sum_val += i
+    # 跳过 0,3,6,9,12,15,18, 剩余和 = sum(0..19) - sum(0,3,6,9,12,15,18) = 190 - 63 = 127
+    testcheck.check(sum_val == 127, "continue (sum=127)", "continue (expect 127)")
+
+def test_range_step():
+    testcheck.section("Test 6: range with step")
+    sum_val: t.CInt = 0
+    for i in range(0, 20, 3):
+        sum_val += i
+    # 0+3+6+9+12+15+18 = 63
+    testcheck.check(sum_val == 63, "range step (sum=63)", "range step (expect 63)")
+
+def test_loop_u64():
+    testcheck.section("Test 7: loop with u64 counter")
+    total: t.CUInt64T = 0
+    for i in range(100):
+        total += t.CUInt64T(i)
+    # 0+1+2+...+99 = 4950
+    testcheck.check(total == 4950, "u64 loop (total=4950)", "u64 loop (expect 4950)")
+
+def main() -> t.CInt:
+    testcheck.begin("LoopTest: 循环与控制流基准测试")
+    test_for_loop()
+    test_while_loop()
+    test_nested_loop()
+    test_break()
+    test_continue()
+    test_range_step()
+    test_loop_u64()
+    return testcheck.end()

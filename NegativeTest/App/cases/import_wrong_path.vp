@@ -1,0 +1,5 @@
+import t, c
+import lib.NopeModule as NopeModule
+
+def main() -> int:
+    return 0

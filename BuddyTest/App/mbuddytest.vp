@@ -1,0 +1,545 @@
+import t, c
+from t import CInt, CPtr, CChar, CUInt8T, CUInt32T, CUInt64T, CSizeT
+import viperlib
+import viperio
+import stdlib
+import memhub
+import string
+import testcheck
+import w32.win32process
+import w32.win32sync
+import w32.win32base
+
+
+# 线程函数: 在共享 MBuddy 上执行 alloc/free (测试 spinlock 线程安全)
+def _thread_alloc_free(param: t.CPtr) -> t.CUInt32T:
+    bd: memhub.MemBuddy | t.CPtr = (memhub.MemBuddy | t.CPtr)(param)
+    i: CInt
+    for i in range(100):
+        p: bytes = bd.alloc(32)
+        if p != None:
+            p_c: CUInt8T | CPtr = CPtr(p)
+            p_c[0] = CUInt8T(i & 0xFF)
+            bd.free(p)
+    return 0
+
+
+def mbuddy_main() -> CInt:
+    buf: bytes = stdlib.malloc(256)
+
+    testcheck.begin("BuddyTest: 伙伴系统内存分配器测试")
+
+    # === 基础 alloc/free 测试 ===
+    testcheck.section("基础 alloc/free")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena, 65536)
+
+    viperlib.snprintf(buf, 256, "stats=%lu, free_count=%lu", bd.stats(), bd.free_count())
+    testcheck.info(buf)
+
+    p1: bytes = bd.alloc(16)
+    p2: bytes = bd.alloc(64)
+    p3: bytes = bd.alloc(256)
+    testcheck.check(p1 != None and p2 != None and p3 != None,
+                    "3 allocs OK", "alloc FAILED")
+
+    # 写入数据验证指针可用
+    p_c: CUInt8T | CPtr = CPtr(p1)
+    p_c[0] = CUInt8T(0xAB)
+    p_c[1] = CUInt8T(0xCD)
+    viperlib.snprintf(buf, 256, "p1[0]=0x%x p1[1]=0x%x", p_c[0], p_c[1])
+    testcheck.info(buf)
+    testcheck.check(p_c[0] == CUInt8T(0xAB) and p_c[1] == CUInt8T(0xCD),
+                    "write/read OK", "write/read FAILED")
+
+    bd.free(p1)
+    bd.free(p2)
+    bd.free(p3)
+    testcheck.ok("3 frees OK")
+
+    # 释放后验证合并: free_count 应回到初始分解块数 (10)
+    # 4096-264 内非 2 的幂: 65536-264=65272 二进制分解为 10 个 2 的幂块
+    testcheck.check(bd.free_count() == 10,
+                    "coalesce: free_count=10 OK", "coalesce: free_count != 10")
+
+    # 合并后应能分配大块
+    big: bytes = bd.alloc(16000)
+    testcheck.check(big != None, "big alloc OK", "big alloc FAILED")
+    bd.free(big)
+
+    stdlib.free(arena)
+
+    # === calloc 测试 (验证清零) ===
+    testcheck.section("calloc 清零")
+    arena2: bytes = stdlib.malloc(4096)
+    viperlib.snprintf(buf, 256, "arena2 = %p", arena2)
+    testcheck.info(buf)
+    bd2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena2, 4096)
+
+    dirty: bytes = bd2.alloc(64)
+    viperlib.snprintf(buf, 256, "dirty = %p", dirty)
+    testcheck.info(buf)
+    d_c: CUInt8T | CPtr = CPtr(dirty)
+    i: CInt
+    for i in range(64):
+        d_c[i] = CUInt8T(0xFF)
+    bd2.free(dirty)
+
+    cl: bytes = bd2.calloc(8, 8)
+    viperlib.snprintf(buf, 256, "cl = %p (arena2=%p, dirty was=%p)", cl, arena2, dirty)
+    testcheck.info(buf)
+    if cl != None:
+        cl_c: CUInt8T | CPtr = CPtr(cl)
+        all_zero: CInt = 1
+        j: CInt
+        for j in range(64):
+            if cl_c[j] != 0:
+                all_zero = 0
+                break
+        testcheck.check(all_zero == 1, "calloc zeroed OK", "calloc NOT zeroed")
+        bd2.free(cl)
+    else:
+        testcheck.fail("calloc FAILED")
+
+    stdlib.free(arena2)
+
+    # === realloc 扩展测试 ===
+    testcheck.section("realloc 扩展")
+    arena3: bytes = stdlib.malloc(4096)
+    bd3: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena3, 4096)
+
+    rp: bytes = bd3.alloc(32)
+    rp_c: CUInt8T | CPtr = CPtr(rp)
+    k: CInt
+    for k in range(32):
+        rp_c[k] = CUInt8T(k + 1)
+
+    rp2: bytes = bd3.realloc(rp, 128)
+    if rp2 != None:
+        rp2_c: CUInt8T | CPtr = CPtr(rp2)
+        ok: CInt = 1
+        m: CInt
+        for m in range(32):
+            if rp2_c[m] != CUInt8T(m + 1):
+                ok = 0
+                break
+        testcheck.check(ok == 1, "realloc grow data preserved OK", "realloc grow data LOST")
+        bd3.free(rp2)
+    else:
+        testcheck.fail("realloc grow FAILED")
+
+    stdlib.free(arena3)
+
+    # === 原地收缩测试 (验证无泄漏) ===
+    testcheck.section("原地收缩 (realloc shrink)")
+    arena_shrink: bytes = stdlib.malloc(4096)
+    bds: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_shrink, 4096)
+
+    sp: bytes = bds.alloc(256)
+    testcheck.check(sp != None, "alloc 256 OK", "alloc 256 FAILED")
+
+    fc_before: CSizeT = bds.free_count()
+    # realloc 到更小尺寸: 256+8=264 -> order 4 (512); 32+8=40 -> order 1 (64)
+    # new_order(1) <= old_order(4), 应原地返回同一指针
+    sp2: bytes = bds.realloc(sp, 32)
+    fc_after: CSizeT = bds.free_count()
+
+    testcheck.check(sp2 == sp, "shrink same ptr OK", "shrink ptr changed")
+    testcheck.check(fc_after == fc_before, "shrink no leak OK", "shrink LEAKED blocks")
+
+    # 验证数据仍可读写
+    sp_c: CUInt8T | CPtr = CPtr(sp2)
+    sp_c[0] = CUInt8T(0x42)
+    testcheck.check(sp_c[0] == CUInt8T(0x42), "shrink data OK", "shrink data FAILED")
+
+    bds.free(sp2)
+    testcheck.check(bds.free_count() == 6, "shrink+free coalesce OK", "shrink+free coalesce FAILED")
+
+    stdlib.free(arena_shrink)
+
+    # === 边界情况测试 ===
+    testcheck.section("边界情况")
+    arena4: bytes = stdlib.malloc(4096)
+    bd4: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena4, 4096)
+
+    # alloc(0) 应返回 None
+    z: bytes = bd4.alloc(0)
+    testcheck.check(z == None, "alloc(0)=None OK", "alloc(0) should be None")
+
+    # free(None) 应安全
+    bd4.free(None)
+    testcheck.ok("free(None) safe")
+
+    # realloc(None, size) 等价于 alloc
+    rn: bytes = bd4.realloc(None, 32)
+    testcheck.check(rn != None, "realloc(None)=alloc OK", "realloc(None) FAILED")
+    bd4.free(rn)
+
+    # realloc(ptr, 0) 等价于 free
+    rz: bytes = bd4.alloc(32)
+    rz2: bytes = bd4.realloc(rz, 0)
+    testcheck.check(rz2 == None, "realloc(ptr,0)=free OK", "realloc(ptr,0) should be None")
+
+    stdlib.free(arena4)
+
+    # === 非法指针防护测试 ===
+    testcheck.section("非法指针防护")
+    arena5: bytes = stdlib.malloc(4096)
+    bd5: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena5, 4096)
+
+    valid: bytes = bd5.alloc(32)
+    testcheck.check(valid != None, "alloc for illegal test OK", "alloc FAILED")
+
+    # 1. free 随机地址 (地址 1)
+    bd5.free(t.CPtr(t.CUInt64T(1)))
+    testcheck.ok("free(addr=1) ignored")
+
+    # 2. free NULL
+    bd5.free(None)
+    testcheck.ok("free(NULL) ignored")
+
+    # 3. free 越界指针 (arena 之前)
+    bd5.free(t.CPtr(t.CUInt64T(arena5)))
+    testcheck.ok("free(before arena) ignored")
+
+    # 4. free 越界指针 (arena 之后)
+    bd5.free(t.CPtr(t.CUInt64T(arena5) + 99999))
+    testcheck.ok("free(after arena) ignored")
+
+    # 5. free 未对齐指针 (arena + 1, 在 mem 区域内但不对齐)
+    bd5.free(t.CPtr(t.CUInt64T(bd5.base) + 1))
+    testcheck.ok("free(misaligned) ignored")
+
+    # 6. 验证合法 free 仍正常工作 (释放后应能再次分配)
+    bd5.free(valid)
+    retry5: bytes = bd5.alloc(32)
+    testcheck.check(retry5 != None, "valid free still works OK", "valid free BROKEN")
+    if retry5 != None:
+        bd5.free(retry5)
+
+    # 7. realloc 非法指针应返回 None
+    r_illegal: bytes = bd5.realloc(t.CPtr(1), 64)
+    testcheck.check(r_illegal == None, "realloc(illegal)=None OK", "realloc(illegal) should be None")
+
+    stdlib.free(arena5)
+
+    # === OOM 内存耗尽测试 ===
+    testcheck.section("OOM 内存耗尽")
+    arena6: bytes = stdlib.malloc(4096)
+    bd6: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena6, 4096)
+
+    # 持续分配直到失败
+    alloc_count: CInt = 0
+    ptrs_arr: bytes = stdlib.malloc(8 * 256)  # 存储指针的数组
+    ptrs: CUInt64T | CPtr = CPtr(ptrs_arr)
+
+    while alloc_count < 256:
+        p: bytes = bd6.alloc(32)
+        if p == None:
+            break
+        ptrs[alloc_count] = t.CUInt64T(p)
+        alloc_count += 1
+
+    viperlib.snprintf(buf, 256, "allocated %d blocks before OOM", alloc_count)
+    testcheck.info(buf)
+    testcheck.check(alloc_count > 0, "OOM: got some allocs OK", "OOM: no allocs at all")
+
+    # 尝试再分配应失败
+    oom_p: bytes = bd6.alloc(32)
+    testcheck.check(oom_p == None, "OOM: alloc fails OK", "OOM: alloc should fail")
+
+    # 释放一个块后应能再次分配
+    if alloc_count > 0:
+        first_ptr: bytes = t.CPtr(ptrs[0])
+        bd6.free(first_ptr)
+        retry: bytes = bd6.alloc(32)
+        testcheck.check(retry != None, "OOM: free+alloc OK", "OOM: free+alloc FAILED")
+        if retry != None:
+            bd6.free(retry)
+
+    # 释放所有块
+    idx: CInt = 1
+    while idx < alloc_count:
+        cur_p: bytes = t.CPtr(ptrs[idx])
+        bd6.free(cur_p)
+        idx += 1
+
+    # 全部释放后应能合并回初始分解块数 (6)
+    testcheck.check(bd6.free_count() == 6,
+                    "OOM: full coalesce OK", "OOM: free_count != 6 after full free")
+
+    stdlib.free(ptrs_arr)
+    stdlib.free(arena6)
+
+    # === 空闲链表状态测试 ===
+    testcheck.section("空闲链表状态")
+    arena7: bytes = stdlib.malloc(4096)
+    bd7: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena7, 4096)
+
+    # 初始: 非 2 的幂 arena (4096-264=3832) 二进制分解为 6 个块
+    testcheck.check(bd7.free_count() == 6, "init: 6 free blocks OK", "init: free_count != 6")
+
+    # 分配后: 空闲块数应增加 (分裂产生多个小块)
+    a1: bytes = bd7.alloc(32)
+    fc1: CSizeT = bd7.free_count()
+    viperlib.snprintf(buf, 256, "after alloc(32): free_count=%lu", fc1)
+    testcheck.info(buf)
+    testcheck.check(fc1 > 1, "after alloc: split OK", "after alloc: no split")
+
+    # 再分配
+    a2: bytes = bd7.alloc(32)
+    fc2: CSizeT = bd7.free_count()
+    testcheck.check(fc2 >= 1, "after 2nd alloc: free >= 1 OK", "after 2nd alloc: free < 1")
+
+    # 释放 a1: 空闲块数应增加
+    bd7.free(a1)
+    fc3: CSizeT = bd7.free_count()
+    testcheck.check(fc3 > fc2, "after free a1: free increased OK", "after free a1: free not increased")
+
+    # 释放 a2: 应合并, 空闲块数回到初始 6 块
+    bd7.free(a2)
+    testcheck.check(bd7.free_count() == 6,
+                    "after free all: coalesced to 6 OK", "after free all: free_count != 6")
+
+    stdlib.free(arena7)
+
+    # === with 上下文管理器测试 ===
+    testcheck.section("with 上下文管理器")
+    arena8: bytes = stdlib.malloc(4096)
+    with memhub.MemBuddy(arena8, 4096) as wbd:
+        wp1: bytes = wbd.alloc(32)
+        wp2: bytes = wbd.alloc(64)
+        testcheck.check(wp1 != None and wp2 != None,
+                        "with: allocs OK", "with: allocs FAILED")
+        # 退出 with 块时 __exit__ 自动 reset
+
+    # 退出后重新进入，验证 reset 生效
+    with memhub.MemBuddy(arena8, 4096) as wbd2:
+        wp3: bytes = wbd2.alloc(1024)
+        testcheck.check(wp3 != None, "with: reset+realloc OK", "with: reset+realloc FAILED")
+
+    stdlib.free(arena8)
+
+    # === 双重 free 检测测试 ===
+    testcheck.section("双重 free 检测")
+    arena_df: bytes = stdlib.malloc(4096)
+    bd_df: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_df, 4096)
+
+    df: bytes = bd_df.alloc(64)
+    testcheck.check(df != None, "df: alloc OK", "df: alloc FAILED")
+
+    # 第一次 free
+    bd_df.free(df)
+    fc_df1: CSizeT = bd_df.free_count()
+    testcheck.ok("first free OK")
+
+    # 第二次 free (双重 free) — 应被静默拒绝
+    bd_df.free(df)
+    fc_df2: CSizeT = bd_df.free_count()
+    testcheck.check(fc_df2 == fc_df1, "double free rejected OK", "double free CORRUPTED state")
+
+    # 验证分配器仍正常工作
+    df2: bytes = bd_df.alloc(64)
+    testcheck.check(df2 != None, "df: alloc after double-free OK", "df: alloc after double-free FAILED")
+    if df2 != None:
+        bd_df.free(df2)
+
+    stdlib.free(arena_df)
+
+    # === 自检功能测试 ===
+    testcheck.section("自检功能")
+    arena_sc: bytes = stdlib.malloc(4096)
+    bd_sc: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_sc, 4096)
+
+    # 初始状态自检
+    testcheck.check(bd_sc.self_check() == 0, "self_check init OK", "self_check init FAILED")
+
+    # 分配后自检
+    sc_p1: bytes = bd_sc.alloc(32)
+    sc_p2: bytes = bd_sc.alloc(128)
+    testcheck.check(bd_sc.self_check() == 0, "self_check after alloc OK", "self_check after alloc FAILED")
+
+    # 部分释放后自检
+    bd_sc.free(sc_p1)
+    testcheck.check(bd_sc.self_check() == 0, "self_check after partial free OK", "self_check after partial free FAILED")
+
+    # 全部释放后自检 (应合并回单个大块)
+    bd_sc.free(sc_p2)
+    testcheck.check(bd_sc.self_check() == 0, "self_check after full free OK", "self_check after full free FAILED")
+
+    # 双重 free 后自检 (验证状态未损坏)
+    sc_p3: bytes = bd_sc.alloc(64)
+    bd_sc.free(sc_p3)
+    bd_sc.free(sc_p3)  # 双重 free，应被拒绝
+    testcheck.check(bd_sc.self_check() == 0, "self_check after double-free OK", "self_check after double-free CORRUPTED")
+
+    stdlib.free(arena_sc)
+
+    # === 并发多线程测试 (spinlock) ===
+    testcheck.section("并发多线程 (spinlock)")
+    arena_mt: bytes = stdlib.malloc(65536)
+    bd_mt: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_mt, 65536)
+
+    NUM_THREADS: CInt = 4
+    handles_arr: bytes = stdlib.malloc(8 * 4)
+    handles: CUInt64T | CPtr = CPtr(handles_arr)
+    tid: CUInt32T = 0
+
+    # 创建 4 个线程并发 alloc/free
+    t_idx: CInt
+    for t_idx in range(NUM_THREADS):
+        h: bytes = w32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, c.Addr(tid))
+        handles[t_idx] = CUInt64T(h)
+
+    # 等待所有线程完成
+    for t_idx in range(NUM_THREADS):
+        h: bytes = t.CPtr(handles[t_idx])
+        w32.win32sync.WaitForSingleObject(h, w32.win32base.INFINITE)
+        w32.win32base.CloseHandle(h)
+
+    # 验证分配器状态: 自检通过，所有块已合并
+    testcheck.check(bd_mt.self_check() == 0, "mt: self_check OK", "mt: self_check FAILED")
+    testcheck.check(bd_mt.free_count() == 10, "mt: free_count=10 OK", "mt: free_count != 10 (leaked)")
+
+    viperlib.snprintf(buf, 256, "mt: free_count=%lu", bd_mt.free_count())
+    testcheck.info(buf)
+
+    stdlib.free(handles_arr)
+    stdlib.free(arena_mt)
+
+    # === 极端边界测试 ===
+    testcheck.section("极端边界")
+
+    # 1. 分配尺寸恰巧是块边界
+    arena_ex: bytes = stdlib.malloc(4096)
+    bd_ex: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_ex, 4096)
+
+    # 24 + 16 = 40 > 32（8 头 + 8 哨兵），需要 order 1 (64 字节)
+    exact_fit: bytes = bd_ex.alloc(24)
+    testcheck.check(exact_fit != None, "exact fit order 0 OK", "exact fit order 0 FAILED")
+
+    # 25 + 16 = 41 > 32, 需要 order 1 (64 字节)
+    over_fit: bytes = bd_ex.alloc(25)
+    testcheck.check(over_fit != None, "over by 1 byte OK", "over by 1 byte FAILED")
+
+    bd_ex.free(exact_fit)
+    bd_ex.free(over_fit)
+    testcheck.check(bd_ex.free_count() == 6, "boundary: coalesce OK", "boundary: coalesce FAILED")
+
+    # 2. 单次分配接近最大块上限（order6=2048，非 2 的幂 arena 的最大分解块）
+    # 可用数据区 = 2048 - 8(头) - 8(哨兵)，alloc(max_usable) 的 needed 恰好
+    # = 2048，正好填满 order6 最大块
+    max_usable: CSizeT = 2048 - 16
+    viperlib.snprintf(buf, 256, "mem_size=%lu, max_block=2048, max_usable=%lu", bd_ex.mem_size, max_usable)
+    testcheck.info(buf)
+
+    # 恰好用完 order6 块（其余 5 个分解块空闲）
+    exact_max: bytes = bd_ex.alloc(max_usable)
+    testcheck.check(exact_max != None, "exact max alloc OK", "exact max alloc FAILED")
+    testcheck.check(bd_ex.free_count() == 5, "max alloc: 5 free blocks left OK", "max alloc: free_count != 5")
+
+    bd_ex.free(exact_max)
+    testcheck.check(bd_ex.free_count() == 6, "max free: coalesce OK", "max free: coalesce FAILED")
+
+    # 再次分配同样大小 — 验证合并后可再次使用
+    exact_max2: bytes = bd_ex.alloc(max_usable)
+    testcheck.check(exact_max2 != None, "exact max re-alloc OK", "exact max re-alloc FAILED")
+    bd_ex.free(exact_max2)
+
+    # 3. 分配超过 arena 上限 — 应失败
+    over_max: bytes = bd_ex.alloc(bd_ex.mem_size)
+    testcheck.check(over_max == None, "over max: fails OK", "over max: should fail")
+
+    over_max2: bytes = bd_ex.alloc(max_usable + 1)
+    testcheck.check(over_max2 == None, "max+1: fails OK", "max+1: should fail")
+
+    stdlib.free(arena_ex)
+
+    # 4. Arena 太小 (仅够 free_lists 开销, 264 字节)
+    arena_tiny: bytes = stdlib.malloc(264)
+    bd_tiny: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_tiny, 264)
+    testcheck.check(bd_tiny.stats() == 0, "tiny arena: stats=0 OK", "tiny arena: stats != 0")
+    tiny_p: bytes = bd_tiny.alloc(32)
+    testcheck.check(tiny_p == None, "tiny arena: alloc fails OK", "tiny arena: should fail")
+    stdlib.free(arena_tiny)
+
+    # 5. Arena 刚好够一个最小块 (264 + 32 = 296)
+    arena_one: bytes = stdlib.malloc(296)
+    bd_one: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_one, 296)
+    testcheck.check(bd_one.stats() == 32, "one block: stats=32 OK", "one block: stats != 32")
+
+    # 最小块 32 字节 = 数据 16 + 头 8 + 哨兵 8，alloc(16) 恰好填满
+    one_p: bytes = bd_one.alloc(16)
+    testcheck.check(one_p != None, "one block: alloc OK", "one block: alloc FAILED")
+
+    one_p2: bytes = bd_one.alloc(16)
+    testcheck.check(one_p2 == None, "one block: OOM OK", "one block: should be OOM")
+
+    bd_one.free(one_p)
+    testcheck.check(bd_one.free_count() == 1, "one block: free OK", "one block: free FAILED")
+    stdlib.free(arena_one)
+
+    # 6. 2 的幂 arena vs 非 2 的幂 arena
+    arena_pow2: bytes = stdlib.malloc(512)
+    bd_pow2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_pow2, 512)
+    # 512 - 264 = 248, 二进制分解 = 128+64+32 = 224 (尾 24 字节碎片不入池)
+    testcheck.check(bd_pow2.stats() == 224, "pow2 arena: stats=224 OK", "pow2 arena: stats != 224")
+    stdlib.free(arena_pow2)
+
+    arena_non2: bytes = stdlib.malloc(500)
+    bd_non2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_non2, 500)
+    # 500 - 264 = 236, 二进制分解 = 128+64+32 = 224 (尾 12 字节碎片不入池)
+    testcheck.check(bd_non2.stats() == 224, "non-pow2 arena: stats=224 OK", "non-pow2 arena: stats != 224")
+    stdlib.free(arena_non2)
+
+    # 7. 压力测试: 反复 alloc/free 同一尺寸 1000 次
+    arena_stress: bytes = stdlib.malloc(4096)
+    bd_stress: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_stress, 4096)
+
+    s: CInt
+    for s in range(1000):
+        sp: bytes = bd_stress.alloc(64)
+        if sp != None:
+            sp_c: CUInt8T | CPtr = CPtr(sp)
+            sp_c[0] = CUInt8T(s & 0xFF)
+            bd_stress.free(sp)
+
+    testcheck.check(bd_stress.self_check() == 0, "stress: self_check OK", "stress: self_check FAILED")
+    testcheck.check(bd_stress.free_count() == 6, "stress: free_count=6 OK", "stress: leaked")
+    stdlib.free(arena_stress)
+
+    # 8. 分配全部最小块然后全部释放
+    arena_fill: bytes = stdlib.malloc(4096)
+    bd_fill: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_fill, 4096)
+
+    fill_count: CInt = 0
+    fill_ptrs_arr: bytes = stdlib.malloc(8 * 256)
+    fill_ptrs: CUInt64T | CPtr = CPtr(fill_ptrs_arr)
+
+    fc: CInt
+    for fc in range(256):
+        fp: bytes = bd_fill.alloc(24)
+        if fp == None:
+            break
+        fill_ptrs[fill_count] = t.CUInt64T(fp)
+        fill_count += 1
+
+    viperlib.snprintf(buf, 256, "fill: %d min blocks allocated", fill_count)
+    testcheck.info(buf)
+    testcheck.check(fill_count > 0, "fill: got blocks OK", "fill: no blocks")
+    testcheck.check(bd_fill.self_check() == 0, "fill: self_check OK", "fill: self_check FAILED")
+
+    # 全部释放
+    fi: CInt
+    for fi in range(fill_count):
+        fp2: bytes = t.CPtr(fill_ptrs[fi])
+        bd_fill.free(fp2)
+
+    testcheck.check(bd_fill.free_count() == 6, "fill: all freed OK", "fill: leaked after free all")
+    testcheck.check(bd_fill.self_check() == 0, "fill: self_check after free OK", "fill: self_check FAILED")
+
+    stdlib.free(fill_ptrs_arr)
+    stdlib.free(arena_fill)
+
+    stdlib.free(buf)
+    return testcheck.end()

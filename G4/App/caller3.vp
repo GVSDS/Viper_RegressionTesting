@@ -1,0 +1,31 @@
+import t
+import stdio
+import stdlib
+import memhub
+from g4node import G4Node, new_g4node
+
+
+# ============================================================
+# caller3: 第三个导入 G4Node 的模块
+#
+# 进一步增加跨模块引用，模拟 TransPyV 30+ 模块环境
+# ============================================================
+
+
+def caller3_find_tail(head: G4Node | t.CPtr) -> G4Node | t.CPtr:
+    """找到链表尾部节点，直接访问 Next"""
+    if head is None:
+        return None
+    cur: G4Node | t.CPtr = head
+    while cur.Next is not None:
+        cur = cur.Next
+    return cur
+
+
+def caller3_append(head: G4Node | t.CPtr, new_node: G4Node | t.CPtr) -> G4Node | t.CPtr:
+    """在链表末尾追加节点"""
+    if head is None:
+        return new_node
+    tail: G4Node | t.CPtr = caller3_find_tail(head)
+    tail.Next = new_node
+    return head

@@ -1,0 +1,297 @@
+# ThreadingTest - vthreading 专项测试
+#
+# 覆盖范围：
+#   Thread     : start/join/is_alive/get_exit_code/close、线程传参
+#   Lock       : 多线程持锁互斥自增共享计数器
+#   Event      : 线程等待事件被唤醒
+#   Condition  : 生产者/消费者模式
+#   RWLock     : 多读单写（SRWLock）
+#   local      : TLS 线程局部存储 set/get 自校验
+#   get_current_thread_id / sleep_ms
+import t, c
+from stdint import *
+from w32.win32base import NULL, FALSE, TRUE
+import stdlib
+import testcheck
+import vthreading
+
+
+# ============================================================
+# 共享状态（模块级全局，跨线程读写）
+# ============================================================
+_shared_count: t.CInt = 0      # Lock 并发测试共享计数器
+_evt_done: t.CInt = 0          # Event 测试完成标志
+_cond_ready: t.CInt = 0        # Condition 测试就绪标志
+_rw_value: t.CInt = 0          # RWLock 测试共享值
+_main_tid: t.CUInt32T = 0      # 主线程 ID
+
+# 并发规模常量
+THREAD_NUM: t.CInt = 4
+LOCK_ITER: t.CInt = 1000
+RW_ITER: t.CInt = 100
+TLS_NUM: t.CInt = 4
+SYS_ITER: t.CInt = 10
+
+
+# ============================================================
+# 线程回调（签名: def worker(arg: t.CPtr) -> t.CPtr）
+# ============================================================
+
+# Thread 基础: 短暂睡眠后退出，保证 start 后 is_alive 观测窗口
+def _basic_worker(arg: t.CPtr) -> t.CPtr:
+    vthreading.sleep_ms(100)
+    return NULL
+
+
+# 传参: 通过 arg 指针自增 100 次（c.Deref/c.DerefAs 读写）
+def _increment_worker(arg: t.CPtr) -> t.CPtr:
+    ip: t.CInt | t.CPtr = (t.CInt | t.CPtr)(arg)
+    i: t.CInt
+    for i in range(100):
+        c.DerefAs(ip, c.Deref(ip) + 1)
+    return NULL
+
+
+# Lock: 持锁自增全局计数器
+def _lock_worker(arg: t.CPtr) -> t.CPtr:
+    lk: vthreading.Lock | t.CPtr = (vthreading.Lock | t.CPtr)(arg)
+    global _shared_count
+    i: t.CInt
+    for i in range(LOCK_ITER):
+        lk.acquire()
+        _shared_count += 1
+        lk.release()
+    return NULL
+
+
+# Event: 等待事件被唤醒后置位完成标志
+def _event_worker(arg: t.CPtr) -> t.CPtr:
+    ev: vthreading.Event | t.CPtr = (vthreading.Event | t.CPtr)(arg)
+    global _evt_done
+    r: t.CInt = ev.wait(5000)
+    if r == 1:
+        _evt_done = 1
+    return NULL
+
+
+# Condition 消费者: 循环等待 _cond_ready 就绪（限次防挂起）
+def _cond_consumer(arg: t.CPtr) -> t.CPtr:
+    cond: vthreading.Condition | t.CPtr = (vthreading.Condition | t.CPtr)(arg)
+    global _cond_ready
+    tries: t.CInt = 0
+    cond.acquire()
+    while _cond_ready == 0 and tries < 100:
+        cond.wait(100)
+        tries += 1
+    cond.release()
+    return NULL
+
+
+# Condition 生产者: 延迟后置位 _cond_ready 并 notify
+def _cond_producer(arg: t.CPtr) -> t.CPtr:
+    cond: vthreading.Condition | t.CPtr = (vthreading.Condition | t.CPtr)(arg)
+    global _cond_ready
+    vthreading.sleep_ms(50)
+    cond.acquire()
+    _cond_ready = 1
+    cond.notify()
+    cond.release()
+    return NULL
+
+
+# RWLock 读者: 持读锁反复读共享值
+def _rw_reader(arg: t.CPtr) -> t.CPtr:
+    rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
+    global _rw_value
+    i: t.CInt
+    for i in range(RW_ITER * 10):
+        rwl.acquire_read()
+        v: t.CInt = _rw_value
+        rwl.release_read()
+    return NULL
+
+
+# RWLock 写者: 持写锁自增共享值
+def _rw_writer(arg: t.CPtr) -> t.CPtr:
+    rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
+    global _rw_value
+    i: t.CInt
+    for i in range(RW_ITER):
+        rwl.acquire_write()
+        _rw_value += 1
+        rwl.release_write()
+    return NULL
+
+
+# TLS: 每线程 set/get 自校验（存入自身线程 ID 再读回比对）
+def _tls_worker(arg: t.CPtr) -> t.CPtr:
+    tls: vthreading.local = vthreading.local()
+    tls.set(t.CPtr(t.CUInt64T(vthreading.get_current_thread_id())))
+    tid_val: t.CUInt64T = t.CUInt64T(tls.get())
+    ok: t.CInt = 0
+    if tid_val == t.CUInt64T(vthreading.get_current_thread_id()):
+        ok = 1
+    tls.free()
+    return t.CPtr(t.CUInt64T(ok))
+
+
+# 线程 ID 隔离: 工作线程 ID 必须与主线程不同
+def _tid_worker(arg: t.CPtr) -> t.CPtr:
+    global _main_tid
+    if vthreading.get_current_thread_id() == _main_tid:
+        return t.CPtr(t.CUInt64T(0))
+    return t.CPtr(t.CUInt64T(1))
+
+
+# stdlib.system 多线程并发: 每线程循环调 C 运行时 system()，统计失败次数
+def _system_worker(arg: t.CPtr) -> t.CPtr:
+    i: t.CInt
+    fails: t.CInt = 0
+    for i in range(SYS_ITER):
+        r: t.CInt = stdlib.system("echo ok > NUL")
+        if r != 0:
+            fails += 1
+    return t.CPtr(t.CUInt64T(fails))
+
+
+# ============================================================
+# main
+# ============================================================
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("ThreadingTest: vthreading 专项测试")
+
+    # ========== Thread: start/join/is_alive/get_exit_code ==========
+    testcheck.section("Thread: start/join/is_alive")
+    th1: vthreading.Thread = vthreading.Thread(_basic_worker, NULL)
+    testcheck.check(th1.is_alive() == FALSE, "未 start 时不在运行", "未 start 却 is_alive")
+    th1.start()
+    testcheck.check(th1.is_alive() != FALSE, "start 后线程运行中", "start 后未运行")
+    testcheck.check(th1.join(5000) != FALSE, "join 正常返回", "join 超时")
+    testcheck.check(th1.is_alive() == FALSE, "join 后线程已结束", "join 后仍运行")
+    testcheck.check(th1.get_exit_code() == 0, "退出码 == 0", "退出码 != 0")
+    th1.close()
+
+    # ========== Thread: 通过 arg 传参 ==========
+    testcheck.section("Thread: arg 传参")
+    cnt: t.CInt = 0
+    th2: vthreading.Thread = vthreading.Thread(_increment_worker, c.Addr(cnt))
+    th2.start()
+    testcheck.check(th2.join(5000) != FALSE, "join 正常返回", "join 超时")
+    th2.close()
+    testcheck.check(cnt == 100, "worker 经 arg 自增 100 次", "cnt != 100")
+
+    # ========== Lock: 多线程互斥自增 ==========
+    testcheck.section("Lock: 多线程互斥自增")
+    lock: vthreading.Lock = vthreading.Lock()
+    t0: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
+    t1: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
+    t2: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
+    t3: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
+    t0.start()
+    t1.start()
+    t2.start()
+    t3.start()
+    j0: t.CInt = t0.join(10000)
+    j1: t.CInt = t1.join(10000)
+    j2: t.CInt = t2.join(10000)
+    j3: t.CInt = t3.join(10000)
+    t0.close()
+    t1.close()
+    t2.close()
+    t3.close()
+    testcheck.check(j0 != 0 and j1 != 0 and j2 != 0 and j3 != 0, "4 线程全部 join 成功", "有线程 join 超时")
+    testcheck.check(_shared_count == THREAD_NUM * LOCK_ITER, "互斥自增计数正确", "计数丢失")
+
+    # ========== Event: 线程等待唤醒 ==========
+    testcheck.section("Event: 线程等待唤醒")
+    ev: vthreading.Event = vthreading.Event(FALSE, FALSE)
+    th4: vthreading.Thread = vthreading.Thread(_event_worker, t.CPtr(ev))
+    testcheck.check(ev.is_set() == FALSE, "Event 初始未置位", "Event 初始已置位")
+    th4.start()
+    vthreading.sleep_ms(50)
+    testcheck.check(_evt_done == 0, "set 前 worker 仍等待", "worker 提前完成")
+    ev.set()
+    testcheck.check(th4.join(5000) != FALSE, "唤醒后 join 成功", "join 超时")
+    th4.close()
+    ev.close()
+    testcheck.check(_evt_done == 1, "worker 收到事件并置位", "worker 未收到事件")
+
+    # ========== Condition: 生产者/消费者 ==========
+    testcheck.section("Condition: 生产者/消费者")
+    cond: vthreading.Condition = vthreading.Condition()
+    tc: vthreading.Thread = vthreading.Thread(_cond_consumer, t.CPtr(cond))
+    tp: vthreading.Thread = vthreading.Thread(_cond_producer, t.CPtr(cond))
+    tc.start()
+    tp.start()
+    testcheck.check(tc.join(5000) != FALSE, "消费者被唤醒", "消费者等待超时")
+    testcheck.check(tp.join(5000) != FALSE, "生产者完成", "生产者超时")
+    tc.close()
+    tp.close()
+    testcheck.check(_cond_ready == 1, "条件变量值已置位", "条件变量值未置位")
+    cond.delete()
+
+    # ========== RWLock: 多读单写 ==========
+    testcheck.section("RWLock: 多读单写")
+    rwl: vthreading.RWLock = vthreading.RWLock()
+    r1: vthreading.Thread = vthreading.Thread(_rw_reader, t.CPtr(rwl))
+    r2: vthreading.Thread = vthreading.Thread(_rw_reader, t.CPtr(rwl))
+    w1: vthreading.Thread = vthreading.Thread(_rw_writer, t.CPtr(rwl))
+    r1.start()
+    r2.start()
+    w1.start()
+    testcheck.check(r1.join(10000) != FALSE and r2.join(10000) != FALSE and w1.join(10000) != FALSE,
+                    "读写线程全部 join", "读写线程 join 超时")
+    r1.close()
+    r2.close()
+    w1.close()
+    testcheck.check(_rw_value == RW_ITER, "写锁自增计数正确", "写锁计数丢失")
+
+    # ========== local: TLS 线程局部存储 ==========
+    testcheck.section("local: TLS 线程局部存储")
+    i_t: t.CInt
+    for i_t in range(TLS_NUM):
+        th_t: vthreading.Thread = vthreading.Thread(_tls_worker, NULL)
+        th_t.start()
+        testcheck.check(th_t.join(5000) != FALSE, "TLS worker join", "TLS worker 超时")
+        testcheck.check(th_t.get_exit_code() == 1, "TLS set/get 自校验通过", "TLS 自校验失败")
+        th_t.close()
+
+    # ========== get_current_thread_id: 线程 ID 隔离 ==========
+    testcheck.section("get_current_thread_id: 线程 ID 隔离")
+    global _main_tid
+    _main_tid = vthreading.get_current_thread_id()
+    testcheck.check(_main_tid != 0, "主线程 ID != 0", "主线程 ID == 0")
+    th_tid: vthreading.Thread = vthreading.Thread(_tid_worker, NULL)
+    th_tid.start()
+    testcheck.check(th_tid.join(5000) != FALSE, "tid worker join", "tid worker 超时")
+    testcheck.check(th_tid.get_exit_code() == 1, "工作线程 ID 与主线程不同", "工作线程 ID 与主线程相同")
+    th_tid.close()
+
+    # ========== sleep_ms ==========
+    testcheck.section("sleep_ms")
+    vthreading.sleep_ms(20)
+    testcheck.ok("sleep_ms(20) 正常返回")
+
+    # ========== stdlib.system 多线程并发 ==========
+    testcheck.section("stdlib.system 多线程并发")
+    s0: vthreading.Thread = vthreading.Thread(_system_worker, NULL)
+    s1: vthreading.Thread = vthreading.Thread(_system_worker, NULL)
+    s2: vthreading.Thread = vthreading.Thread(_system_worker, NULL)
+    s3: vthreading.Thread = vthreading.Thread(_system_worker, NULL)
+    s0.start()
+    s1.start()
+    s2.start()
+    s3.start()
+    testcheck.check(s0.join(30000) != FALSE and s1.join(30000) != FALSE
+                    and s2.join(30000) != FALSE and s3.join(30000) != FALSE,
+                    "4 个 system 线程全部 join", "system 线程 join 超时")
+    testcheck.check(s0.get_exit_code() == 0, "线程0 system 全部成功", "线程0 system 有失败")
+    testcheck.check(s1.get_exit_code() == 0, "线程1 system 全部成功", "线程1 system 有失败")
+    testcheck.check(s2.get_exit_code() == 0, "线程2 system 全部成功", "线程2 system 有失败")
+    testcheck.check(s3.get_exit_code() == 0, "线程3 system 全部成功", "线程3 system 有失败")
+    s0.close()
+    s1.close()
+    s2.close()
+    s3.close()
+
+    return testcheck.end()

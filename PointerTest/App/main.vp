@@ -1,0 +1,281 @@
+from stdint import *
+import t, c
+import stdio
+import string
+import w32.win32console
+import w32.win32memory
+import testcheck
+
+# ============================================================
+# PointerTest - 测试指针操作、global声明、数组退化、指针算术
+# ============================================================
+
+# --- Test 1: global 声明对模块级变量的影响 ---
+_g_val: t.CInt = 0
+_g_ptr: t.CUInt32T | t.CPtr = None
+
+def test_global_write():
+    """测试：缺少 global 声明时，赋值是否修改模块级变量"""
+    global _g_val
+    _g_val = 42
+
+def test_global_write_no_decl():
+    """测试：没有 global 声明时，函数内局部赋值不修改模块级变量
+
+    新规则：模块级已有 `_g_val` 时，函数内再写 `_g_val: int = ...`（注解同名）
+    一律判为"重复声明"并终止编译（TypeError）——**不管**注解类型是否与全局相同。
+    因此这里改用**不重名**的局部变量验证"函数内局部赋值不影响全局"。
+    """
+    local_val: int = 99  # 独立局部变量，与全局 _g_val 无关
+
+def test_global_ptr():
+    global _g_ptr
+    buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    if buf:
+        string.memset(buf, 0, 256)
+        _g_ptr = buf
+        p: t.CUInt32T | t.CPtr = _g_ptr
+        p[0] = 0xAABBCCDD
+        p[1] = 0x11223344
+
+def test_global_ptr_no_decl():
+    """测试：没有 global 声明时，同名注解声明是编译期错误（此处演示合法写法）
+
+    新规则：模块级已有 `_g_ptr` 时，函数内写 `_g_ptr: t.CUInt32T | t.CPtr = None`
+    （无 global）或 `global _g_ptr` 之后仍带类型注解声明，都判为"重复声明"并终止
+    编译（TypeError）——不管注解类型是否与全局相同。合法写法只有两种：
+      - 修改全局：`global _g_ptr` + **无注解**赋值（见 test_global_ptr）
+      - 独立局部：换成不与全局重名的变量名（本函数）
+    """
+    local_ptr: t.CUInt32T | t.CPtr = None  # 独立局部变量，不触碰全局 _g_ptr
+
+
+# --- Test 2: 指针算术和数组索引 ---
+def test_pointer_arithmetic():
+    """测试指针算术：偏移计算是否正确"""
+    buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    if not buf:
+        testcheck.fail("pointer arithmetic: VirtualAlloc returned NULL")
+        return
+    string.memset(buf, 0, 256)
+
+    # 写入值
+    for i in range(8):
+        buf[i] = t.CUInt32T(i * 100)
+
+    # 读取并验证
+    ok: t.CInt = 1
+    for i in range(8):
+        v: t.CUInt32T = buf[i]
+        expected: t.CUInt32T = t.CUInt32T(i * 100)
+        if v != expected:
+            stdio.printf("buf[%d] = 0x%x, expected 0x%x\n", i, v, expected)
+            ok = 0
+    testcheck.check(ok, "pointer arithmetic (buf[i] = i*100)", "pointer arithmetic mismatch")
+
+
+# --- Test 3: 数组退化为指针 ---
+def test_array_decay():
+    """测试 list[t.CChar, N] 传递给 t.CConst | str 参数"""
+    arr: t.CArray[t.CChar, 32]
+    string.memset(c.Addr(arr), 0, 32)
+    # 手动写入字符串
+    src: str = "Hello"
+    for i in range(5):
+        arr[i] = t.CChar(ord(src[i]))
+    arr[5] = 0
+
+    # 传递给 print (接受 t.CConst | str)
+    stdio.printf("array decay -> %s\n", c.Addr(arr))
+    testcheck.ok("array decay (Hello)")
+
+
+# --- Test 4: 指针类型转换 (CVoid/CPtr) ---
+def test_pointer_cast():
+    """测试指针与整数之间的类型转换"""
+    buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    if not buf:
+        testcheck.fail("pointer cast: VirtualAlloc returned NULL")
+        return
+    string.memset(buf, 0, 256)
+
+    # 通过 CVoid 指针写入
+    raw: t.CPtr = t.CPtr(t.CUInt64T(buf))
+    # 将 CVoid 指针转回 CUInt32T 指针
+    p32: t.CUInt32T | t.CPtr = (t.CUInt32T | t.CPtr)(raw)
+    p32[0] = 0xDEADBEEF
+
+    # 通过原始指针读取
+    if buf[0] == 0xDEADBEEF:
+        testcheck.ok("pointer cast CVoid -> CUInt32T*")
+    else:
+        stdio.printf("got 0x%x\n", buf[0])
+        testcheck.fail("pointer cast failed")
+
+
+# --- Test 5: 指针偏移计算 (byte offset vs element offset) ---
+def test_pointer_offset():
+    """测试指针偏移：CUInt8T* + N 应该偏移 N 字节，CUInt32T* + N 应该偏移 N*4 字节"""
+    buf: t.CUInt8T | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    if not buf:
+        testcheck.fail("pointer offset: VirtualAlloc returned NULL")
+        return
+    string.memset(buf, 0, 256)
+
+    # 写入 4 字节
+    buf[0] = 0x41  # 'A'
+    buf[1] = 0x42  # 'B'
+    buf[2] = 0x43  # 'C'
+    buf[3] = 0x44  # 'D'
+
+    # 通过 CUInt32T* 读取（应该读到 0x44434241 on little-endian）
+    p32: t.CUInt32T | t.CPtr = (t.CUInt32T | t.CPtr)(t.CPtr(t.CUInt64T(buf)))
+    val: t.CUInt32T = p32[0]
+
+    # little-endian: 0x44434241
+    if val == 0x44434241:
+        testcheck.ok("byte offset vs element offset (0x44434241)")
+    else:
+        stdio.printf("expected 0x44434241, got 0x%x\n", val)
+        testcheck.fail("byte offset vs element offset")
+
+
+# --- Test 6: 结构体指针访问 ---
+class TestStruct():
+    a: t.CInt
+    b: t.CInt
+    c: t.CUInt64T
+
+def test_struct_pointer():
+    """测试结构体指针的成员访问"""
+    s: TestStruct
+    s.a = 10
+    s.b = 20
+    s.c = 0x123456789ABCDEF0
+
+    p: TestStruct | t.CPtr = c.Addr(s)
+    stdio.printf("struct pointer access (a=%d b=%d c=0x%llx)\n", p.a, p.b, p.c)
+    testcheck.check(p.a == 10 and p.b == 20 and p.c == 0x123456789ABCDEF0, "struct pointer access", "struct pointer access mismatch")
+
+
+# --- Test 7: memcpy/memset 通过指针 ---
+def test_memcpy_pointers():
+    """测试 memcpy 在指针之间的数据复制"""
+    src_buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    dst_buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    if not src_buf or not dst_buf:
+        testcheck.fail("memcpy: VirtualAlloc returned NULL")
+        return
+
+    # 初始化 src
+    for i in range(8):
+        src_buf[i] = t.CUInt32T(i + 1000)
+
+    # 复制
+    string.memcpy(t.CPtr(t.CUInt64T(dst_buf)), t.CPtr(t.CUInt64T(src_buf)), 32)
+
+    # 验证
+    ok: t.CInt = 1
+    for i in range(8):
+        if dst_buf[i] != t.CUInt32T(i + 1000):
+            stdio.printf("dst[%d] = %u, expected %u\n", i, dst_buf[i], i + 1000)
+            ok = 0
+    testcheck.check(ok, "memcpy between pointers", "memcpy between pointers failed")
+
+
+# --- Test 8: 指针作为函数参数 ---
+def fill_array(arr: t.CUInt32T | t.CPtr, count: t.CInt, val: t.CUInt32T):
+    for i in range(count):
+        arr[i] = val
+
+def test_pointer_param():
+    """测试指针作为函数参数传递"""
+    buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    if not buf:
+        testcheck.fail("pointer param: VirtualAlloc returned NULL")
+        return
+
+    fill_array(buf, 8, 0xCAFEBABE)
+
+    ok: t.CInt = 1
+    for i in range(8):
+        if buf[i] != 0xCAFEBABE:
+            ok = 0
+    testcheck.check(ok, "pointer as function parameter", "pointer as function parameter failed")
+
+
+def main() -> t.CInt | t.CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    print("你好")
+    l: t.CArray[t.CChar, 2] = 0
+    for i in "hello":
+        l[0] = i
+        print(l)
+    
+    #u: t.CArray[t.CUInt64T | t.BigEndian, 2] = [0x4141414141414141, 0x0000000000000000]
+    #for i in c.Addr(u):
+    #    # l[0] = i
+    #    stdio.printf("0x%llx\n", i)
+
+    k: t.CArray[t.CChar, 12] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C']
+    for i in k:
+        stdio.printf("%c\n", i)
+
+    testcheck.begin("PointerTest: 指针操作基准测试")
+
+    # Test 1: global 声明
+    testcheck.section("Test 1: global declaration")
+    global _g_val
+    _g_val = 0
+    test_global_write()
+    stdio.printf("After test_global_write(): _g_val = %d (expect 42)\n", _g_val)
+    test_global_write_no_decl()
+    stdio.printf("After test_global_write_no_decl(): _g_val = %d (expect 42, not 99)\n", _g_val)
+    testcheck.check(_g_val == 42, "global declaration (_g_val = 42)", "global declaration failed")
+
+    # Test 1b: global pointer
+    testcheck.section("Test 1b: global pointer")
+    test_global_ptr()
+    if _g_ptr:
+        p: t.CUInt32T | t.CPtr = _g_ptr
+        stdio.printf("_g_ptr[0] = 0x%x (expect 0xAABBCCDD)\n", p[0])
+        stdio.printf("_g_ptr[1] = 0x%x (expect 0x11223344)\n", p[1])
+        testcheck.check(p[0] == 0xAABBCCDD and p[1] == 0x11223344, "global pointer values", "global pointer mismatch")
+    test_global_ptr_no_decl()
+    stdio.printf("After test_global_ptr_no_decl(): _g_ptr = %p (expect 非 NULL：局部遮蔽未改全局)\n", t.CPtr(t.CUInt64T(_g_ptr)))
+    if _g_ptr:
+        testcheck.ok("global ptr no decl (global untouched by local shadow)")
+    else:
+        testcheck.fail("global ptr no decl: 无 global 声明的局部遮蔽不应修改全局 _g_ptr")
+
+    # Test 2: pointer arithmetic
+    testcheck.section("Test 2: pointer arithmetic")
+    test_pointer_arithmetic()
+
+    # Test 3: array decay
+    testcheck.section("Test 3: array decay")
+    test_array_decay()
+
+    # Test 4: pointer cast
+    testcheck.section("Test 4: pointer cast")
+    test_pointer_cast()
+
+    # Test 5: pointer offset
+    testcheck.section("Test 5: pointer offset (byte vs element)")
+    test_pointer_offset()
+
+    # Test 6: struct pointer
+    testcheck.section("Test 6: struct pointer access")
+    test_struct_pointer()
+
+    # Test 7: memcpy pointers
+    testcheck.section("Test 7: memcpy between pointers")
+    test_memcpy_pointers()
+
+    # Test 8: pointer as param
+    testcheck.section("Test 8: pointer as function parameter")
+    test_pointer_param()
+
+    return testcheck.end()

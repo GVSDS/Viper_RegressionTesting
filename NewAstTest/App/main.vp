@@ -1,0 +1,1705 @@
+import t, c
+from t import CInt, CExport, CPtr
+from stdio import printf
+import memhub
+import stdlib
+import string
+from ast import (
+    AST, ASTKind, Module, FunctionDef, Assign, If, For, While, With,
+    Return, Expr, Name, Constant, BinOp, UnaryOp, Call, Compare,
+    Import, ImportFrom, Expression,
+    CONST_INT, CONST_STR, CONST_BOOL, CONST_NONE,
+    OpKind, ASTCtx,
+    FLAG_IS_ASYNC,
+    parse, parse_expression, dump,
+)
+
+
+ARENA_SIZE: CInt = 16777216
+
+
+def main() -> CInt | CExport:
+    printf("=== NewAstTest Start ===\n")
+
+    # 初始化分配器
+    arena: bytes = stdlib.malloc(ARENA_SIZE)
+    if arena is None:
+        printf("FAIL: arena alloc failed\n")
+        return 1
+    pool: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena, ARENA_SIZE)
+    if pool is None:
+        printf("FAIL: pool init failed\n")
+        return 1
+
+    passed: CInt = 0
+    failed: CInt = 0
+
+    # --- 分配 dump 缓冲区（用于 AST 反向输出测试） ---
+    DUMP_BUF_SIZE: t.CSizeT = 8192
+    dump_buf: t.CChar | CPtr = stdlib.malloc(DUMP_BUF_SIZE)
+    if dump_buf is None:
+        printf("FAIL: dump_buf alloc failed\n")
+        stdlib.free(arena)
+        return 1
+
+    # --- Test 0: Match 语句 ---
+    match_src: str = """match x:
+    case 1:
+        pass
+    case _:
+        pass
+"""
+    match_mod: Module | CPtr = parse(match_src, pool)
+    if match_mod is not None and match_mod.kind() == ASTKind.Module:
+        passed += 1
+        printf("PASS: parse('match x: case 1: ... case _: ...') -> Module\n")
+    else:
+        failed += 1
+        printf("FAIL: parse match with cases failed\n")
+
+    # --- Test 1: Name 节点创建 ---
+    name_x: Name | CPtr = Name(pool, "x", ASTCtx.Load)
+    if name_x is None:
+        printf("FAIL: Name creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Name('x'), kind=%d\n", name_x.kind())
+
+    # --- Test 2: ConstantInt 节点 ---
+    int_42: Constant | CPtr = Constant(pool, CONST_INT, 42, 0.0, None, 1, 0)
+    if int_42 is None:
+        printf("FAIL: ConstantInt creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: ConstantInt(42), kind=%d, val=%lld\n",
+               int_42.kind(), int_42.int_val)
+
+    # --- Test 3: ConstantStr 节点 ---
+    str_hello: Constant | CPtr = Constant(pool, CONST_STR, 0, 0.0, "hello", 2, 0)
+    if str_hello is None:
+        printf("FAIL: ConstantStr creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: ConstantStr('hello'), kind=%d\n", str_hello.kind())
+
+    # --- Test 4: ConstantNone 节点 ---
+    const_none: Constant | CPtr = Constant(pool, CONST_NONE, 0, 0.0, None, 3, 0)
+    if const_none is None:
+        printf("FAIL: ConstantNone creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: ConstantNone, kind=%d\n", const_none.kind())
+
+    # --- Test 5: BinOp 节点 (x + 42) ---
+    binop: BinOp | CPtr = BinOp(pool, name_x, OpKind.Add, int_42)
+    if binop is None:
+        printf("FAIL: BinOp creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: BinOp(Add), kind=%d\n", binop.kind())
+
+    # --- Test 6: UnaryOp 节点 (-x) ---
+    unary: UnaryOp | CPtr = UnaryOp(pool, OpKind.USub, name_x)
+    if unary is None:
+        printf("FAIL: UnaryOp creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: UnaryOp(USub), kind=%d\n", unary.kind())
+
+    # --- Test 7: list[AST | CPtr] 容器 ---
+    body: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    if body is None:
+        printf("FAIL: list creation\n")
+        failed += 1
+    else:
+        body.append(binop)
+        body.append(unary)
+        cnt: t.CSizeT = body.__len__()
+        if cnt == 2:
+            passed += 1
+            printf("PASS: list append x2, count=%zu\n", cnt)
+        else:
+            failed += 1
+            printf("FAIL: list count=%zu (expected 2)\n", cnt)
+
+    # --- Test 8: list get + kind 分派 ---
+    if body is not None:
+        item0: AST | CPtr = body.get(0)
+        if item0 is not None:
+            k: CInt = item0.kind()
+            if k == ASTKind.BinOp:
+                passed += 1
+                printf("PASS: list get(0).kind()=%d (BinOp)\n", k)
+            else:
+                failed += 1
+                printf("FAIL: list get(0).kind()=%d (expected %d)\n", k, ASTKind.BinOp)
+        else:
+            failed += 1
+            printf("FAIL: list get(0) returned None\n")
+
+    # --- Test 9: Module 节点 (新签名：Module(pool) + append) ---
+    mod: Module | CPtr = Module(pool)
+    if mod is None:
+        printf("FAIL: Module creation\n")
+        failed += 1
+    else:
+        mod.append(binop)
+        mod.append(unary)
+        passed += 1
+        printf("PASS: Module, kind=%d\n", mod.kind())
+
+    # --- Test 10: 多态分派 — 通过 AST 基类指针调用 kind() ---
+    ast_ptr: AST | CPtr = mod
+    poly_kind: CInt = ast_ptr.kind()
+    if poly_kind == ASTKind.Module:
+        passed += 1
+        printf("PASS: polymorphic kind()=%d (Module via AST ptr)\n", poly_kind)
+    else:
+        failed += 1
+        printf("FAIL: polymorphic kind()=%d (expected %d)\n", poly_kind, ASTKind.Module)
+
+    # --- Test 11: 多态分派 — list 中的节点 ---
+    if body is not None:
+        ast_item: AST | CPtr = body.get(1)
+        if ast_item is not None:
+            pk2: CInt = ast_item.kind()
+            if pk2 == ASTKind.UnaryOp:
+                passed += 1
+                printf("PASS: polymorphic kind()=%d (UnaryOp via AST ptr)\n", pk2)
+            else:
+                failed += 1
+                printf("FAIL: polymorphic kind()=%d (expected %d)\n", pk2, ASTKind.UnaryOp)
+        else:
+            failed += 1
+            printf("FAIL: list get(1) returned None\n")
+
+    # --- Test 12: Return 节点 ---
+    ret: Return | CPtr = Return(pool, binop)
+    if ret is None:
+        printf("FAIL: Return creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Return, kind=%d\n", ret.kind())
+
+    # --- Test 13: Expr 语句节点 ---
+    expr_stmt: Expr | CPtr = Expr(pool, binop)
+    if expr_stmt is None:
+        printf("FAIL: Expr creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Expr, kind=%d\n", expr_stmt.kind())
+
+    # --- Test 14: If 节点 (新签名：If(pool, test, orelse)，body=children) ---
+    empty_else: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    if_stmt: If | CPtr = If(pool, binop, empty_else)
+    if if_stmt is None:
+        printf("FAIL: If creation\n")
+        failed += 1
+    else:
+        if_stmt.append(ret)
+        if_stmt.append(expr_stmt)
+        passed += 1
+        printf("PASS: If, kind=%d\n", if_stmt.kind())
+
+    # --- Test 15: Compare 节点 ---
+    cmp_ops: list[t.CInt] | CPtr = list[t.CInt](pool)
+    cmp_ops.append(OpKind.Lt)
+    cmp_comparators: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    cmp_comparators.append(int_42)
+    cmp_node: Compare | CPtr = Compare(pool, name_x, cmp_ops, cmp_comparators)
+    if cmp_node is None:
+        printf("FAIL: Compare creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Compare, kind=%d\n", cmp_node.kind())
+
+    # --- Test 16: Assign 节点 ---
+    assign_targets: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    assign_targets.append(name_x)
+    assign_node: Assign | CPtr = Assign(pool, assign_targets, int_42)
+    if assign_node is None:
+        printf("FAIL: Assign creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Assign, kind=%d\n", assign_node.kind())
+
+    # --- Test 17: Call 节点 ---
+    call_args: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    call_args.append(int_42)
+    call_kwargs: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    call_node: Call | CPtr = Call(pool, name_x, call_args, call_kwargs)
+    if call_node is None:
+        printf("FAIL: Call creation\n")
+        failed += 1
+    else:
+        passed += 1
+        printf("PASS: Call, kind=%d\n", call_node.kind())
+
+    # --- Test 18: 字段访问验证 ---
+    if name_x is not None:
+        nm: str = name_x.id
+        if nm is not None:
+            if string.strcmp(nm, "x") == 0:
+                passed += 1
+                printf("PASS: Name.id == 'x'\n")
+            else:
+                failed += 1
+                printf("FAIL: Name.id != 'x'\n")
+        else:
+            failed += 1
+            printf("FAIL: Name.id is None\n")
+
+    # --- Test 19: parent 指针验证 (binop 被 append 到 mod) ---
+    if binop is not None and binop.parent is mod:
+        passed += 1
+        printf("PASS: BinOp.parent == Module (via append)\n")
+    else:
+        failed += 1
+        printf("FAIL: BinOp.parent != Module\n")
+
+    # --- Test 20: Module.children 遍历 ---
+    if mod is not None and mod.children is not None:
+        mod_cnt: t.CSizeT = mod.children.__len__()
+        if mod_cnt == 2:
+            passed += 1
+            printf("PASS: Module.children count=%zu (expected 2)\n", mod_cnt)
+        else:
+            failed += 1
+            printf("FAIL: Module.children count=%zu (expected 2)\n", mod_cnt)
+    else:
+        failed += 1
+        printf("FAIL: Module.children is None\n")
+
+    # --- Test 21: Module.children 多态分派 ---
+    if mod is not None and mod.children is not None:
+        c0: AST | CPtr = mod.children.get(0)
+        c1: AST | CPtr = mod.children.get(1)
+        if c0 is not None and c1 is not None:
+            k0: CInt = c0.kind()
+            k1: CInt = c1.kind()
+            if k0 == ASTKind.BinOp and k1 == ASTKind.UnaryOp:
+                passed += 1
+                printf("PASS: Module.children[0]=BinOp, [1]=UnaryOp\n")
+            else:
+                failed += 1
+                printf("FAIL: Module.children kinds=%d,%d\n", k0, k1)
+        else:
+            failed += 1
+            printf("FAIL: Module.children get returned None\n")
+    else:
+        failed += 1
+        printf("FAIL: Module.children unavailable\n")
+
+    # --- Test 22: If.children 遍历 (ret + expr_stmt) ---
+    if if_stmt is not None and if_stmt.children is not None:
+        if_cnt: t.CSizeT = if_stmt.children.__len__()
+        if if_cnt == 2:
+            passed += 1
+            printf("PASS: If.children count=%zu (expected 2)\n", if_cnt)
+        else:
+            failed += 1
+            printf("FAIL: If.children count=%zu (expected 2)\n", if_cnt)
+    else:
+        failed += 1
+        printf("FAIL: If.children is None\n")
+
+    # --- Test 23: parent 向上遍历 (if_stmt.children[0].parent == if_stmt) ---
+    if if_stmt is not None and if_stmt.children is not None:
+        first_child: AST | CPtr = if_stmt.children.get(0)
+        if first_child is not None and first_child.parent is if_stmt:
+            passed += 1
+            printf("PASS: If.children[0].parent == If\n")
+        else:
+            failed += 1
+            printf("FAIL: If.children[0].parent != If\n")
+    else:
+        failed += 1
+        printf("FAIL: If.children unavailable for parent test\n")
+
+    # --- Test 24: parse_expression 解析 "x + 42" ---
+    expr_src: str = "x + 42"
+    expr_tree: AST | CPtr = parse_expression(expr_src, pool)
+    if expr_tree is not None:
+        passed += 1
+        printf("PASS: parse_expression('x + 42') -> kind=%d\n", expr_tree.kind())
+    else:
+        failed += 1
+        printf("FAIL: parse_expression returned None\n")
+
+    # --- Test 25: parse 解析简单模块 "x = 42\n" ---
+    mod_src: str = "x = 42\n"
+    parsed_mod: Module | CPtr = parse(mod_src, pool)
+    if parsed_mod is not None and parsed_mod.kind() == ASTKind.Module:
+        passed += 1
+        printf("PASS: parse('x = 42') -> Module, kind=%d\n", parsed_mod.kind())
+    else:
+        failed += 1
+        printf("FAIL: parse('x = 42') failed\n")
+
+    # --- Test 26: parse 模块的 children 验证 ---
+    if parsed_mod is not None and parsed_mod.children is not None:
+        pmod_cnt: t.CSizeT = parsed_mod.children.__len__()
+        if pmod_cnt == 1:
+            passed += 1
+            printf("PASS: parsed Module.children count=%zu (expected 1)\n", pmod_cnt)
+        else:
+            failed += 1
+            printf("FAIL: parsed Module.children count=%zu (expected 1)\n", pmod_cnt)
+    else:
+        failed += 1
+        printf("FAIL: parsed Module.children is None\n")
+
+    # --- Test 27: parse 模块子节点类型验证 (Assign) ---
+    if parsed_mod is not None and parsed_mod.children is not None:
+        pmod_child: AST | CPtr = parsed_mod.children.get(0)
+        if pmod_child is not None:
+            pmod_k: CInt = pmod_child.kind()
+            if pmod_k == ASTKind.Assign:
+                passed += 1
+                printf("PASS: parsed Module.children[0].kind()=%d (Assign)\n", pmod_k)
+            else:
+                failed += 1
+                printf("FAIL: parsed Module.children[0].kind()=%d (expected %d)\n",
+                       pmod_k, ASTKind.Assign)
+        else:
+            failed += 1
+            printf("FAIL: parsed Module.children.get(0) returned None\n")
+    else:
+        failed += 1
+        printf("FAIL: parsed Module.children unavailable for kind test\n")
+
+    # --- Test 28: parse 多语句模块 ---
+    multi_src: str = """a = 1
+b = 2
+c = a + b
+"""
+    multi_mod: Module | CPtr = parse(multi_src, pool)
+    if multi_mod is not None and multi_mod.children is not None:
+        multi_cnt: t.CSizeT = multi_mod.children.__len__()
+        if multi_cnt == 3:
+            passed += 1
+            printf("PASS: parse multi-stmt, children=%zu (expected 3)\n", multi_cnt)
+        else:
+            failed += 1
+            printf("FAIL: parse multi-stmt, children=%zu (expected 3)\n", multi_cnt)
+    else:
+        failed += 1
+        printf("FAIL: parse multi-stmt failed\n")
+
+    # --- Test 29: parse if 语句 ---
+    if_src: str = """if x > 0:
+    y = 1
+"""
+    if_mod: Module | CPtr = parse(if_src, pool)
+    if if_mod is not None and if_mod.children is not None:
+        if_cnt2: t.CSizeT = if_mod.children.__len__()
+        if_k: CInt = if_mod.children.get(0).kind()
+        if if_cnt2 == 1 and if_k == ASTKind.If:
+            passed += 1
+            printf("PASS: parse if, children=%zu kind=%d (If)\n", if_cnt2, if_k)
+        else:
+            failed += 1
+            printf("FAIL: parse if, children=%zu kind=%d\n", if_cnt2, if_k)
+    else:
+        failed += 1
+        printf("FAIL: parse if failed\n")
+
+    # --- Test 30: parse for 循环 ---
+    for_src: str = """for i in range(10):
+    pass
+"""
+    for_mod: Module | CPtr = parse(for_src, pool)
+    if for_mod is not None and for_mod.children is not None:
+        for_cnt: t.CSizeT = for_mod.children.__len__()
+        for_k: CInt = for_mod.children.get(0).kind()
+        if for_cnt == 1 and for_k == ASTKind.For:
+            passed += 1
+            printf("PASS: parse for, children=%zu kind=%d (For)\n", for_cnt, for_k)
+        else:
+            failed += 1
+            printf("FAIL: parse for, children=%zu kind=%d\n", for_cnt, for_k)
+    else:
+        failed += 1
+        printf("FAIL: parse for failed\n")
+
+    # --- Test 31: parse while 循环 ---
+    while_src: str = """while x < 100:
+    x = x + 1
+"""
+    while_mod: Module | CPtr = parse(while_src, pool)
+    if while_mod is not None and while_mod.children is not None:
+        while_cnt: t.CSizeT = while_mod.children.__len__()
+        while_k: CInt = while_mod.children.get(0).kind()
+        if while_cnt == 1 and while_k == ASTKind.While:
+            passed += 1
+            printf("PASS: parse while, children=%zu kind=%d (While)\n", while_cnt, while_k)
+        else:
+            failed += 1
+            printf("FAIL: parse while, children=%zu kind=%d\n", while_cnt, while_k)
+    else:
+        failed += 1
+        printf("FAIL: parse while failed\n")
+
+    # --- Test 32: parse 函数定义 ---
+    def_src: str = """def foo(a, b):
+    return a + b
+"""
+    def_mod: Module | CPtr = parse(def_src, pool)
+    if def_mod is not None and def_mod.children is not None:
+        def_cnt: t.CSizeT = def_mod.children.__len__()
+        def_k: CInt = def_mod.children.get(0).kind()
+        if def_cnt == 1 and def_k == ASTKind.FunctionDef:
+            passed += 1
+            printf("PASS: parse def, children=%zu kind=%d (FunctionDef)\n", def_cnt, def_k)
+        else:
+            failed += 1
+            printf("FAIL: parse def, children=%zu kind=%d\n", def_cnt, def_k)
+    else:
+        failed += 1
+        printf("FAIL: parse def failed\n")
+
+    # --- Test 33: parse 复杂表达式 (a + b * c - 1) ---
+    complex_expr_src: str = "a + b * c - 1"
+    complex_expr: AST | CPtr = parse_expression(complex_expr_src, pool)
+    if complex_expr is not None:
+        ce_k: CInt = complex_expr.kind()
+        if ce_k == ASTKind.Expression:
+            passed += 1
+            printf("PASS: parse complex expr, kind=%d (Expression)\n", ce_k)
+        else:
+            failed += 1
+            printf("FAIL: parse complex expr, kind=%d\n", ce_k)
+    else:
+        failed += 1
+        printf("FAIL: parse complex expr failed\n")
+
+    # --- Test 34: parse 嵌套语句 (for 内 if) ---
+    nested_src: str = """for i in range(10):
+    if i > 5:
+        x = 1
+"""
+    nested_mod: Module | CPtr = parse(nested_src, pool)
+    if nested_mod is not None and nested_mod.children is not None:
+        nested_cnt: t.CSizeT = nested_mod.children.__len__()
+        nested_k: CInt = nested_mod.children.get(0).kind()
+        if nested_cnt == 1 and nested_k == ASTKind.For:
+            passed += 1
+            printf("PASS: parse nested for-if, children=%zu kind=%d (For)\n", nested_cnt, nested_k)
+        else:
+            failed += 1
+            printf("FAIL: parse nested for-if, children=%zu kind=%d\n", nested_cnt, nested_k)
+    else:
+        failed += 1
+        printf("FAIL: parse nested for-if failed\n")
+
+    # --- Test 35: parse 混合多语句模块 ---
+    mixed_src: str = """x = 1
+y = 2
+if x < y:
+    z = x + y
+else:
+    z = 0
+w = z * 2
+"""
+    mixed_mod: Module | CPtr = parse(mixed_src, pool)
+    if mixed_mod is not None and mixed_mod.children is not None:
+        mixed_cnt: t.CSizeT = mixed_mod.children.__len__()
+        if mixed_cnt == 4:
+            passed += 1
+            printf("PASS: parse mixed module, children=%zu (expected 4)\n", mixed_cnt)
+        else:
+            failed += 1
+            printf("FAIL: parse mixed module, children=%zu (expected 4)\n", mixed_cnt)
+    else:
+        failed += 1
+        printf("FAIL: parse mixed module failed\n")
+
+    # --- Test 36: dump 反向 - parse("x = 42") → dump → strstr 验证 ---
+    if parsed_mod is not None:
+        dump(parsed_mod, dump_buf, DUMP_BUF_SIZE)
+        has_assign: str = string.strstr(dump_buf, "Assign")
+        has_42: str = string.strstr(dump_buf, "42")
+        if has_assign is not None and has_42 is not None:
+            passed += 1
+            printf("PASS: dump parse('x = 42') contains 'Assign' and '42'\n")
+        else:
+            failed += 1
+            printf("FAIL: dump parse('x = 42') missing tokens\n")
+    else:
+        failed += 1
+        printf("FAIL: parsed_mod unavailable for dump test\n")
+
+    # --- Test 37: dump 反向 - parse_expression("x + 42 * 2") → dump → strstr BinOp ---
+    if complex_expr is not None:
+        dump(complex_expr, dump_buf, DUMP_BUF_SIZE)
+        has_binop: str = string.strstr(dump_buf, "BinOp")
+        if has_binop is not None:
+            passed += 1
+            printf("PASS: dump complex expr contains 'BinOp'\n")
+        else:
+            failed += 1
+            printf("FAIL: dump complex expr missing 'BinOp'\n")
+    else:
+        failed += 1
+        printf("FAIL: complex_expr unavailable for dump test\n")
+
+    # --- Test 38: dump 反向 - parse if → dump → strstr "If" + "Compare" ---
+    if if_mod is not None:
+        dump(if_mod, dump_buf, DUMP_BUF_SIZE)
+        has_if: str = string.strstr(dump_buf, "If(")
+        has_cmp: str = string.strstr(dump_buf, "Compare")
+        if has_if is not None and has_cmp is not None:
+            passed += 1
+            printf("PASS: dump parse if contains 'If(' and 'Compare'\n")
+        else:
+            failed += 1
+            printf("FAIL: dump parse if missing tokens\n")
+    else:
+        failed += 1
+        printf("FAIL: if_mod unavailable for dump test\n")
+
+    # --- Test 39: dump 反向 - parse def → dump → strstr "FunctionDef" ---
+    if def_mod is not None:
+        dump(def_mod, dump_buf, DUMP_BUF_SIZE)
+        has_fdef: str = string.strstr(dump_buf, "FunctionDef")
+        if has_fdef is not None:
+            passed += 1
+            printf("PASS: dump parse def contains 'FunctionDef'\n")
+        else:
+            failed += 1
+            printf("FAIL: dump parse def missing 'FunctionDef'\n")
+    else:
+        failed += 1
+        printf("FAIL: def_mod unavailable for dump test\n")
+
+    # --- Test 40: AST 结构化输出 - dump 多语句模块完整输出 ---
+    if mixed_mod is not None:
+        dump(mixed_mod, dump_buf, DUMP_BUF_SIZE)
+        printf("--- AST dump of mixed module ---\n%s\n--- end dump ---\n", dump_buf)
+        # 验证包含多种节点
+        has_m_assign: str = string.strstr(dump_buf, "Assign")
+        has_m_if: str = string.strstr(dump_buf, "If(")
+        if has_m_assign is not None and has_m_if is not None:
+            passed += 1
+            printf("PASS: structured dump of mixed module contains Assign + If\n")
+        else:
+            failed += 1
+            printf("FAIL: structured dump of mixed module missing nodes\n")
+    else:
+        failed += 1
+        printf("FAIL: mixed_mod unavailable for structured dump\n")
+
+    # --- Test 41: AST 结构化输出 - dump for 循环完整输出 ---
+    if for_mod is not None:
+        dump(for_mod, dump_buf, DUMP_BUF_SIZE)
+        printf("--- AST dump of for loop ---\n%s\n--- end dump ---\n", dump_buf)
+        has_for: str = string.strstr(dump_buf, "For(")
+        if has_for is not None:
+            passed += 1
+            printf("PASS: structured dump of for loop contains 'For('\n")
+        else:
+            failed += 1
+            printf("FAIL: structured dump of for loop missing 'For('\n")
+    else:
+        failed += 1
+        printf("FAIL: for_mod unavailable for structured dump\n")
+
+    # --- Test 42: type_name 多态分派验证 ---
+    if parsed_mod is not None and parsed_mod.children is not None:
+        tn_node: AST | CPtr = parsed_mod.children.get(0)
+        if tn_node is not None:
+            tn: str = tn_node.type_name()
+            if tn is not None and string.strcmp(tn, "Assign") == 0:
+                passed += 1
+                printf("PASS: type_name() = 'Assign' (polymorphic)\n")
+            else:
+                failed += 1
+                printf("FAIL: type_name() != 'Assign'\n")
+        else:
+            failed += 1
+            printf("FAIL: type_name test node None\n")
+    else:
+        failed += 1
+        printf("FAIL: parsed_mod unavailable for type_name test\n")
+
+    # --- Test 43: parse 类定义 ---
+    class_src: str = """class Foo(Base):
+    x = 1
+    def bar(self):
+        return self.x
+"""
+    class_mod: Module | CPtr = parse(class_src, pool)
+    if class_mod is not None and class_mod.children is not None:
+        class_cnt: t.CSizeT = class_mod.children.__len__()
+        class_k: CInt = class_mod.children.get(0).kind()
+        if class_cnt == 1 and class_k == ASTKind.ClassDef:
+            passed += 1
+            printf("PASS: parse class, children=%zu kind=%d (ClassDef)\n", class_cnt, class_k)
+        else:
+            failed += 1
+            printf("FAIL: parse class, children=%zu kind=%d\n", class_cnt, class_k)
+    else:
+        failed += 1
+        printf("FAIL: parse class failed\n")
+
+    # --- Test 44: parse try/except ---
+    try_src: str = """try:
+    x = 1
+except:
+    x = 0
+"""
+    try_mod: Module | CPtr = parse(try_src, pool)
+    if try_mod is not None and try_mod.children is not None:
+        try_cnt: t.CSizeT = try_mod.children.__len__()
+        try_k: CInt = try_mod.children.get(0).kind()
+        if try_cnt == 1 and try_k == ASTKind.Try:
+            passed += 1
+            printf("PASS: parse try/except, children=%zu kind=%d (Try)\n", try_cnt, try_k)
+        else:
+            failed += 1
+            printf("FAIL: parse try/except, children=%zu kind=%d\n", try_cnt, try_k)
+    else:
+        failed += 1
+        printf("FAIL: parse try/except failed\n")
+
+    # --- Test 45: parse import 语句 ---
+    import_src: str = """import os
+from sys import path
+"""
+    import_mod: Module | CPtr = parse(import_src, pool)
+    if import_mod is not None and import_mod.children is not None:
+        import_cnt: t.CSizeT = import_mod.children.__len__()
+        k0: CInt = import_mod.children.get(0).kind()
+        k1: CInt = import_mod.children.get(1).kind()
+        if import_cnt == 2 and k0 == ASTKind.Import and k1 == ASTKind.ImportFrom:
+            passed += 1
+            printf("PASS: parse import, children=%zu k0=%d(Import) k1=%d(ImportFrom)\n",
+                   import_cnt, k0, k1)
+        else:
+            failed += 1
+            printf("FAIL: parse import, children=%zu k0=%d k1=%d\n", import_cnt, k0, k1)
+    else:
+        failed += 1
+        printf("FAIL: parse import failed\n")
+
+    # --- Test 46: parse AugAssign (x += 1) ---
+    aug_src: str = """x = 0
+x += 1
+"""
+    aug_mod: Module | CPtr = parse(aug_src, pool)
+    if aug_mod is not None and aug_mod.children is not None:
+        aug_cnt: t.CSizeT = aug_mod.children.__len__()
+        aug_k: CInt = aug_mod.children.get(1).kind()
+        if aug_cnt == 2 and aug_k == ASTKind.AugAssign:
+            passed += 1
+            printf("PASS: parse AugAssign, children=%zu kind=%d (AugAssign)\n", aug_cnt, aug_k)
+        else:
+            failed += 1
+            printf("FAIL: parse AugAssign, children=%zu kind=%d\n", aug_cnt, aug_k)
+    else:
+        failed += 1
+        printf("FAIL: parse AugAssign failed\n")
+
+    # --- Test 47: parse 条件表达式 (x if y else z) ---
+    ifexp_src: str = "x if y else z"
+    ifexp_tree: AST | CPtr = parse_expression(ifexp_src, pool)
+    ifexp_expr: Expression | CPtr = (Expression | CPtr)(ifexp_tree)
+    if ifexp_expr is not None and ifexp_expr.body is not None:
+        ie_k: CInt = ifexp_expr.body.kind()
+        if ie_k == ASTKind.IfExp:
+            passed += 1
+            printf("PASS: parse IfExp, kind=%d (IfExp)\n", ie_k)
+        else:
+            failed += 1
+            printf("FAIL: parse IfExp, kind=%d\n", ie_k)
+    else:
+        failed += 1
+        printf("FAIL: parse IfExp failed\n")
+
+    # --- Test 48: parse 嵌套函数定义 ---
+    nested_def_src: str = """def outer():
+    x = 1
+    def inner():
+        return x
+    return inner()
+"""
+    nested_def_mod: Module | CPtr = parse(nested_def_src, pool)
+    if nested_def_mod is not None and nested_def_mod.children is not None:
+        nd_cnt: t.CSizeT = nested_def_mod.children.__len__()
+        nd_k: CInt = nested_def_mod.children.get(0).kind()
+        if nd_cnt == 1 and nd_k == ASTKind.FunctionDef:
+            passed += 1
+            printf("PASS: parse nested def, children=%zu kind=%d (FunctionDef)\n", nd_cnt, nd_k)
+        else:
+            failed += 1
+            printf("FAIL: parse nested def, children=%zu kind=%d\n", nd_cnt, nd_k)
+    else:
+        failed += 1
+        printf("FAIL: parse nested def failed\n")
+
+    # --- Test 49: dump 复杂代码 (类 + try + 嵌套函数) ---
+    complex_src: str = """class Foo(Base):
+    x = 1
+try:
+    y = Foo()
+except:
+    y = None
+def bar():
+    return y
+"""
+    complex_mod: Module | CPtr = parse(complex_src, pool)
+    if complex_mod is not None:
+        dump(complex_mod, dump_buf, DUMP_BUF_SIZE)
+        printf("--- AST dump of complex module ---\n%s\n--- end dump ---\n", dump_buf)
+        has_cls: str = string.strstr(dump_buf, "ClassDef")
+        has_try: str = string.strstr(dump_buf, "Try")
+        has_fdef2: str = string.strstr(dump_buf, "FunctionDef")
+        if has_cls is not None and has_try is not None and has_fdef2 is not None:
+            passed += 1
+            printf("PASS: dump complex module contains ClassDef + Try + FunctionDef\n")
+        else:
+            failed += 1
+            printf("FAIL: dump complex module missing nodes\n")
+    else:
+        failed += 1
+        printf("FAIL: parse complex module failed\n")
+
+    # --- Test 50: 复杂 mixed_src - 综合语法实例 ---
+    complex_mixed_src: str = """def gcd(a, b):
+    while b:
+        t = b
+        b = a % b
+        a = t
+    return a
+x = gcd(48, 36)
+if x > 1 and x < 100:
+    y = x * 2 + 1
+elif x == 1:
+    y = 1
+else:
+    y = 0
+"""
+    cmix_mod: Module | CPtr = parse(complex_mixed_src, pool)
+    if cmix_mod is not None and cmix_mod.children is not None:
+        cmix_cnt: t.CSizeT = cmix_mod.children.__len__()
+        dump(cmix_mod, dump_buf, DUMP_BUF_SIZE)
+        printf("--- AST dump of complex mixed ---\n%s\n--- end dump ---\n", dump_buf)
+        cm_def: str = string.strstr(dump_buf, "FunctionDef")
+        cm_while: str = string.strstr(dump_buf, "While(")
+        cm_call: str = string.strstr(dump_buf, "Call(")
+        cm_bool: str = string.strstr(dump_buf, "BoolOp(")
+        cm_cmp: str = string.strstr(dump_buf, "Compare(")
+        cm_ret: str = string.strstr(dump_buf, "Return(")
+        ok: t.CInt = 0
+        if cmix_cnt == 3:
+            if cm_def is not None and cm_while is not None:
+                if cm_call is not None and cm_bool is not None:
+                    if cm_cmp is not None and cm_ret is not None:
+                        ok = 1
+        if ok == 1:
+            passed += 1
+            printf("PASS: complex mixed_src, children=%zu contains Def+While+Call+BoolOp+Compare+Return\n", cmix_cnt)
+        else:
+            failed += 1
+            printf("FAIL: complex mixed_src, children=%zu def=%d while=%d call=%d bool=%d cmp=%d ret=%d\n",
+                   cmix_cnt, cm_def is not None, cm_while is not None,
+                   cm_call is not None, cm_bool is not None, cm_cmp is not None,
+                   cm_ret is not None)
+    else:
+        failed += 1
+        printf("FAIL: complex mixed_src parse failed\n")
+
+    # --- Test 51: Lambda 表达式 ---
+    lambda_src: str = "f = lambda x: x + 1"
+    lambda_mod: Module | CPtr = parse(lambda_src, pool)
+    if lambda_mod is not None:
+        dump(lambda_mod, dump_buf, DUMP_BUF_SIZE)
+        has_lambda: str = string.strstr(dump_buf, "Lambda(")
+        has_arg: str = string.strstr(dump_buf, "Arg(arg='x'")
+        if has_lambda is not None and has_arg is not None:
+            passed += 1
+            printf("PASS: Lambda with arg parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Lambda parse, lambda=%d arg=%d\n",
+                   has_lambda is not None, has_arg is not None)
+    else:
+        failed += 1
+        printf("FAIL: Lambda parse returned None\n")
+
+    # --- Test 52: List comprehension ---
+    listcomp_src: str = "squares = [x*x for x in range(10)]"
+    lc_mod: Module | CPtr = parse(listcomp_src, pool)
+    if lc_mod is not None:
+        dump(lc_mod, dump_buf, DUMP_BUF_SIZE)
+        has_lc: str = string.strstr(dump_buf, "ListComp(")
+        has_comp: str = string.strstr(dump_buf, "Comprehension(")
+        if has_lc is not None and has_comp is not None:
+            passed += 1
+            printf("PASS: ListComp with Comprehension parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: ListComp parse, lc=%d comp=%d\n",
+                   has_lc is not None, has_comp is not None)
+    else:
+        failed += 1
+        printf("FAIL: ListComp parse returned None\n")
+
+    # --- Test 53: Dict comprehension ---
+    dictcomp_src: str = "d = {k: v for k, v in items}"
+    dc_mod: Module | CPtr = parse(dictcomp_src, pool)
+    if dc_mod is not None:
+        dump(dc_mod, dump_buf, DUMP_BUF_SIZE)
+        has_dc: str = string.strstr(dump_buf, "DictComp(")
+        if has_dc is not None:
+            passed += 1
+            printf("PASS: DictComp parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: DictComp parse, dc=%d\n", has_dc is not None)
+    else:
+        failed += 1
+        printf("FAIL: DictComp parse returned None\n")
+
+    # --- Test 54: Set comprehension ---
+    setcomp_src: str = "s = {x for x in items}"
+    sc_mod: Module | CPtr = parse(setcomp_src, pool)
+    if sc_mod is not None:
+        dump(sc_mod, dump_buf, DUMP_BUF_SIZE)
+        has_sc: str = string.strstr(dump_buf, "SetComp(")
+        if has_sc is not None:
+            passed += 1
+            printf("PASS: SetComp parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: SetComp parse, sc=%d\n", has_sc is not None)
+    else:
+        failed += 1
+        printf("FAIL: SetComp parse returned None\n")
+
+    # --- Test 55: With 语句 ---
+    with_src: str = """with open('f') as f:
+    data = f.read()
+"""
+    with_mod: Module | CPtr = parse(with_src, pool)
+    if with_mod is not None and with_mod.children is not None:
+        dump(with_mod, dump_buf, DUMP_BUF_SIZE)
+        has_with: str = string.strstr(dump_buf, "With(")
+        has_witem: str = string.strstr(dump_buf, "WithItem(")
+        if has_with is not None and has_witem is not None:
+            passed += 1
+            printf("PASS: With + WithItem parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: With parse, with=%d witem=%d\n",
+                   has_with is not None, has_witem is not None)
+    else:
+        failed += 1
+        printf("FAIL: With parse returned None\n")
+
+    # --- Test 56: Raise 语句 ---
+    raise_src: str = "raise ValueError('bad')"
+    raise_mod: Module | CPtr = parse(raise_src, pool)
+    if raise_mod is not None:
+        dump(raise_mod, dump_buf, DUMP_BUF_SIZE)
+        has_raise: str = string.strstr(dump_buf, "Raise(")
+        if has_raise is not None:
+            passed += 1
+            printf("PASS: Raise parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Raise parse, raise=%d\n", has_raise is not None)
+    else:
+        failed += 1
+        printf("FAIL: Raise parse returned None\n")
+
+    # --- Test 57: Assert 语句 ---
+    assert_src: str = "assert x > 0, 'x must be positive'"
+    assert_mod: Module | CPtr = parse(assert_src, pool)
+    if assert_mod is not None:
+        dump(assert_mod, dump_buf, DUMP_BUF_SIZE)
+        has_assert: str = string.strstr(dump_buf, "Assert(")
+        if has_assert is not None:
+            passed += 1
+            printf("PASS: Assert parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Assert parse, assert=%d\n", has_assert is not None)
+    else:
+        failed += 1
+        printf("FAIL: Assert parse returned None\n")
+
+    # --- Test 58: Del 语句 ---
+    del_src: str = "del x"
+    del_mod: Module | CPtr = parse(del_src, pool)
+    if del_mod is not None:
+        dump(del_mod, dump_buf, DUMP_BUF_SIZE)
+        has_del: str = string.strstr(dump_buf, "Delete(")
+        if has_del is not None:
+            passed += 1
+            printf("PASS: Delete parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Delete parse, del=%d\n", has_del is not None)
+    else:
+        failed += 1
+        printf("FAIL: Delete parse returned None\n")
+
+    # --- Test 59: Subscript + Slice ---
+    slice_src: str = "y = a[1:3]"
+    slice_mod: Module | CPtr = parse(slice_src, pool)
+    if slice_mod is not None:
+        dump(slice_mod, dump_buf, DUMP_BUF_SIZE)
+        has_sub: str = string.strstr(dump_buf, "Subscript(")
+        has_slice: str = string.strstr(dump_buf, "Slice(")
+        if has_sub is not None and has_slice is not None:
+            passed += 1
+            printf("PASS: Subscript + Slice parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Slice parse, sub=%d slice=%d\n",
+                   has_sub is not None, has_slice is not None)
+    else:
+        failed += 1
+        printf("FAIL: Slice parse returned None\n")
+
+    # --- Test 60: Tuple 解包 ---
+    tuple_src: str = "a, b = 1, 2"
+    tuple_mod: Module | CPtr = parse(tuple_src, pool)
+    if tuple_mod is not None:
+        dump(tuple_mod, dump_buf, DUMP_BUF_SIZE)
+        has_tuple: str = string.strstr(dump_buf, "Tuple(")
+        if has_tuple is not None:
+            passed += 1
+            printf("PASS: Tuple unpacking parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Tuple parse, tuple=%d\n", has_tuple is not None)
+    else:
+        failed += 1
+        printf("FAIL: Tuple parse returned None\n")
+
+    # --- Test 61: 默认参数 + 关键字参数签名 ---
+    defdef_src: str = "def f(a, b=10): return a + b"
+    defdef_mod: Module | CPtr = parse(defdef_src, pool)
+    if defdef_mod is not None:
+        dump(defdef_mod, dump_buf, DUMP_BUF_SIZE)
+        has_fdef: str = string.strstr(dump_buf, "FunctionDef(name='f'")
+        has_def: str = string.strstr(dump_buf, "Constant(value=10)")
+        if has_fdef is not None and has_def is not None:
+            passed += 1
+            printf("PASS: FunctionDef with default arg parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: defdef parse, fdef=%d def=%d\n",
+                   has_fdef is not None, has_def is not None)
+    else:
+        failed += 1
+        printf("FAIL: defdef parse returned None\n")
+
+    # --- Test 62: 装饰器 ---
+    deco_src: str = """@my_dec
+def f():
+    pass
+"""
+    deco_mod: Module | CPtr = parse(deco_src, pool)
+    if deco_mod is not None:
+        dump(deco_mod, dump_buf, DUMP_BUF_SIZE)
+        has_dec: str = string.strstr(dump_buf, "decorator_list=[Name(id='my_dec'")
+        if has_dec is not None:
+            passed += 1
+            printf("PASS: Decorator parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Decorator parse, dec=%d\n", has_dec is not None)
+    else:
+        failed += 1
+        printf("FAIL: Decorator parse returned None\n")
+
+    # --- Test 63: 链式赋值 ---
+    chain_src: str = "a = b = c = 42"
+    chain_mod: Module | CPtr = parse(chain_src, pool)
+    if chain_mod is not None:
+        dump(chain_mod, dump_buf, DUMP_BUF_SIZE)
+        has_chain: str = string.strstr(dump_buf, "Assign(targets=[Name(id='a'")
+        has_b: str = string.strstr(dump_buf, "Name(id='b'")
+        has_c: str = string.strstr(dump_buf, "Name(id='c'")
+        if has_chain is not None and has_b is not None and has_c is not None:
+            passed += 1
+            printf("PASS: Chain assignment a=b=c=42 parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Chain, a=%d b=%d c=%d\n",
+                   has_chain is not None, has_b is not None, has_c is not None)
+    else:
+        failed += 1
+        printf("FAIL: Chain parse returned None\n")
+
+    # --- Test 64: 位运算 ---
+    bit_src: str = "y = (a | b) & c ^ d << 2"
+    bit_mod: Module | CPtr = parse(bit_src, pool)
+    if bit_mod is not None:
+        dump(bit_mod, dump_buf, DUMP_BUF_SIZE)
+        has_bor: str = string.strstr(dump_buf, "op=BitOr")
+        has_band: str = string.strstr(dump_buf, "op=BitAnd")
+        has_bxor: str = string.strstr(dump_buf, "op=BitXor")
+        if has_bor is not None and has_band is not None and has_bxor is not None:
+            passed += 1
+            printf("PASS: Bit ops (| & ^) parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Bit ops, bor=%d band=%d bxor=%d\n",
+                   has_bor is not None, has_band is not None, has_bxor is not None)
+    else:
+        failed += 1
+        printf("FAIL: Bit ops parse returned None\n")
+
+    # --- Test 65: 多继承 + 多装饰器 ---
+    multi_src: str = """@dec1
+@dec2
+class C(Base1, Base2):
+    pass
+"""
+    multi_mod: Module | CPtr = parse(multi_src, pool)
+    if multi_mod is not None:
+        dump(multi_mod, dump_buf, DUMP_BUF_SIZE)
+        m_dec1: str = string.strstr(dump_buf, "Name(id='dec1'")
+        m_dec2: str = string.strstr(dump_buf, "Name(id='dec2'")
+        m_b1: str = string.strstr(dump_buf, "Name(id='Base1'")
+        m_b2: str = string.strstr(dump_buf, "Name(id='Base2'")
+        if m_dec1 is not None and m_dec2 is not None and m_b1 is not None and m_b2 is not None:
+            passed += 1
+            printf("PASS: Multi-decorator + multi-inheritance parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: multi, dec1=%d dec2=%d b1=%d b2=%d\n",
+                   m_dec1 is not None, m_dec2 is not None,
+                   m_b1 is not None, m_b2 is not None)
+    else:
+        failed += 1
+        printf("FAIL: multi parse returned None\n")
+
+    # --- Test 66: Global / Nonlocal ---
+    glob_src: str = """def f():
+    global x
+    x = 1
+"""
+    glob_mod: Module | CPtr = parse(glob_src, pool)
+    if glob_mod is not None:
+        dump(glob_mod, dump_buf, DUMP_BUF_SIZE)
+        has_glob: str = string.strstr(dump_buf, "Global(")
+        if has_glob is not None:
+            passed += 1
+            printf("PASS: Global statement parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: Global parse, glob=%d\n", has_glob is not None)
+    else:
+        failed += 1
+        printf("FAIL: Global parse returned None\n")
+
+    # --- Test 67: f-string (FormattedValue) ---
+    fstr_src: str = "s = f'value={x}'"
+    fstr_mod: Module | CPtr = parse(fstr_src, pool)
+    if fstr_mod is not None:
+        dump(fstr_mod, dump_buf, DUMP_BUF_SIZE)
+        has_fv: str = string.strstr(dump_buf, "FormattedValue(")
+        has_js: str = string.strstr(dump_buf, "JoinedStr(")
+        if has_fv is not None and has_js is not None:
+            passed += 1
+            printf("PASS: f-string with FormattedValue + JoinedStr parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: fstring, fv=%d js=%d\n",
+                   has_fv is not None, has_js is not None)
+    else:
+        failed += 1
+        printf("FAIL: fstring parse returned None\n")
+
+    # --- Test 68: 嵌套函数 + 闭包 ---
+    nested_src: str = """def outer():
+    x = 10
+    def inner():
+        return x + 1
+    return inner()
+"""
+    nested_mod: Module | CPtr = parse(nested_src, pool)
+    if nested_mod is not None and nested_mod.children is not None:
+        dump(nested_mod, dump_buf, DUMP_BUF_SIZE)
+        n_outer: str = string.strstr(dump_buf, "FunctionDef(name='outer'")
+        n_inner: str = string.strstr(dump_buf, "FunctionDef(name='inner'")
+        if n_outer is not None and n_inner is not None:
+            passed += 1
+            printf("PASS: Nested function definitions parsed\n")
+        else:
+            failed += 1
+            printf("FAIL: nested, outer=%d inner=%d\n",
+                   n_outer is not None, n_inner is not None)
+    else:
+        failed += 1
+        printf("FAIL: nested parse returned None\n")
+
+    # --- Test 69: Match 字面量整数模式 ---
+    m_lit_src: str = """match x:
+    case 1:
+        pass
+"""
+    m_lit_mod: Module | CPtr = parse(m_lit_src, pool)
+    if m_lit_mod is not None:
+        dump(m_lit_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mv: str = string.strstr(dump_buf, "MatchValue(")
+        if has_mv is not None:
+            passed += 1
+            printf("PASS: Match literal int -> MatchValue\n")
+        else:
+            failed += 1
+            printf("FAIL: Match literal int, mv=%d\n", has_mv is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match literal int parse returned None\n")
+
+    # --- Test 70: Match 字面量字符串模式 ---
+    m_str_src: str = """match x:
+    case "hello":
+        pass
+"""
+    m_str_mod: Module | CPtr = parse(m_str_src, pool)
+    if m_str_mod is not None:
+        dump(m_str_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mv2: str = string.strstr(dump_buf, "MatchValue(")
+        if has_mv2 is not None:
+            passed += 1
+            printf("PASS: Match literal str -> MatchValue\n")
+        else:
+            failed += 1
+            printf("FAIL: Match literal str\n")
+    else:
+        failed += 1
+        printf("FAIL: Match literal str parse returned None\n")
+
+    # --- Test 71: Match 负数字面量模式 ---
+    m_neg_src: str = """match x:
+    case -1:
+        pass
+"""
+    m_neg_mod: Module | CPtr = parse(m_neg_src, pool)
+    if m_neg_mod is not None:
+        dump(m_neg_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mv3: str = string.strstr(dump_buf, "MatchValue(")
+        if has_mv3 is not None:
+            passed += 1
+            printf("PASS: Match negative literal -> MatchValue\n")
+        else:
+            failed += 1
+            printf("FAIL: Match negative literal\n")
+    else:
+        failed += 1
+        printf("FAIL: Match negative literal parse returned None\n")
+
+    # --- Test 72: Match None 单例模式 ---
+    m_none_src: str = """match x:
+    case None:
+        pass
+"""
+    m_none_mod: Module | CPtr = parse(m_none_src, pool)
+    if m_none_mod is not None:
+        dump(m_none_mod, dump_buf, DUMP_BUF_SIZE)
+        has_ms: str = string.strstr(dump_buf, "MatchSingleton(")
+        if has_ms is not None:
+            passed += 1
+            printf("PASS: Match None -> MatchSingleton\n")
+        else:
+            failed += 1
+            printf("FAIL: Match None, ms=%d\n", has_ms is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match None parse returned None\n")
+
+    # --- Test 73: Match True 单例模式 ---
+    m_true_src: str = """match x:
+    case True:
+        pass
+"""
+    m_true_mod: Module | CPtr = parse(m_true_src, pool)
+    if m_true_mod is not None:
+        dump(m_true_mod, dump_buf, DUMP_BUF_SIZE)
+        has_ms2: str = string.strstr(dump_buf, "MatchSingleton(")
+        if has_ms2 is not None:
+            passed += 1
+            printf("PASS: Match True -> MatchSingleton\n")
+        else:
+            failed += 1
+            printf("FAIL: Match True\n")
+    else:
+        failed += 1
+        printf("FAIL: Match True parse returned None\n")
+
+    # --- Test 74: Match False 单例模式 ---
+    m_false_src: str = """match x:
+    case False:
+        pass
+"""
+    m_false_mod: Module | CPtr = parse(m_false_src, pool)
+    if m_false_mod is not None:
+        dump(m_false_mod, dump_buf, DUMP_BUF_SIZE)
+        has_ms3: str = string.strstr(dump_buf, "MatchSingleton(")
+        if has_ms3 is not None:
+            passed += 1
+            printf("PASS: Match False -> MatchSingleton\n")
+        else:
+            failed += 1
+            printf("FAIL: Match False\n")
+    else:
+        failed += 1
+        printf("FAIL: Match False parse returned None\n")
+
+    # --- Test 75: Match 通配符 _ 模式 ---
+    m_wild_src: str = """match x:
+    case _:
+        pass
+"""
+    m_wild_mod: Module | CPtr = parse(m_wild_src, pool)
+    if m_wild_mod is not None:
+        dump(m_wild_mod, dump_buf, DUMP_BUF_SIZE)
+        has_ma: str = string.strstr(dump_buf, "MatchAs(")
+        if has_ma is not None:
+            passed += 1
+            printf("PASS: Match wildcard _ -> MatchAs\n")
+        else:
+            failed += 1
+            printf("FAIL: Match wildcard, ma=%d\n", has_ma is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match wildcard parse returned None\n")
+
+    # --- Test 76: Match 捕获变量模式 ---
+    m_cap_src: str = """match x:
+    case y:
+        pass
+"""
+    m_cap_mod: Module | CPtr = parse(m_cap_src, pool)
+    if m_cap_mod is not None:
+        dump(m_cap_mod, dump_buf, DUMP_BUF_SIZE)
+        has_ma2: str = string.strstr(dump_buf, "name='y'")
+        if has_ma2 is not None:
+            passed += 1
+            printf("PASS: Match capture y -> MatchAs(name='y')\n")
+        else:
+            failed += 1
+            printf("FAIL: Match capture, ma=%d\n", has_ma2 is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match capture parse returned None\n")
+
+    # --- Test 77: Match 值模式 (dotted name Color.RED) ---
+    m_val_src: str = """match x:
+    case Color.RED:
+        pass
+"""
+    m_val_mod: Module | CPtr = parse(m_val_src, pool)
+    if m_val_mod is not None:
+        dump(m_val_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mv4: str = string.strstr(dump_buf, "MatchValue(")
+        has_attr: str = string.strstr(dump_buf, "Attribute(")
+        if has_mv4 is not None and has_attr is not None:
+            passed += 1
+            printf("PASS: Match Color.RED -> MatchValue + Attribute\n")
+        else:
+            failed += 1
+            printf("FAIL: Match value, mv=%d attr=%d\n",
+                   has_mv4 is not None, has_attr is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match value parse returned None\n")
+
+    # --- Test 78: Match 序列模式 [1, 2] ---
+    m_seq_src: str = """match x:
+    case [1, 2]:
+        pass
+"""
+    m_seq_mod: Module | CPtr = parse(m_seq_src, pool)
+    if m_seq_mod is not None:
+        dump(m_seq_mod, dump_buf, DUMP_BUF_SIZE)
+        has_msq: str = string.strstr(dump_buf, "MatchSequence(")
+        if has_msq is not None:
+            passed += 1
+            printf("PASS: Match [1, 2] -> MatchSequence\n")
+        else:
+            failed += 1
+            printf("FAIL: Match sequence, msq=%d\n", has_msq is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match sequence parse returned None\n")
+
+    # --- Test 79: Match 序列带星号 [a, *rest] ---
+    m_star_src: str = """match x:
+    case [a, *rest]:
+        pass
+"""
+    m_star_mod: Module | CPtr = parse(m_star_src, pool)
+    if m_star_mod is not None:
+        dump(m_star_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mstar: str = string.strstr(dump_buf, "MatchStar(name='rest')")
+        if has_mstar is not None:
+            passed += 1
+            printf("PASS: Match [a, *rest] -> MatchStar\n")
+        else:
+            failed += 1
+            printf("FAIL: Match star, mstar=%d\n", has_mstar is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match star parse returned None\n")
+
+    # --- Test 80: Match 类模式 Point(x, y) ---
+    m_cls_src: str = """match p:
+    case Point(x, y):
+        pass
+"""
+    m_cls_mod: Module | CPtr = parse(m_cls_src, pool)
+    if m_cls_mod is not None:
+        dump(m_cls_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mc: str = string.strstr(dump_buf, "MatchClass(")
+        if has_mc is not None:
+            passed += 1
+            printf("PASS: Match Point(x, y) -> MatchClass\n")
+        else:
+            failed += 1
+            printf("FAIL: Match class, mc=%d\n", has_mc is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match class parse returned None\n")
+
+    # --- Test 81: Match 类模式带关键字 Point(x=0, y=0) ---
+    m_kwcls_src: str = """match p:
+    case Point(x=0, y=0):
+        pass
+"""
+    m_kwcls_mod: Module | CPtr = parse(m_kwcls_src, pool)
+    if m_kwcls_mod is not None:
+        dump(m_kwcls_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mc2: str = string.strstr(dump_buf, "MatchClass(")
+        if has_mc2 is not None:
+            passed += 1
+            printf("PASS: Match Point(x=0, y=0) -> MatchClass with kwd\n")
+        else:
+            failed += 1
+            printf("FAIL: Match class kwd, mc=%d\n", has_mc2 is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match class kwd parse returned None\n")
+
+    # --- Test 82: Match OR 模式 1 | 2 ---
+    m_or_src: str = """match x:
+    case 1 | 2:
+        pass
+"""
+    m_or_mod: Module | CPtr = parse(m_or_src, pool)
+    if m_or_mod is not None:
+        dump(m_or_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mo: str = string.strstr(dump_buf, "MatchOr(")
+        if has_mo is not None:
+            passed += 1
+            printf("PASS: Match 1 | 2 -> MatchOr\n")
+        else:
+            failed += 1
+            printf("FAIL: Match OR, mo=%d\n", has_mo is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match OR parse returned None\n")
+
+    # --- Test 83: Match AS 模式 [x] as p ---
+    m_as_src: str = """match x:
+    case [x] as p:
+        pass
+"""
+    m_as_mod: Module | CPtr = parse(m_as_src, pool)
+    if m_as_mod is not None:
+        dump(m_as_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mas: str = string.strstr(dump_buf, "MatchAs(pattern=")
+        has_msq2: str = string.strstr(dump_buf, "MatchSequence(")
+        if has_mas is not None and has_msq2 is not None:
+            passed += 1
+            printf("PASS: Match [x] as p -> MatchAs(MatchSequence)\n")
+        else:
+            failed += 1
+            printf("FAIL: Match AS, mas=%d msq=%d\n",
+                   has_mas is not None, has_msq2 is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match AS parse returned None\n")
+
+    # --- Test 84: Match guard 模式 case x if x > 0 ---
+    m_guard_src: str = """match x:
+    case x if x > 0:
+        pass
+"""
+    m_guard_mod: Module | CPtr = parse(m_guard_src, pool)
+    if m_guard_mod is not None:
+        dump(m_guard_mod, dump_buf, DUMP_BUF_SIZE)
+        has_guard: str = string.strstr(dump_buf, "guard=Compare(")
+        if has_guard is not None:
+            passed += 1
+            printf("PASS: Match x if x > 0 -> guard=Compare\n")
+        else:
+            failed += 1
+            printf("FAIL: Match guard, guard=%d\n", has_guard is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match guard parse returned None\n")
+
+    # --- Test 85: Match 映射模式 {"k": v} ---
+    m_map_src: str = """match x:
+    case {"k": v}:
+        pass
+"""
+    m_map_mod: Module | CPtr = parse(m_map_src, pool)
+    if m_map_mod is not None:
+        dump(m_map_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mm: str = string.strstr(dump_buf, "MatchMapping(")
+        if has_mm is not None:
+            passed += 1
+            printf("PASS: Match {'k': v} -> MatchMapping\n")
+        else:
+            failed += 1
+            printf("FAIL: Match mapping, mm=%d\n", has_mm is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match mapping parse returned None\n")
+
+    # --- Test 86: Match 映射带 rest {"k": v, **rest} ---
+    m_map2_src: str = """match x:
+    case {"k": v, **rest}:
+        pass
+"""
+    m_map2_mod: Module | CPtr = parse(m_map2_src, pool)
+    if m_map2_mod is not None:
+        dump(m_map2_mod, dump_buf, DUMP_BUF_SIZE)
+        has_mm2: str = string.strstr(dump_buf, "MatchMapping(")
+        has_rest: str = string.strstr(dump_buf, "rest='rest'")
+        if has_mm2 is not None and has_rest is not None:
+            passed += 1
+            printf("PASS: Match {'k': v, **rest} -> MatchMapping with rest\n")
+        else:
+            failed += 1
+            printf("FAIL: Match mapping rest, mm=%d rest=%d\n",
+                   has_mm2 is not None, has_rest is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match mapping rest parse returned None\n")
+
+    # --- Test 87: Match 组合模式 (1 | 2) as p ---
+    m_combo_src: str = """match x:
+    case (1 | 2) as p:
+        pass
+"""
+    m_combo_mod: Module | CPtr = parse(m_combo_src, pool)
+    if m_combo_mod is not None:
+        dump(m_combo_mod, dump_buf, DUMP_BUF_SIZE)
+        has_combo_or: str = string.strstr(dump_buf, "MatchOr(")
+        has_combo_as: str = string.strstr(dump_buf, "MatchAs(")
+        if has_combo_or is not None and has_combo_as is not None:
+            passed += 1
+            printf("PASS: Match (1|2) as p -> MatchAs(MatchOr)\n")
+        else:
+            failed += 1
+            printf("FAIL: Match combo, or=%d as=%d\n",
+                   has_combo_or is not None, has_combo_as is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match combo parse returned None\n")
+
+    # --- Test 88: async def ---
+    adef_src: str = """async def f():
+    pass
+"""
+    adef_mod: Module | CPtr = parse(adef_src, pool)
+    if adef_mod is not None and adef_mod.children is not None:
+        adef_cnt: t.CSizeT = adef_mod.children.__len__()
+        if adef_cnt == 1:
+            adef_child: AST | CPtr = adef_mod.children.get(0)
+            if adef_child is not None and adef_child.kind() == ASTKind.FunctionDef:
+                adef_fd: FunctionDef | CPtr = (FunctionDef | CPtr)(adef_child)
+                if (adef_fd.flags & FLAG_IS_ASYNC) != 0:
+                    passed += 1
+                    printf("PASS: async def f() -> FunctionDef with FLAG_IS_ASYNC\n")
+                else:
+                    failed += 1
+                    printf("FAIL: async def flags=%d (no FLAG_IS_ASYNC)\n", adef_fd.flags)
+            else:
+                failed += 1
+                printf("FAIL: async def child kind=%d\n",
+                       adef_child.kind() if adef_child is not None else -1)
+        else:
+            failed += 1
+            printf("FAIL: async def children=%zu (expected 1)\n", adef_cnt)
+    else:
+        failed += 1
+        printf("FAIL: async def parse returned None\n")
+
+    # --- Test 89: async for (inside async def) ---
+    afor_src: str = """async def f():
+    async for x in y:
+        pass
+"""
+    afor_mod: Module | CPtr = parse(afor_src, pool)
+    if afor_mod is not None and afor_mod.children is not None:
+        afor_cnt: t.CSizeT = afor_mod.children.__len__()
+        if afor_cnt == 1:
+            afor_child: AST | CPtr = afor_mod.children.get(0)
+            if afor_child is not None and afor_child.kind() == ASTKind.FunctionDef:
+                afor_fd2: FunctionDef | CPtr = (FunctionDef | CPtr)(afor_child)
+                if (afor_fd2.flags & FLAG_IS_ASYNC) != 0:
+                    if afor_fd2.children is not None:
+                        afor_inner: AST | CPtr = afor_fd2.children.get(0)
+                        if afor_inner is not None and afor_inner.kind() == ASTKind.For:
+                            afor_for: For | CPtr = (For | CPtr)(afor_inner)
+                            if (afor_for.flags & FLAG_IS_ASYNC) != 0:
+                                passed += 1
+                                printf("PASS: async for -> For with FLAG_IS_ASYNC\n")
+                            else:
+                                failed += 1
+                                printf("FAIL: async for flags=%d\n", afor_for.flags)
+                        else:
+                            failed += 1
+                            printf("FAIL: async for inner kind=%d\n",
+                                   afor_inner.kind() if afor_inner is not None else -1)
+                    else:
+                        failed += 1
+                        printf("FAIL: async for no children\n")
+                else:
+                    failed += 1
+                    printf("FAIL: async for outer def flags=%d\n", afor_fd2.flags)
+            else:
+                failed += 1
+                printf("FAIL: async for outer kind=%d\n",
+                       afor_child.kind() if afor_child is not None else -1)
+        else:
+            failed += 1
+            printf("FAIL: async for children=%zu\n", afor_cnt)
+    else:
+        failed += 1
+        printf("FAIL: async for parse returned None\n")
+
+    # --- Test 90: async with (inside async def) ---
+    awith_src: str = """async def f():
+    async with ctx:
+        pass
+"""
+    awith_mod: Module | CPtr = parse(awith_src, pool)
+    if awith_mod is not None and awith_mod.children is not None:
+        awith_cnt: t.CSizeT = awith_mod.children.__len__()
+        if awith_cnt == 1:
+            awith_child: AST | CPtr = awith_mod.children.get(0)
+            if awith_child is not None and awith_child.kind() == ASTKind.FunctionDef:
+                awith_fd: FunctionDef | CPtr = (FunctionDef | CPtr)(awith_child)
+                if (awith_fd.flags & FLAG_IS_ASYNC) != 0:
+                    if awith_fd.children is not None:
+                        awith_inner: AST | CPtr = awith_fd.children.get(0)
+                        if awith_inner is not None and awith_inner.kind() == ASTKind.With:
+                            awith_w: With | CPtr = (With | CPtr)(awith_inner)
+                            if (awith_w.flags & FLAG_IS_ASYNC) != 0:
+                                passed += 1
+                                printf("PASS: async with -> With with FLAG_IS_ASYNC\n")
+                            else:
+                                failed += 1
+                                printf("FAIL: async with flags=%d\n", awith_w.flags)
+                        else:
+                            failed += 1
+                            printf("FAIL: async with inner kind=%d\n",
+                                   awith_inner.kind() if awith_inner is not None else -1)
+                    else:
+                        failed += 1
+                        printf("FAIL: async with no children\n")
+                else:
+                    failed += 1
+                    printf("FAIL: async with outer def flags=%d\n", awith_fd.flags)
+            else:
+                failed += 1
+                printf("FAIL: async with outer kind=%d\n",
+                       awith_child.kind() if awith_child is not None else -1)
+        else:
+            failed += 1
+            printf("FAIL: async with children=%zu\n", awith_cnt)
+    else:
+        failed += 1
+        printf("FAIL: async with parse returned None\n")
+
+    # --- Test 91: Match 复合语句 (多 case + 多类型模式) ---
+    m_complex_src: str = """match cmd:
+    case "quit":
+        pass
+    case ["go", dir]:
+        pass
+    case Point(x=0, y=0):
+        pass
+    case _:
+        pass
+"""
+    m_complex_mod: Module | CPtr = parse(m_complex_src, pool)
+    if m_complex_mod is not None:
+        dump(m_complex_mod, dump_buf, DUMP_BUF_SIZE)
+        has_c_mv:  str = string.strstr(dump_buf, "MatchValue(")
+        has_c_msq: str = string.strstr(dump_buf, "MatchSequence(")
+        has_c_mc:  str = string.strstr(dump_buf, "MatchClass(")
+        has_c_ma:  str = string.strstr(dump_buf, "MatchAs(")
+        if has_c_mv is not None and has_c_msq is not None and \
+           has_c_mc is not None and has_c_ma is not None:
+            passed += 1
+            printf("PASS: Match complex (4 cases) -> all pattern types\n")
+        else:
+            failed += 1
+            printf("FAIL: Match complex, mv=%d msq=%d mc=%d ma=%d\n",
+                   has_c_mv is not None, has_c_msq is not None,
+                   has_c_mc is not None, has_c_ma is not None)
+    else:
+        failed += 1
+        printf("FAIL: Match complex parse returned None\n")
+
+    # --- Test 92: async def + async for + async with 组合 ---
+    acombo_src: str = """async def f():
+    async with ctx:
+        async for x in y:
+            pass
+"""
+    acombo_mod: Module | CPtr = parse(acombo_src, pool)
+    if acombo_mod is not None and acombo_mod.children is not None:
+        acombo_cnt: t.CSizeT = acombo_mod.children.__len__()
+        if acombo_cnt == 1:
+            acombo_child: AST | CPtr = acombo_mod.children.get(0)
+            if acombo_child is not None and acombo_child.kind() == ASTKind.FunctionDef:
+                acombo_fd2: FunctionDef | CPtr = (FunctionDef | CPtr)(acombo_child)
+                if (acombo_fd2.flags & FLAG_IS_ASYNC) != 0:
+                    passed += 1
+                    printf("PASS: async def + async with + async for combo\n")
+                else:
+                    failed += 1
+                    printf("FAIL: async combo flags=%d\n", acombo_fd2.flags)
+            else:
+                failed += 1
+                printf("FAIL: async combo kind=%d\n",
+                       acombo_child.kind() if acombo_child is not None else -1)
+        else:
+            failed += 1
+            printf("FAIL: async combo children=%zu\n", acombo_cnt)
+    else:
+        failed += 1
+        printf("FAIL: async combo parse returned None\n")
+
+    # --- 结果汇总 ---
+    printf("\n=== Results: %d passed, %d failed ===\n", passed, failed)
+
+    stdlib.free(dump_buf)
+    stdlib.free(arena)
+    if failed > 0:
+        return 1
+    return 0

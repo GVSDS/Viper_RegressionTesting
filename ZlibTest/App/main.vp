@@ -1,0 +1,20 @@
+import t
+import stdio
+import string
+import zlib.pyzlib as stdzp
+import test_pyzlib as tpz
+import w32.win32memory
+import c
+import testcheck
+
+def main() -> t.CInt:
+    testcheck.begin("ZlibTest: Zlib 压缩库测试")
+    tpz.main123456()
+    testcheck.ok("zlib test_pyzlib completed")
+
+    # 标准 zlib 库（includes/zlib）
+    testcheck.section("标准 zlib 库 (zlib.pyzlib)")
+    print(stdzp.runtime_version())
+    testcheck.ok("zlib runtime version printed")
+
+    return testcheck.end()

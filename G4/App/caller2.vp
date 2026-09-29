@@ -1,0 +1,36 @@
+import t
+import stdio
+import stdlib
+import memhub
+from g4node import G4Node, new_g4node
+
+
+# ============================================================
+# caller2: 另一个导入 G4Node 的模块
+#
+# 增加 G4Node 的跨模块引用次数，触发多模块竞争条件
+# ============================================================
+
+
+def caller2_reverse_chain(head: G4Node | t.CPtr) -> G4Node | t.CPtr:
+    """反转链表，直接访问 Next 字段"""
+    if head is None:
+        return None
+    prev: G4Node | t.CPtr = None
+    cur: G4Node | t.CPtr = head
+    while cur is not None:
+        nxt: G4Node | t.CPtr = cur.Next
+        cur.Next = prev
+        prev = cur
+        cur = nxt
+    return prev
+
+
+def caller2_count_nodes(head: G4Node | t.CPtr) -> t.CInt:
+    """计算链表节点数"""
+    count: t.CInt = 0
+    cur: G4Node | t.CPtr = head
+    while cur is not None:
+        count = count + 1
+        cur = cur.Next
+    return count

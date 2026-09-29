@@ -1,0 +1,47 @@
+import t, c
+import testcheck
+import class_test
+
+
+def main() -> t.CInt:
+    testcheck.begin("ClassArrayTest: 类与数组测试")
+
+    testcheck.section("CLASS TESTS")
+    class_test.TestBasicDataClass()
+    testcheck.ok("TestBasicDataClass")
+    class_test.TestPoint3DClass()
+    testcheck.ok("TestPoint3DClass")
+    class_test.TestStudentClass()
+    testcheck.ok("TestStudentClass")
+    class_test.TestCounterClass()
+    testcheck.ok("TestCounterClass")
+    class_test.TestStackAllocation()
+    testcheck.ok("TestStackAllocation")
+    class_test.TestHeapAllocation()
+    testcheck.ok("TestHeapAllocation")
+    class_test.TestHeapObjectWithInit()
+    testcheck.ok("TestHeapObjectWithInit")
+    class_test.TestMultipleStackObjects()
+    testcheck.ok("TestMultipleStackObjects")
+    class_test.TestImplicitInitCall()
+    testcheck.ok("TestImplicitInitCall")
+    class_test.TestClassWithBitFields()
+    testcheck.ok("TestClassWithBitFields")
+
+    testcheck.section("ARRAY TESTS")
+    class_test.TestIntArray()
+    testcheck.ok("TestIntArray")
+    class_test.TestFloatArray()
+    testcheck.ok("TestFloatArray")
+    class_test.TestCharArray()
+    testcheck.ok("TestCharArray")
+    class_test.TestNestedArray()
+    testcheck.ok("TestNestedArray")
+    class_test.TestArrayWithStruct()
+    testcheck.ok("TestArrayWithStruct")
+    class_test.TestArrayPointer()
+    testcheck.ok("TestArrayPointer")
+    class_test.TestDynamicString()
+    testcheck.ok("TestDynamicString")
+
+    return testcheck.end()

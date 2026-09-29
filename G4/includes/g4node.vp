@@ -1,0 +1,53 @@
+import t
+from linkedlist import GSListNode
+import memhub
+
+# ============================================================
+# G4Node: 继承 GSListNode[G4Node] 的测试类
+#
+# 这个类在 includes 目录中，会走 Phase1 路径
+# 模拟 TransPyV 中 Value 类的结构：
+#   - 继承 GSListNode[G4Node] 获取 Next 字段
+#   - 5 个自有字段（与 Value 相同数量）
+#   - @t.NoVTable 装饰器
+#
+# 继承展平后应有 6 个字段：Next + 5 自有
+# 若继承展平失败，只有 5 个字段（缺少 Next）
+# ============================================================
+
+@t.NoVTable
+class G4Node(GSListNode[G4Node]):
+    Ty: t.CPtr             # 模拟 Value.Ty
+    Name: t.CPtr           # 模拟 Value.Name
+    IsConst: t.CInt        # 模拟 Value.IsConst
+    IntVal: t.CInt64T      # 模拟 Value.IntVal
+    FloatVal: t.CDouble    # 模拟 Value.FloatVal
+
+    def __init__(self):
+        self.Ty = None
+        self.Name = None
+        self.IsConst = 0
+        self.IntVal = 0
+        self.FloatVal = 0.0
+        self.Next = None
+
+
+# 工厂函数（与 __values.py 中的 new_value 类似）
+def new_g4node(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
+    ptr: G4Node | t.CPtr = pool.alloc(48)
+    if ptr:
+        ptr.Ty = None
+        ptr.Name = None
+        ptr.IsConst = 0
+        ptr.IntVal = 0
+        ptr.FloatVal = 0.0
+        ptr.Next = None
+    return ptr
+
+
+def g4node_get_next(node: G4Node | t.CPtr) -> G4Node | t.CPtr:
+    return node.Next
+
+
+def g4node_set_next(node: G4Node | t.CPtr, next_node: G4Node | t.CPtr):
+    node.Next = next_node

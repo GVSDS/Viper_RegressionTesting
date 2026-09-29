@@ -1,0 +1,31 @@
+import t, c
+from stdint import *
+import stdio
+
+
+def bump(v: char) -> char:
+    return char(v + 1)
+
+
+def main() -> t.CInt | t.CExport:
+    # 1) char 注解：char = t.CChar = i8（标量内置类型，非指针）
+    ch: char = 65
+    stdio.printf("1 char annot: %d (expect 65)\n", int(ch))
+
+    # 2) char() 强转 int→char：300 trunc 到 i8 → 44
+    big: char = char(300)
+    stdio.printf("2 char cast trunc: %d (expect 44)\n", int(big))
+
+    # 3) 函数返回 char（i8 存储）
+    nx: char = bump(ch)
+    stdio.printf("3 char return: %d (expect 66)\n", int(nx))
+
+    # 4) 单字符字面量 'Z' 赋给 char（90）
+    lit: char = 'Z'
+    stdio.printf("4 char literal: %d (expect 90)\n", int(lit))
+
+    # 5) char 参与算术（i8 与 int 混合提升）
+    s: int = ch + 1
+    stdio.printf("5 char arith: %d (expect 66)\n", s)
+
+    return 0

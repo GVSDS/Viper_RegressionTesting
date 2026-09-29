@@ -1,0 +1,45 @@
+import t, c
+from stdint import *
+import stdio
+
+
+# 模块级全局定长数组（rawarray 复刻 t.CArray）
+g_arr: rawarray[t.CInt, 4] = [10, 20, 30, 40]
+
+
+# struct 内嵌定长数组字段
+class Ctx:
+    state: rawarray[uint32, 5]
+    buf: rawarray[uint8, 64]
+
+
+def main() -> t.CInt | t.CExport:
+    # 1) 全局数组读取
+    stdio.printf("1 g_arr[0]=%d g_arr[3]=%d (expect 10 40)\n", g_arr[0], g_arr[3])
+
+    # 2) 局部定长数组（写 + 读）
+    loc: rawarray[uint32, 3] = [0, 0, 0]
+    loc[1] = 7
+    stdio.printf("2 loc[1]=%d (expect 7)\n", loc[1])
+
+    # 3) struct 内嵌数组字段
+    ctx: Ctx
+    ctx.state[0] = 100
+    ctx.state[4] = 400
+    ctx.buf[0] = 65
+    stdio.printf("3 ctx.state[0]=%d ctx.state[4]=%d ctx.buf[0]=%d (expect 100 400 65)\n",
+                 ctx.state[0], ctx.state[4], int(ctx.buf[0]))
+
+    # 4) 参数数组衰减（CArray 形参 → 元素指针）+ sizeof
+    total: int = sum_arr(loc, 3)
+    stdio.printf("4 sum=%d (expect 7)\n", total)
+
+    return 0
+
+
+def sum_arr(vals: rawarray[uint32, 3], n: int) -> int:
+    s: int = 0
+    i: int
+    for i in range(n):
+        s = s + int(vals[i])
+    return s

@@ -1,0 +1,198 @@
+from stdint import *
+import t, c
+import stdio
+import string
+import w32.win32console
+import w32.win32memory
+import testcheck
+
+# ============================================================
+# TypeCastTest - 测试类型转换、zext/sext/trunc 行为、
+#               有符号/无符号混合运算、CDefine 常量
+# ============================================================
+
+# --- Test 1: CUInt8T -> CUInt32T 零扩展 (zext) ---
+def test_zext_u8_u32():
+    v: t.CUInt8T = 200  # 0xC8, 如果 sign-extend 会变成 0xFFFFFFC8
+    wide: t.CUInt32T = t.CUInt32T(v)
+    testcheck.check(wide == 200, "zext u8->u32 (200)", "zext u8->u32 (expected 200)")
+
+
+# --- Test 2: CInt8T -> CInt32T 符号扩展 (sext) ---
+def test_sext_i8_i32():
+    v: t.CInt8T = -50  # 0xCE
+    wide: t.CInt32T = t.CInt32T(v)
+    testcheck.check(wide == -50, "sext i8->i32 (-50)", "sext i8->i32 (expected -50)")
+
+
+# --- Test 3: CUInt32T -> CUInt64T 零扩展 ---
+def test_zext_u32_u64():
+    v: t.CUInt32T = 0x80000000  # 最高位为1
+    wide: t.CUInt64T = t.CUInt64T(v)
+    testcheck.check(wide == 0x80000000, "zext u32->u64 (0x80000000)", "zext u32->u64 (expected 0x80000000)")
+
+
+# --- Test 4: CInt32T -> CInt64T 符号扩展 ---
+def test_sext_i32_i64():
+    v: t.CInt32T = -1  # 0xFFFFFFFF
+    wide: t.CInt64T = t.CInt64T(v)
+    testcheck.check(wide == -1, "sext i32->i64 (-1)", "sext i32->i64 (expected -1)")
+
+
+# --- Test 5: CUInt64T -> CUInt32T 截断 (trunc) ---
+def test_trunc_u64_u32():
+    v: t.CUInt64T = 0x123456789ABCDEF0
+    narrow: t.CUInt32T = t.CUInt32T(v)
+    testcheck.check(narrow == 0x9ABCDEF0, "trunc u64->u32 (0x9ABCDEF0)", "trunc u64->u32 (expected 0x9ABCDEF0)")
+
+
+# --- Test 6: 有符号/无符号混合运算 ---
+def test_mixed_signed_unsigned():
+    a: t.CInt = -10
+    b: t.CUInt32T = 20
+    # C 中有符号/无符号混合运算，有符号会转为无符号
+    # -10 作为 unsigned 是 0xFFFFFFF6 = 4294967286
+    # 4294967286 + 20 = 4294967306 (overflow to 10 on u32)
+    result: t.CUInt32T = t.CUInt32T(a) + b
+    stdio.printf("  mixed signed+unsigned: %u (C behavior: %u)\n", result, t.CUInt32T(-10) + 20)
+    testcheck.ok("mixed signed+unsigned (C behavior)")
+
+
+# --- Test 7: CDefine 常量在运算中的行为 ---
+VAL_32BIT: t.CDefine = 0x80000000
+VAL_NEG: t.CDefine = -1
+VAL_BIG: t.CDefine = 0xFFFFFFFF
+
+def test_cdefine_values():
+    """测试 CDefine 常量值是否正确"""
+    v1: t.CUInt32T = t.CUInt32T(VAL_32BIT)
+    v2: t.CInt = VAL_NEG
+    v3: t.CUInt32T = t.CUInt32T(VAL_BIG)
+    stdio.printf("  CDefine: 0x80000000=%u, -1=%d, 0xFFFFFFFF=%u\n", v1, v2, v3)
+    testcheck.ok("CDefine constants")
+
+
+# --- Test 8: 位运算与类型宽度 ---
+def test_bitops_width():
+    """测试位运算是否保持正确类型宽度"""
+    # 左移
+    v: t.CUInt32T = 1
+    shifted: t.CUInt32T = v << 31  # 应该是 0x80000000
+    testcheck.check(shifted == 0x80000000, "bit shift (1<<31 = 0x80000000)", "bit shift (expected 0x80000000)")
+
+    # 右移
+    back: t.CUInt32T = shifted >> 31  # 应该是 1
+    testcheck.check(back == 1, "bit shift (0x80000000>>31 = 1)", "bit shift (expected 1)")
+
+
+# --- Test 9: 整数除法与取模 (无符号) ---
+def test_unsigned_divmod():
+    a: t.CUInt32T = 100
+    b: t.CUInt32T = 7
+    q: t.CUInt32T = a // b
+    r: t.CUInt32T = a % b
+    testcheck.check(q == 14 and r == 2, "unsigned div/mod (100//7=14, 100%7=2)", "unsigned div/mod (expected 14,2)")
+
+
+# --- Test 10: 整数除法与取模 (有符号负数) ---
+def test_signed_divmod_neg():
+    a: t.CInt = -100
+    b: t.CInt = 7
+    q: t.CInt = a // b
+    r: t.CInt = a % b
+    # C 语言: -100/7 = -14, -100%7 = -2
+    # Python: -100//7 = -15, -100%7 = 5
+    # TransPyC 应该遵循 C 语义
+    stdio.printf("  signed div/mod: -100//7=%d, -100%%7=%d (C: -14,-2)\n", q, r)
+    testcheck.ok("signed div/mod (C semantics)")
+
+
+# --- Test 11: 比较运算返回值 ---
+def test_comparison_types():
+    a: t.CInt = 10
+    b: t.CInt = 20
+    c_val: t.CInt = 10
+    lt: t.CInt = 1 if a < b else 0
+    eq: t.CInt = 1 if a == c_val else 0
+    gt: t.CInt = 1 if b > a else 0
+    testcheck.check(lt == 1 and eq == 1 and gt == 1, "comparison operations", "comparison operations failed")
+
+
+# --- Test 12: 指针与整数互转 ---
+def test_ptr_int_cast():
+    buf: t.CUInt32T | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    if not buf:
+        testcheck.fail("VirtualAlloc returned NULL")
+        return
+    # 指针转整数
+    addr: t.CUInt64T = t.CUInt64T(buf)
+    stdio.printf("  ptr->int: addr=0x%lx\n", addr)
+    # 整数转指针
+    p2: t.CUInt32T | t.CPtr = (t.CUInt32T | t.CPtr)(addr)
+    p2[0] = 0x12345678
+    testcheck.check(buf[0] == 0x12345678, "ptr<->int roundtrip", "ptr<->int roundtrip failed")
+
+
+# --- Test 13: CUInt64T 乘法溢出行为 ---
+def test_u64_mul():
+    a: t.CUInt64T = 1000
+    b: t.CUInt64T = 1000
+    c_val: t.CUInt64T = a * b
+    testcheck.check(c_val == 1000000, "u64 mul (1000*1000=1000000)", "u64 mul (expected 1000000)")
+
+
+# --- Test 14: bool 运算 (and/or) ---
+def test_bool_ops():
+    a: t.CInt = 5
+    b: t.CInt = 0
+    c_val: t.CInt = 3
+    # Python `and`/`or` 是短路求值
+    r1: t.CInt = a and c_val  # 5 and 3 -> 在 C 中应该是 (5 && 3) = 1
+    r2: t.CInt = b or c_val   # 0 or 3 -> 在 C 中应该是 (0 || 3) = 1
+    stdio.printf("  bool: 5 and 3 = %d, 0 or 3 = %d (expect 1,1 in C)\n", r1, r2)
+    testcheck.ok("bool ops (C semantics)")
+
+
+# --- Test 15: 条件表达式 (三元运算符) ---
+def test_ternary():
+    a: t.CInt = 10
+    b: t.CInt = 20
+    max_val: t.CInt = a if a > b else b
+    min_val: t.CInt = a if a < b else b
+    testcheck.check(max_val == 20 and min_val == 10, "ternary (max=20 min=10)", "ternary (expected 20,10)")
+
+
+def main() -> t.CInt | t.CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("TypeCastTest: 类型转换与运算基准测试")
+
+    testcheck.section("zext/sext/trunc")
+    test_zext_u8_u32()
+    test_sext_i8_i32()
+    test_zext_u32_u64()
+    test_sext_i32_i64()
+    test_trunc_u64_u32()
+
+    testcheck.section("mixed operations")
+    test_mixed_signed_unsigned()
+    test_cdefine_values()
+    test_bitops_width()
+
+    testcheck.section("div/mod")
+    test_unsigned_divmod()
+    test_signed_divmod_neg()
+
+    testcheck.section("comparison & logic")
+    test_comparison_types()
+    test_bool_ops()
+    test_ternary()
+
+    testcheck.section("pointer/int cast")
+    test_ptr_int_cast()
+
+    testcheck.section("u64 mul")
+    test_u64_mul()
+
+    return testcheck.end()

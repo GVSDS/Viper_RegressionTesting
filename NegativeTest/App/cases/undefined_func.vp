@@ -1,0 +1,4 @@
+import t, c
+
+def main() -> int:
+    return foo(1)

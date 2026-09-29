@@ -1,0 +1,71 @@
+import t, c
+import stdio
+import testcheck
+import atom
+
+
+# ============================================================
+# G6: 验证 atom 模块的内联汇编原子操作
+#
+# TPV 在编译 atom.py 的 __atomic_test_and_set 时崩溃
+# (ACCESS_VIOLATION in ASM args loop ai3=2)
+# 此测试用 TPC 编译验证 atom 模块是否正确工作
+# ============================================================
+
+
+def test_atomic_test_and_set():
+    testcheck.section("Test 1: __atomic_test_and_set")
+    flag: t.CUInt8T = 0
+    result: t.CBool = atom.__atomic_test_and_set(c.Addr(flag), atom.ATOMIC_ACQUIRE)
+    # test_and_set 返回旧值: flag=0 -> 返回 0, flag 变为 1
+    testcheck.check(result == t.CBool(0), "first set returns old value 0", "expect 0")
+    testcheck.check(flag == 1, "flag is 1 after set", "expect 1")
+
+    # 第二次设置应返回 1（旧值已为 1）
+    result2: t.CBool = atom.__atomic_test_and_set(c.Addr(flag), atom.ATOMIC_ACQUIRE)
+    testcheck.check(result2 == t.CBool(1), "second set returns old value 1", "expect 1")
+
+
+def test_atomic_clear():
+    testcheck.section("Test 2: __atomic_clear")
+    flag: t.CUInt8T = 1
+    atom.__atomic_clear(c.Addr(flag), atom.ATOMIC_RELEASE)
+    testcheck.check(flag == 0, "flag is 0 after clear", "expect 0")
+
+
+def test_atomic_thread_fence():
+    testcheck.section("Test 3: __atomic_thread_fence")
+    # 只是验证不崩溃
+    atom.__atomic_thread_fence(atom.ATOMIC_SEQ_CST)
+    testcheck.ok("mfence executed OK")
+
+
+def test_atomic_lock_free():
+    testcheck.section("Test 4: __atomic_is_lock_free")
+    flag: t.CUInt8T = 0
+    result: t.CBool = atom.__atomic_is_lock_free(1, c.Addr(flag))
+    testcheck.check(result == t.CBool(1), "1-byte is lock free", "expect 1")
+
+
+def test_atomic_spinlock():
+    testcheck.section("Test 5: spinlock pattern (test_and_set + clear)")
+    lock: t.CUInt8T = 0
+
+    # 获取锁
+    while atom.__atomic_test_and_set(c.Addr(lock), atom.ATOMIC_ACQUIRE) == t.CBool(1):
+        pass
+    testcheck.check(lock == 1, "lock acquired", "expect lock=1")
+
+    # 释放锁
+    atom.__atomic_clear(c.Addr(lock), atom.ATOMIC_RELEASE)
+    testcheck.check(lock == 0, "lock released", "expect lock=0")
+
+
+def main() -> t.CInt:
+    testcheck.begin("G6: atom module (inline asm atomic operations)")
+    test_atomic_test_and_set()
+    test_atomic_clear()
+    test_atomic_thread_fence()
+    test_atomic_lock_free()
+    test_atomic_spinlock()
+    return testcheck.end()

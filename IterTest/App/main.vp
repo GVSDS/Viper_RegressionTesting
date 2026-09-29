@@ -1,0 +1,52 @@
+import t
+import stdio
+import string
+import testcheck
+
+def test_for_in_string():
+    testcheck.section("Test 1: for-in string iteration")
+    s: t.CChar | t.CPtr = "Hello"
+    result: t.CInt = 0
+    for ch in s:
+        result += ch
+    # H=72, e=101, l=108, l=108, o=111 => 500
+    testcheck.check(result == 500, "for-in string (sum=500)", "for-in string (sum expect 500)")
+
+def test_for_in_char_ptr():
+    testcheck.section("Test 2: for-in char* iteration")
+    s: t.CChar | t.CPtr = "ABC"
+    chars: t.CArray[t.CInt, 4] = [0]
+    idx: t.CInt = 0
+    for ch in s:
+        if idx < 3:
+            chars[idx] = ch
+        idx += 1
+    testcheck.check(chars[0] == 65 and chars[1] == 66 and chars[2] == 67, "for-in char* (A=65 B=66 C=67)", "for-in char* (expect A=65 B=66 C=67)")
+
+def test_strcpy_for_in():
+    testcheck.section("Test 3: strcpy using for-in")
+    src: t.CChar | t.CPtr = "test"
+    # 手动实现 strcpy 用 for-in
+    import w32.win32memory
+    buf: t.CChar | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    if t.CUInt64T(buf) == 0:
+        stdio.printf("SKIP: VirtualAlloc returned NULL\n")
+        return
+    string.memset(buf, 0, 64)
+    # 用 for-in 复制
+    p: t.CChar | t.CPtr = buf
+    for ch in src:
+        p[0] = ch
+        p += 1
+    p[0] = 0
+    # i8* == 是指针地址比较（C-Like 语义），字符串内容比较需显式 strcmp
+    testcheck.check(string.strcmp(buf, "test") == 0, "strcpy for-in (result=test)", "strcpy for-in (cmp mismatch)")
+
+import w32.win32memory
+
+def main() -> t.CInt:
+    testcheck.begin("IterTest: 指针迭代测试")
+    test_for_in_string()
+    test_for_in_char_ptr()
+    test_strcpy_for_in()
+    return testcheck.end()

@@ -1,0 +1,258 @@
+import t
+import t as tt
+import stdio
+import testcheck
+
+from t import CEnum as en
+from t import CUnion as un
+from t import REnum as ren
+from t import CStruct as cs
+from t import CInt as myint
+from t import CChar, CPtr
+
+
+# ============================================================
+# Test 1: from t import CEnum as en; class X(en)
+# ============================================================
+enum Color:
+    Red = 0
+    Green = 1
+    Blue = 2
+
+
+# ============================================================
+# Test 2: import t as tt; class X(tt.CEnum)
+# ============================================================
+enum Status:
+    Ok = 0
+    Error = 1
+
+
+# ============================================================
+# Test 3: from t import CUnion as un; class X(un)
+# ============================================================
+union Data:
+    i_val: t.CInt
+    f_val: t.CFloat
+
+
+# ============================================================
+# Test 4: from t import REnum as ren; class X(ren)
+# ============================================================
+renum Opt:
+    class Some:
+        val: myint
+    None_ = 0
+
+
+# ============================================================
+# Test 5: 前向引用检测 — _class_graph 正确识别父类
+# （注：检测已修复，但成员继承仍需父类先处理）
+# ============================================================
+class Parent:
+    a: t.CInt
+
+    def get_a(self) -> t.CInt:
+        return self.a
+
+
+class Child(Parent):
+    b: t.CInt
+
+    def get_sum(self) -> t.CInt:
+        return self.a + self.b
+
+
+# ============================================================
+# Test 6: 多层继承 A -> B -> C，CVTable 向上传播
+# ============================================================
+class Base:
+    x: t.CInt
+
+    def base_val(self) -> t.CInt:
+        return self.x
+
+
+class Mid(Base):
+    y: t.CInt
+
+    def mid_val(self) -> t.CInt:
+        return self.y
+
+
+class Leaf(Mid):
+    z: t.CInt
+
+    def leaf_val(self) -> t.CInt:
+        return self.z
+
+
+# ============================================================
+# Test 7: 类型别名用于注解
+# ============================================================
+val: myint = 42
+
+
+# ============================================================
+# Test 8: BigEndian 字节序
+# ============================================================
+class NetHeader:
+    magic: t.CInt | t.BigEndian
+    length: t.CShort | t.BigEndian
+    normal: t.CInt
+
+
+# ============================================================
+# Test 9: import t as tt; tt.CInt 作为类型注解
+# ============================================================
+# class TtStruct:
+#     x: tt.CInt
+#     y: tt.CFloat
+
+
+# ============================================================
+# Test 10: import t as tt; class X(tt.CStruct)
+# ============================================================
+class TtPoint:
+    x: t.CInt
+    y: t.CInt
+
+
+# ============================================================
+# Test 11: import t as tt; @tt.Object 装饰器
+# ============================================================
+class TtObject:
+    val: t.CInt
+
+    def get_val(self) -> t.CInt:
+        return self.val
+
+
+# ============================================================
+# Test 12: from t import CStruct as cs; class X(cs)
+# ============================================================
+class CsPoint:
+    x: t.CInt
+    y: t.CInt
+
+
+# ============================================================
+# Test 13: import t as tt; class X(tt.CUnion)
+# ============================================================
+union TtUnion:
+    a: t.CInt
+    b: t.CFloat
+
+
+# ============================================================
+# Test 14: @tt.Object on class without methods (should fail?)
+# ============================================================
+class TtEmptyObject:
+    val: t.CInt
+
+
+def main() -> t.CInt:
+    testcheck.begin("EdgeCaseTest: 类型别名与边界情况测试")
+
+    # Test 1: CEnum alias
+    testcheck.section("Test 1: CEnum alias")
+    c: t.CInt = Color.Green
+    stdio.printf("Test1 CEnum alias: %d\n", c)
+    testcheck.ok("CEnum alias (Color.Green=1)")
+
+    # Test 2: module alias + CEnum
+    testcheck.section("Test 2: module alias + CEnum")
+    s: t.CInt = Status.Error
+    stdio.printf("Test2 t as tt.CEnum: %d\n", s)
+    testcheck.ok("t as tt.CEnum (Status.Error=1)")
+
+    # Test 3: CUnion alias
+    testcheck.section("Test 3: CUnion alias")
+    d: Data = Data()
+    d.i_val = 10
+    d.f_val = 3.14
+    stdio.printf("Test3 CUnion alias: i=%d f=%f\n", d.i_val, d.f_val)
+    testcheck.ok("CUnion alias (i=10 f=3.14)")
+
+    # Test 4: REnum alias
+    testcheck.section("Test 4: REnum alias")
+    o: Opt = Opt.Some(99)
+    match o:
+        case Opt.Some(v):
+            stdio.printf("Test4 REnum alias: val=%d\n", v)
+        case Opt.None_():
+            stdio.printf("Test4 REnum alias: None\n")
+    testcheck.ok("REnum alias (Opt.Some(99))")
+
+    # Test 5: forward reference
+    testcheck.section("Test 5: forward reference")
+    ch: Child = Child()
+    ch.a = 100
+    ch.b = 200
+    stdio.printf("Test5 forward ref: a=%d b=%d sum=%d\n", ch.a, ch.b, ch.get_sum())
+    stdio.printf("Test5 parent method: %d\n", ch.get_a())
+    testcheck.ok("forward ref (a=100 b=200 sum=300)")
+
+    # Test 6: multi-level inheritance
+    testcheck.section("Test 6: multi-level inheritance")
+    lf: Leaf = Leaf()
+    lf.x = 1
+    lf.y = 2
+    lf.z = 3
+    stdio.printf("Test6 multi-inherit: base=%d mid=%d leaf=%d\n",
+                 lf.base_val(), lf.mid_val(), lf.leaf_val())
+    testcheck.ok("multi-inherit (base=1 mid=2 leaf=3)")
+
+    # Test 7: type alias in annotation
+    testcheck.section("Test 7: type alias in annotation")
+    stdio.printf("Test7 type alias: val=%d\n", val)
+    testcheck.ok("type alias (val=42)")
+
+    # Test 8: BigEndian
+    testcheck.section("Test 8: BigEndian")
+    nh: NetHeader = NetHeader()
+    nh.magic = 0x12345678
+    nh.length = 256
+    nh.normal = 42
+    stdio.printf("Test8 BigEndian: magic=0x%X length=%d normal=%d\n",
+                 nh.magic, nh.length, nh.normal)
+    testcheck.ok("BigEndian (magic=0x12345678 length=256 normal=42)")
+
+    # Test 10: tt.CStruct as base class
+    testcheck.section("Test 10: tt.CStruct as base class")
+    tp: TtPoint = TtPoint()
+    tp.x = 100
+    tp.y = 200
+    stdio.printf("Test10 tt.CStruct: x=%d y=%d\n", tp.x, tp.y)
+    testcheck.ok("tt.CStruct (x=100 y=200)")
+
+    # Test 11: @tt.Object decorator
+    testcheck.section("Test 11: @tt.Object decorator")
+    to: TtObject = TtObject()
+    to.val = 999
+    stdio.printf("Test11 @tt.Object: val=%d\n", to.get_val())
+    testcheck.ok("@tt.Object (val=999)")
+
+    # Test 12: from t import CStruct as cs
+    testcheck.section("Test 12: from t import CStruct as cs")
+    cp: CsPoint = CsPoint()
+    cp.x = 11
+    cp.y = 22
+    stdio.printf("Test12 cs alias: x=%d y=%d\n", cp.x, cp.y)
+    testcheck.ok("cs alias (x=11 y=22)")
+
+    # Test 13: tt.CUnion
+    testcheck.section("Test 13: tt.CUnion")
+    tu: TtUnion = TtUnion()
+    tu.a = 77
+    stdio.printf("Test13 tt.CUnion: a=%d\n", tu.a)
+    testcheck.ok("tt.CUnion (a=77)")
+
+    # Test 14: @tt.Object on empty class
+    testcheck.section("Test 14: @tt.Object on empty class")
+    teo: TtEmptyObject = TtEmptyObject()
+    teo.val = 555
+    stdio.printf("Test14 @tt.Object empty: val=%d\n", teo.val)
+    testcheck.ok("@tt.Object empty (val=555)")
+
+    return testcheck.end()

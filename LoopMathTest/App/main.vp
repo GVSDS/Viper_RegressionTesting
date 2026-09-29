@@ -1,0 +1,79 @@
+import stdio
+import t, c
+import config
+import test
+import testcheck
+
+
+def main() -> t.CInt:
+    testcheck.begin("LoopMathTest: While/数学/跨模块宏测试")
+
+    testcheck.section("Cross-module macros")
+    stdio.printf("  POSMAX: %d\n", config.POSMAX)
+    stdio.printf("  MATH_SCALE: %d\n", config.MATH_SCALE)
+    stdio.printf("  THRESHOLD: %d\n", config.THRESHOLD)
+    stdio.printf("  SHIFT_AMOUNT: %d\n", config.SHIFT_AMOUNT)
+    stdio.printf("  MASK_VALUE: 0x%x\n", config.MASK_VALUE)
+    testcheck.ok("config macros accessible")
+
+    testcheck.section("While Loop Test")
+    test.AboutSizeTWhileTest(10)
+    testcheck.ok("While Loop Test (10)")
+
+    testcheck.section("Math Basic Test (20, 6)")
+    test.MathBasicTest(20, 6)
+    testcheck.ok("Math Basic Test (20, 6)")
+
+    testcheck.section("Math Advanced Test (value=15)")
+    test.MathAdvancedTest(15)
+    testcheck.ok("Math Advanced Test (value=15)")
+
+    testcheck.section("While with Elif-Else Test (-2 to 12)")
+    test.WhileWithElifElseTest(-2, 12)
+    testcheck.ok("While with Elif-Else Test (-2 to 12)")
+
+    testcheck.section("Nested While with Macros Test")
+    test.NestedWhileWithMacrosTest(3, 4)
+    testcheck.ok("Nested While with Macros Test (3, 4)")
+
+    testcheck.section("Complex Condition Test (1, 2, 3)")
+    test.ComplexConditionTest(1, 2, 3)
+    testcheck.ok("Complex Condition Test (1, 2, 3)")
+
+    testcheck.section("Retry Loop Test (8)")
+    test.RetryLoopTest(8)
+    testcheck.ok("Retry Loop Test (8)")
+
+    testcheck.section("Bitwise Operations Test (0b1101101)")
+    test.BitwiseOperationsTest(109)
+    testcheck.ok("Bitwise Operations Test (109)")
+
+    testcheck.section("Compound Assignment Math Test (15, 4)")
+    test.CompoundAssignmentMathTest(15, 4)
+    testcheck.ok("Compound Assignment Math Test (15, 4)")
+
+    testcheck.section("Power and Modulo Test (2, 8)")
+    test.PowerAndModuloTest(2, 8)
+    testcheck.ok("Power and Modulo Test (2, 8)")
+
+    testcheck.section("Mixed Arithmetic Test (5, 3, 4)")
+    test.MixedArithmeticTest(5, 3, 4)
+    testcheck.ok("Mixed Arithmetic Test (5, 3, 4)")
+
+    testcheck.section("Math with While Loop Test (start=1, count=5)")
+    test.MathWithWhileLoopTest(1, 5)
+    testcheck.ok("Math with While Loop Test (1, 5)")
+
+    testcheck.section("Complex Nested Math Test (7, 3)")
+    test.ComplexNestedMathTest(7, 3)
+    testcheck.ok("Complex Nested Math Test (7, 3)")
+
+    testcheck.section("Conditional Math Chain Test (value=10)")
+    test.ConditionalMathChainTest(10)
+    testcheck.ok("Conditional Math Chain Test (value=10)")
+
+    testcheck.section("Bit Manipulation Math Test (0xABCD)")
+    test.BitManipulationMathTest(0xABCD)
+    testcheck.ok("Bit Manipulation Math Test (0xABCD)")
+
+    return testcheck.end()

@@ -1,0 +1,50 @@
+import t
+import stdio
+import c
+
+# Test: class with inline list[struct, N] field
+
+class Inner:
+    code: t.CUnsignedInt
+    bits: t.CInt
+
+class Container:
+    items: t.CArray[Inner, 10]
+    count: t.CInt
+
+    def __init__(self):
+        self.count = 0
+
+    def fill(self):
+        for i in range(10):
+            self.items[i].code = t.CUnsignedInt(i * 100)
+            self.items[i].bits = i
+            self.count += 1
+
+    def check(self):
+        ok: t.CInt = 1
+        for i in range(10):
+            if self.items[i].code != t.CUnsignedInt(i * 100):
+                stdio.printf("FAIL: items[%d].code=%u expect %d\n", i, self.items[i].code, i * 100)
+                ok = 0
+            if self.items[i].bits != i:
+                stdio.printf("FAIL: items[%d].bits=%d expect %d\n", i, self.items[i].bits, i)
+                ok = 0
+        if ok:
+            stdio.printf("PASS: inline list[struct, N] in Container\n")
+        else:
+            stdio.printf("FAIL: inline list[struct, N] in Container\n")
+
+def main() -> t.CInt:
+    stdio.printf("=== InlineArrayTest ===\n")
+    c1 = Container()
+    c1.fill()
+    c1.check()
+
+    # Also test: local variable of Container type
+    c2 = Container()
+    c2.fill()
+    c2.check()
+
+    stdio.printf("=== InlineArrayTest Complete ===\n")
+    return 0

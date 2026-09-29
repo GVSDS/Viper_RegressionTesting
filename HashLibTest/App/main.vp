@@ -1,0 +1,123 @@
+import t, c
+import stdio
+import stdlib
+import string
+import testcheck
+import hashlib
+import binascii
+import base64
+import w32.win32console
+
+
+# ==============================================
+# 工具函数：打印十六进制哈希串
+# ==============================================
+def print_hex(buf: t.CUInt8T | t.CPtr, length: t.CInt):
+    for i in range(length):
+        stdio.printf("%02x", buf[i])
+    stdio.printf("\n")
+
+
+def default_value_test_function(a: t.CInt, b: t.CInt = 1):
+    print(a, b)
+
+
+def main() -> t.CInt | t.CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("HashLibTest: 哈希与校验测试")
+
+    # ---------- hashlib 摘要测试 ----------
+    testcheck.section("HASHLIB")
+    plain: str = "hello123"
+
+    md5_buf: t.CArray[t.CUInt8T, hashlib.MD5_DIGEST_LEN]
+    mctx = hashlib.md5()
+    mctx.update(plain)
+    mctx.final(md5_buf)
+    print("MD5: ")
+    print_hex(md5_buf, hashlib.MD5_DIGEST_LEN)
+    testcheck.ok("HASHLIB md5 completed")
+
+    sha1_buf: t.CArray[t.CUInt8T, hashlib.SHA1_DIGEST_LEN]
+    s1ctx = hashlib.sha1()
+    s1ctx.update(plain)
+    s1ctx.final(sha1_buf)
+    print("SHA1: ")
+    print_hex(sha1_buf, hashlib.SHA1_DIGEST_LEN)
+    testcheck.ok("HASHLIB sha1 completed")
+
+    sha256_buf: t.CArray[t.CUInt8T, hashlib.SHA256_DIGEST_LEN]
+    s2ctx = hashlib.sha256()
+    s2ctx.update(plain)
+    s2ctx.final(sha256_buf)
+    print("SHA256: ")
+    print_hex(sha256_buf, hashlib.SHA256_DIGEST_LEN)
+    testcheck.ok("HASHLIB sha256 completed")
+
+    sha512_buf: t.CArray[t.CUInt8T, hashlib.SHA512_DIGEST_LEN]
+    s5ctx = hashlib.sha512()
+    s5ctx.update(plain)
+    s5ctx.final(sha512_buf)
+    print("SHA512: ")
+    print_hex(sha512_buf, hashlib.SHA512_DIGEST_LEN)
+    testcheck.ok("HASHLIB sha512 completed")
+
+    default_value_test_function(b=2, a=1)
+    testcheck.ok("default value test completed")
+
+    # ---------- base64 编解码测试 ----------
+    testcheck.section("BASE64")
+    b64_out: t.CArray[t.CChar, 256]
+    b64_dec: t.CArray[t.CUInt8T, 256]
+    base64.b64encode(plain, b64_out)
+    print("Base64 编码:", b64_out)
+    dlen: t.CSizeT = base64.b64decode(b64_out, b64_dec)
+    b64_dec[dlen] = 0
+    print("Base64 解码:", b64_dec)
+    testcheck.ok("BASE64 encode/decode completed")
+
+    # ---------- binascii 全套测试 ----------
+    testcheck.section("BINASCII")
+    binascii.init_binascii()
+    raw: str = "HelloWorld!"
+    raw_length: t.CInt = 11
+
+    hex_out: str = binascii.b2a_hex(raw, raw_length)
+    if hex_out:
+        stdio.printf("Hex: %s\n", hex_out)
+        stdlib.free(hex_out)
+    testcheck.ok("BINASCII b2a_hex completed")
+
+    crc_val: t.CUnsignedInt = binascii.crc32(raw, raw_length, 0)
+    stdio.printf("CRC32: %u\n", crc_val)
+    testcheck.ok("BINASCII crc32 completed")
+
+    b64_out2: str = binascii.b2a_base64(raw, raw_length)
+    if b64_out2:
+        stdio.printf("Base64: %s\n", b64_out2)
+        stdlib.free(b64_out2)
+    testcheck.ok("BINASCII b2a_base64 completed")
+
+    uu_out: str = binascii.b2a_uu(raw, raw_length)
+    if uu_out:
+        stdio.printf("UU: %s\n", uu_out)
+        stdlib.free(uu_out)
+    testcheck.ok("BINASCII b2a_uu completed")
+
+    hqx_in: t.CArray[t.CChar, 4] = ['A', 'B', 'C', '\0']
+    hqx_crc: t.CUnsignedShort = 0
+    hqx_out: str
+    unhqx: str
+    hqx_out, hqx_crc = binascii.b2a_hqx(hqx_in, 3)
+    unhqx, hqx_crc = binascii.a2b_hqx(hqx_out)
+    stdio.printf("HQX Test: ABC -> %s -> %s (CRC:%u)\n", hqx_out, unhqx, hqx_crc)
+    stdlib.free(hqx_out); stdlib.free(unhqx)
+    testcheck.ok("BINASCII hqx completed")
+
+    adler_val: t.CUnsignedInt = binascii.adler32(raw, raw_length, 1)
+    stdio.printf("Adler32: %u\n", adler_val)
+    testcheck.ok("BINASCII adler32 completed")
+
+    return testcheck.end()

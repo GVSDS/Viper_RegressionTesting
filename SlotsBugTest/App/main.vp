@@ -1,0 +1,19 @@
+import t
+import ast
+
+
+# ============================================================
+# 回归测试：__slots__ + ast.AST 字段类型
+# 验证 TPC 修复：无法识别的类型注解应报错终止，而非 VoidType alloca 崩溃
+# 对照：使用 ast.expr（无效）会报错；使用 ast.AST（有效）应编译成功
+# ============================================================
+class Result:
+    __slots__ = ('elem_type_node', 'count_node', 'is_pointer')
+
+    def __init__(self, elem: ast.AST, count: ast.AST | t.CPtr, flag: bool) -> None:
+        self.elem_type_node: ast.AST = elem
+        self.count_node: ast.AST | t.CPtr = count
+        self.is_pointer: bool = flag
+
+def main() -> int:
+    return 0

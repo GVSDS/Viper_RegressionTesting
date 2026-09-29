@@ -1,0 +1,506 @@
+import t
+import stdio
+import string
+import testcheck
+import linkedlist
+import viperlib
+import stdlib
+
+
+# ============================================================
+# 子类继承 linkedlist.LinkedNode：启用链表/树形能力
+# 字段展平，无 vtable；OOP 方法通过 _generate_inherited_method_wrappers
+# 自动生成子类包装（self bitcast 为父类指针后调用父类方法）。
+# 从 LinkedNode* 取回 Node* 需显式向下转型：(Node | t.CPtr)(ptr)
+# ============================================================
+class Node(linkedlist.LinkedNode):
+    value: t.CInt
+
+
+# ============================================================
+# 测试 1：append + child_count
+# ============================================================
+def test_append():
+    testcheck.section("Test 1: append")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    c: Node = Node()
+    a.value = 10
+    b.value = 20
+    c.value = 30
+    root.append(a)
+    root.append(b)
+    root.append(c)
+    testcheck.check(root.child_count == 3,
+                    "append count=3",
+                    "append count fail")
+    # 验证顺序（LinkedNode* → Node* 显式向下转型）
+    c1: Node | t.CPtr = (Node | t.CPtr)(root.child)
+    c2: Node | t.CPtr = (Node | t.CPtr)(c1.next)
+    c3: Node | t.CPtr = (Node | t.CPtr)(c2.next)
+    testcheck.check(c1.value == 10 and c2.value == 20 and c3.value == 30,
+                    "order 10,20,30",
+                    "order fail")
+
+
+# ============================================================
+# 测试 2：双向链表 prev 指针
+# ============================================================
+def test_prev_link():
+    testcheck.section("Test 2: prev pointer (doubly linked)")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    a.value = 1
+    b.value = 2
+    root.append(a)
+    root.append(b)
+    # b.prev 应指向 a
+    bp: Node | t.CPtr = (Node | t.CPtr)(b.prev)
+    testcheck.check(bp is not None and bp.value == 1,
+                    "b.prev.value=1",
+                    "prev link fail")
+    # a.prev 应为 None（第一个子节点）
+    testcheck.check(a.prev is None,
+                    "a.prev=None",
+                    "first prev fail")
+
+
+# ============================================================
+# 测试 3：last_child 指针（O(1) 追加验证）
+# ============================================================
+def test_last_child():
+    testcheck.section("Test 3: last_child pointer")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    a.value = 100
+    b.value = 200
+    root.append(a)
+    lc: Node | t.CPtr = (Node | t.CPtr)(root.last_child)
+    testcheck.check(lc is not None and lc.value == 100,
+                    "last_child=100 after 1 append",
+                    "last_child fail 1")
+    root.append(b)
+    lc = (Node | t.CPtr)(root.last_child)
+    testcheck.check(lc is not None and lc.value == 200,
+                    "last_child=200 after 2 append",
+                    "last_child fail 2")
+
+
+# ============================================================
+# 测试 4：detach（O(1) 摘除）
+# ============================================================
+def test_remove():
+    testcheck.section("Test 4: detach (O(1) unlink)")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    c: Node = Node()
+    a.value = 1
+    b.value = 2
+    c.value = 3
+    root.append(a)
+    root.append(b)
+    root.append(c)
+    # 摘除中间的 b
+    b.detach()
+    testcheck.check(root.child_count == 2,
+                    "count=2 after detach",
+                    "detach count fail")
+    # a.next 应直接指向 c
+    an: Node | t.CPtr = (Node | t.CPtr)(a.next)
+    testcheck.check(an is not None and an.value == 3,
+                    "a.next.value=3",
+                    "detach link fail")
+    # c.prev 应指向 a
+    cp: Node | t.CPtr = (Node | t.CPtr)(c.prev)
+    testcheck.check(cp is not None and cp.value == 1,
+                    "c.prev.value=1",
+                    "detach prev fail")
+    # b 的链接应清空
+    testcheck.check(b.parent is None and b.next is None and b.prev is None,
+                    "b cleared",
+                    "b not cleared")
+
+
+# ============================================================
+# 测试 5：remove_child
+# ============================================================
+def test_remove_child():
+    testcheck.section("Test 5: remove_child")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    a.value = 10
+    b.value = 20
+    root.append(a)
+    root.append(b)
+    root.remove_child(a)
+    testcheck.check(root.child_count == 1,
+                    "count=1 after remove_child",
+                    "remove_child count fail")
+    fc: Node | t.CPtr = (Node | t.CPtr)(root.child)
+    testcheck.check(fc is not None and fc.value == 20,
+                    "first child=20",
+                    "remove_child first fail")
+
+
+# ============================================================
+# 测试 6：prepend + insert_before + insert_after
+# ============================================================
+def test_insert_ops():
+    testcheck.section("Test 6: prepend/insert_before/insert_after")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    c: Node = Node()
+    d: Node = Node()
+    a.value = 1
+    b.value = 2
+    c.value = 3
+    d.value = 4
+    root.append(a)       # [1]
+    root.append(c)       # [1, 3]
+    root.insert_before(c, b)   # [1, 2, 3]  在 c 前插入 b
+    root.insert_after(a, d)    # [1, 4, 2, 3] 在 a 后插入 d
+    # 遍历验证顺序
+    cur: Node | t.CPtr = (Node | t.CPtr)(root.child)
+    v0: t.CInt = cur.value
+    cur = (Node | t.CPtr)(cur.next)
+    v1: t.CInt = cur.value
+    cur = (Node | t.CPtr)(cur.next)
+    v2: t.CInt = cur.value
+    cur = (Node | t.CPtr)(cur.next)
+    v3: t.CInt = cur.value
+    testcheck.check(v0 == 1 and v1 == 4 and v2 == 2 and v3 == 3,
+                    "order 1,4,2,3",
+                    "insert order fail")
+    testcheck.check(root.child_count == 4,
+                    "count=4",
+                    "insert count fail")
+
+
+# ============================================================
+# 测试 7：child_at + count_children
+# 注意：Viper 中 Node() 是栈分配，循环内 n 会被复用（同一地址），
+# 导致所有子节点指向同一内存。必须用独立变量保证各节点地址不同。
+# ============================================================
+def test_index_access():
+    testcheck.section("Test 7: child_at + count_children")
+    root: Node = Node()
+    n0: Node = Node()
+    n1: Node = Node()
+    n2: Node = Node()
+    n3: Node = Node()
+    n4: Node = Node()
+    n0.value = 0
+    n1.value = 10
+    n2.value = 20
+    n3.value = 30
+    n4.value = 40
+    root.append(n0)
+    root.append(n1)
+    root.append(n2)
+    root.append(n3)
+    root.append(n4)
+    # child_at
+    r0: Node | t.CPtr = (Node | t.CPtr)(root.child_at(0))
+    r2: Node | t.CPtr = (Node | t.CPtr)(root.child_at(2))
+    r4: Node | t.CPtr = (Node | t.CPtr)(root.child_at(4))
+    r5: Node | t.CPtr = (Node | t.CPtr)(root.child_at(5))
+    testcheck.check(r0 is not None and r0.value == 0,
+                    "child_at(0)=0",
+                    "child_at 0 fail")
+    testcheck.check(r2 is not None and r2.value == 20,
+                    "child_at(2)=20",
+                    "child_at 2 fail")
+    testcheck.check(r4 is not None and r4.value == 40,
+                    "child_at(4)=40",
+                    "child_at 4 fail")
+    testcheck.check(r5 is None,
+                    "child_at(5)=None",
+                    "child_at 5 fail")
+    # count_children
+    cc: t.CSizeT = root.count_children()
+    testcheck.check(cc == 5,
+                    "count_children=5",
+                    "count_children fail")
+
+
+# ============================================================
+# 测试 8：has_children + first_sibling/last_sibling
+# ============================================================
+def test_sibling_traverse():
+    testcheck.section("Test 8: has_children + sibling traverse")
+    root: Node = Node()
+    testcheck.check(root.has_children() == 0,
+                    "empty has_children=0",
+                    "has_children empty fail")
+    a: Node = Node()
+    b: Node = Node()
+    c: Node = Node()
+    a.value = 1
+    b.value = 2
+    c.value = 3
+    root.append(a)
+    root.append(b)
+    root.append(c)
+    testcheck.check(root.has_children() == 1,
+                    "has_children=1",
+                    "has_children fail")
+    # 从 b 出发找头尾兄弟
+    fs: Node | t.CPtr = (Node | t.CPtr)(b.first_sibling())
+    ls: Node | t.CPtr = (Node | t.CPtr)(b.last_sibling())
+    testcheck.check(fs is not None and fs.value == 1,
+                    "first_sibling=1",
+                    "first_sibling fail")
+    testcheck.check(ls is not None and ls.value == 3,
+                    "last_sibling=3",
+                    "last_sibling fail")
+
+
+# ============================================================
+# 测试 9：unlink（断开所有连接）
+# ============================================================
+def test_unlink():
+    testcheck.section("Test 9: unlink")
+    root: Node = Node()
+    a: Node = Node()
+    b: Node = Node()
+    a.value = 1
+    b.value = 2
+    root.append(a)
+    root.append(b)
+    # unlink a：从兄弟链摘除 + 断开父子链接
+    a.unlink()
+    testcheck.check(a.next is None and a.prev is None and a.parent is None,
+                    "a links cleared",
+                    "a links not cleared")
+    testcheck.check(a.child is None and a.last_child is None and a.child_count == 0,
+                    "a child cleared",
+                    "a child not cleared")
+    # root 应只剩 b
+    testcheck.check(root.child_count == 1,
+                    "root count=1 after unlink",
+                    "root count fail")
+
+
+# ============================================================
+# 测试 10：SListNode 单向链表（OOP 方法）
+# ============================================================
+class SNode(linkedlist.SListNode):
+    value: t.CInt
+
+
+def test_slist():
+    testcheck.section("Test 10: SListNode (singly linked, OOP)")
+    n0: SNode = SNode()
+    n1: SNode = SNode()
+    n2: SNode = SNode()
+    n0.value = 100
+    n1.value = 200
+    n2.value = 300
+    # append (O(n)) — 直接用 n0 作为 head
+    head: linkedlist.SListNode | t.CPtr = n0
+    head = head.append(n1)
+    head = head.append(n2)
+    # count
+    testcheck.check(head.count() == 3,
+                    "count=3",
+                    "count fail")
+    # at
+    a0: SNode | t.CPtr = (SNode | t.CPtr)(head.at(0))
+    a1: SNode | t.CPtr = (SNode | t.CPtr)(head.at(1))
+    a2: SNode | t.CPtr = (SNode | t.CPtr)(head.at(2))
+    a3: SNode | t.CPtr = (SNode | t.CPtr)(head.at(3))
+    testcheck.check(a0 is not None and a0.value == 100,
+                    "at(0)=100",
+                    "at 0 fail")
+    testcheck.check(a1 is not None and a1.value == 200,
+                    "at(1)=200",
+                    "at 1 fail")
+    testcheck.check(a2 is not None and a2.value == 300,
+                    "at(2)=300",
+                    "at 2 fail")
+    testcheck.check(a3 is None,
+                    "at(3)=None",
+                    "at 3 fail")
+    # remove (移除中间节点 n1)
+    head = head.remove(n1)
+    testcheck.check(head.count() == 2,
+                    "after remove count=2",
+                    "remove count fail")
+    testcheck.check(n1.Next is None,
+                    "n1.Next cleared",
+                    "n1.Next not cleared")
+    # 移除后 a0.Next 应指向 n2
+    a0b: SNode | t.CPtr = (SNode | t.CPtr)(a0.Next)
+    testcheck.check(a0b is not None and a0b.value == 300,
+                    "after remove a0.Next=300",
+                    "a0.Next fail")
+    # append_after (O(1))
+    n3: SNode = SNode()
+    n3.value = 400
+    tail: linkedlist.SListNode | t.CPtr = n2.append_after(n3)
+    testcheck.check(tail is n3,
+                    "append_after returns n3",
+                    "append_after fail")
+    testcheck.check(head.count() == 3,
+                    "after append count=3",
+                    "append count fail")
+
+
+# ============================================================
+# 测试 11：viperlib.sprintf *args 转发
+# ============================================================
+def test_sprintf_vararg():
+    testcheck.section("Test 11: viperlib.sprintf *args forwarding")
+    # 测试 %d 单参数
+    buf: t.CChar | t.CPtr = stdlib.malloc(32)
+    if buf is None: return
+    buf[0] = 0
+    viperlib.sprintf(buf, "key%d", 42)
+    testcheck.check(string.strcmp(buf, "key42") == 0,
+                    "sprintf key42",
+                    "sprintf key%d fail")
+    # 测试无参数
+    buf2: t.CChar | t.CPtr = stdlib.malloc(32)
+    if buf2 is None: return
+    buf2[0] = 0
+    viperlib.sprintf(buf2, "hello")
+    testcheck.check(string.strcmp(buf2, "hello") == 0,
+                    "sprintf hello",
+                    "sprintf no-arg fail")
+    # 测试多参数
+    buf3: t.CChar | t.CPtr = stdlib.malloc(32)
+    if buf3 is None: return
+    buf3[0] = 0
+    viperlib.sprintf(buf3, "%d+%d=%d", 1, 2, 3)
+    testcheck.check(string.strcmp(buf3, "1+2=3") == 0,
+                    "sprintf 1+2=3",
+                    "sprintf multi-arg fail")
+
+
+# ============================================================
+# 测试 12：泛型 GSListNode[T] + GSList[T]
+#
+# 验证 4 个技术点（为 llvmlite 简化铺路）：
+#   1. 递归泛型 class GNode(GSListNode[GNode]):
+#   2. novirtual class + 泛型组合（GNode 无 vptr，字段展平）
+#   3. 泛型类作字段类型 lst: GSList[GNode]
+#   4. 泛型方法继承 lst.append(n) / lst.count() / lst.at(i)
+#      （GSList[T] 的方法在特化 GSList[GNode] 后可用）
+#
+# 注：编译器暂不支持 模块.泛型类[T]() 跨模块构造，故本地定义。
+# ============================================================
+novirtual class GSListNode[T]:
+    Next: T | t.CPtr
+
+novirtual class GSList[T]:
+    Head: T | t.CPtr
+    Tail: T | t.CPtr
+    Count: t.CSizeT
+
+    def __init__(self):
+        self.Head = None
+        self.Tail = None
+        self.Count = 0
+
+    def append(self, node: T):
+        if node is None: return
+        node.Next = None
+        if self.Head is None:
+            self.Head = node
+        else:
+            self.Tail.Next = node
+        self.Tail = node
+        self.Count += 1
+
+    def count(self) -> t.CSizeT:
+        return self.Count
+
+    def at(self, index: t.CSizeT) -> T | t.CPtr:
+        if self.Head is None: return None
+        cur: T | t.CPtr = self.Head
+        i: t.CSizeT = 0
+        while cur is not None:
+            if i == index: return cur
+            i += 1
+            cur = cur.Next
+        return None
+
+
+class GNode(GSListNode[GNode]):
+    Value: t.CInt
+
+
+def test_generic_slist():
+    testcheck.section("Test 12: Generic GSListNode[T] + GSList[T]")
+    # 技术点 3: 泛型类作字段类型 + 构造
+    lst: GSList[GNode] | t.CPtr = GSList[GNode]()
+
+    # 技术点 1+2: 递归泛型 + NoVTable 组合（GNode 定义在上方）
+    n0: GNode = GNode()
+    n1: GNode = GNode()
+    n2: GNode = GNode()
+    n0.Value = 10
+    n1.Value = 20
+    n2.Value = 30
+
+    # 技术点 4: 泛型方法继承
+    lst.append(n0)
+    lst.append(n1)
+    lst.append(n2)
+
+    # count (O(1))
+    testcheck.check(lst.count() == 3,
+                    "GSList.count()=3",
+                    "GSList count fail")
+
+    # at (O(n)) — 返回 GNode|CPtr，无需向下转型
+    a0: GNode | t.CPtr = lst.at(0)
+    a1: GNode | t.CPtr = lst.at(1)
+    a2: GNode | t.CPtr = lst.at(2)
+    a3: GNode | t.CPtr = lst.at(3)
+    testcheck.check(a0 is not None and a0.Value == 10,
+                    "GSList.at(0)=10",
+                    "GSList at 0 fail")
+    testcheck.check(a1 is not None and a1.Value == 20,
+                    "GSList.at(1)=20",
+                    "GSList at 1 fail")
+    testcheck.check(a2 is not None and a2.Value == 30,
+                    "GSList.at(2)=30",
+                    "GSList at 2 fail")
+    testcheck.check(a3 is None,
+                    "GSList.at(3)=None",
+                    "GSList at 3 fail")
+
+    # Next 字段强类型（a0.Next 直接是 GNode|CPtr，无需转型）
+    testcheck.check(a0.Next is a1,
+                    "a0.Next is a1 (strong type)",
+                    "a0.Next fail")
+    testcheck.check(a1.Next is a2,
+                    "a1.Next is a2 (strong type)",
+                    "a1.Next fail")
+    testcheck.check(a2.Next is None,
+                    "a2.Next is None",
+                    "a2.Next fail")
+
+
+def main() -> t.CInt:
+    testcheck.begin("NoVTableTest: linkedlist 库（@t.NoVTable OOP 方法 + 字段展平继承）")
+    test_append()
+    test_prev_link()
+    test_last_child()
+    test_remove()
+    test_remove_child()
+    test_insert_ops()
+    test_index_access()
+    test_sibling_traverse()
+    test_unlink()
+    test_slist()
+    test_sprintf_vararg()
+    test_generic_slist()
+    return testcheck.end()

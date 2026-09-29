@@ -1,0 +1,95 @@
+import t, c
+from t import CInt, CPtr, CChar, CInt32T, CExport
+import viperlib
+import stdlib
+
+
+class Color(t.CEnum):
+    Red = 0
+    Green = 1
+    Blue = 2
+
+
+class Option(t.REnum):
+    class Some:
+        value: CInt
+    Empty = 1
+
+
+class Result(t.REnum):
+    class Ok:
+        value: CInt
+    class Err:
+        msg: t.CChar | CPtr
+
+
+class GeoShape(t.REnum):
+    class GCircle:
+        radius: CInt
+    class GRect:
+        w: CInt
+        h: CInt
+    class GPoint:
+        x: CInt
+        y: CInt
+
+
+def enum_main() -> CInt:
+    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+
+    c1: CInt = Color.Red
+    c2: CInt = Color.Green
+    c3: CInt = Color.Blue
+    viperlib.snprintf(buf, 256, "CEnum: Red=%d Green=%d Blue=%d", c1, c2, c3)
+    print(buf)
+
+    opt: Option = Option.Some(42)
+    match opt:
+        case Option.Some(v):
+            viperlib.snprintf(buf, 256, "Option.Some: value=%d", v)
+            print(buf)
+        case Option.Empty():
+            pass
+
+    res1: Result = Result.Ok(100)
+    match res1:
+        case Result.Ok(v):
+            viperlib.snprintf(buf, 256, "Result.Ok: value=%d", v)
+            print(buf)
+        case Result.Err(e):
+            pass
+
+    res2: Result = Result.Err("not found")
+    match res2:
+        case Result.Ok(v):
+            pass
+        case Result.Err(e):
+            viperlib.snprintf(buf, 256, "Result.Err: msg=%s", e)
+            print(buf)
+
+    s1: GeoShape = GeoShape.GCircle(5)
+    match s1:
+        case GeoShape.GCircle(r):
+            viperlib.snprintf(buf, 256, "GeoShape.GCircle: radius=%d", r)
+            print(buf)
+        case _:
+            pass
+
+    s2: GeoShape = GeoShape.GRect(10, 20)
+    match s2:
+        case GeoShape.GRect(w, h):
+            viperlib.snprintf(buf, 256, "GeoShape.GRect: w=%d h=%d", w, h)
+            print(buf)
+        case _:
+            pass
+
+    s3: GeoShape = GeoShape.GPoint(3, 4)
+    match s3:
+        case GeoShape.GPoint(x, y):
+            viperlib.snprintf(buf, 256, "GeoShape.GPoint: x=%d y=%d", x, y)
+            print(buf)
+        case _:
+            pass
+
+    stdlib.free(buf)
+    return 0

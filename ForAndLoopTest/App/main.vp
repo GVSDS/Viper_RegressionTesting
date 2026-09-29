@@ -1,0 +1,165 @@
+import t
+import c
+import stdio
+import stdlib
+import string
+import memhub
+import testcheck
+
+
+def test_for_in_range():
+    testcheck.section("Test 1: for i in range(n)")
+    s: t.CInt = 0
+    for i in range(10):
+        s += i
+    testcheck.check(s == 45, "range sum OK (45)", "range sum FAILED expect 45")
+
+
+def test_for_in_str():
+    testcheck.section("Test 2: for ch in str")
+    cnt: t.CInt = 0
+    for ch in "hello":
+        cnt += 1
+    testcheck.check(cnt == 5, "str iter OK (5)", "str iter FAILED expect 5")
+
+
+def test_for_in_list():
+    testcheck.section("Test 3: for v in list[str]")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    lst: list[str] = list[str](bd)
+    lst.append("x")
+    lst.append("y")
+    lst.append("z")
+    lst.append("w")
+    total: t.CInt = 0
+    for v in lst:
+        total += 1
+    testcheck.check(total == 4, "list iter OK (4)", "list iter FAILED expect 4")
+    stdlib.free(arena)
+
+
+def test_zip_list_list():
+    testcheck.section("Test 4: zip(list, list)")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    la: list[str] = list[str](bd)
+    la.append("a")
+    la.append("b")
+    la.append("c")
+    lb: list[str] = list[str](bd)
+    lb.append("1")
+    lb.append("2")
+    lb.append("3")
+    cnt: t.CInt = 0
+    for ca, cb in zip(la, lb):
+        stdio.printf("zip[%d]: '%s'='%s'\n", cnt, ca, cb)
+        cnt += 1
+    testcheck.check(cnt == 3, "zip list+list OK (3)", "zip list+list FAILED")
+    stdlib.free(arena)
+
+
+def test_zip_range_list():
+    testcheck.section("Test 5: zip(range, list)")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    lst: list[str] = list[str](bd)
+    lst.append("p")
+    lst.append("q")
+    lst.append("r")
+    cnt: t.CInt = 0
+    for n, v in zip(range(3), lst):
+        stdio.printf("zip range+list[%d]: %d='%s'\n", cnt, n, v)
+        cnt += 1
+    testcheck.check(cnt == 3, "zip range+list OK (3)", "zip range+list FAILED")
+    stdlib.free(arena)
+
+
+def test_zip_str_str():
+    testcheck.section("Test 6: zip(str, str)")
+    sa: str = "abc"
+    sb: str = "123"
+    cnt: t.CInt = 0
+    for ca, cb in zip(sa, sb):
+        stdio.printf("zip str+str[%d]: '%c'%c\n", cnt, ca, cb)
+        cnt += 1
+    testcheck.check(cnt == 3, "zip str+str OK (3)", "zip str+str FAILED")
+
+
+def test_zip_range_len_list():
+    testcheck.section("Test 7: zip(range(len), list)")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    lst: list[str] = list[str](bd)
+    lst.append("www")
+    lst.append("gvsds")
+    lst.append("com")
+    cnt: t.CInt = 0
+    for idx, v in zip(range(len(lst)), lst):
+        stdio.printf("lst[%d]='%s'\n", idx, v)
+        cnt += 1
+    testcheck.check(cnt == 3, "zip(range(len),list) OK (3)", "zip(range(len),list) FAILED")
+    stdlib.free(arena)
+
+
+def test_enumerate_list():
+    testcheck.section("Test 8: enumerate(list)")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    lst: list[str] = list[str](bd)
+    lst.append("alpha")
+    lst.append("beta")
+    lst.append("gamma")
+    cnt: t.CInt = 0
+    last_idx: t.CInt = -1
+    for idx, v in enumerate(lst):
+        stdio.printf("enum[%d]='%s'\n", idx, v)
+        last_idx = idx
+        cnt += 1
+    testcheck.check(cnt == 3, "enumerate list OK (3)", "enumerate list FAILED")
+    testcheck.check(last_idx == 2, "enumerate last_idx OK (2)", "enumerate last_idx FAILED expect 2")
+    stdlib.free(arena)
+
+
+def test_enumerate_str():
+    testcheck.section("Test 9: enumerate(str)")
+    cnt: t.CInt = 0
+    last_idx: t.CInt = -1
+    for idx, ch in enumerate("ABCD"):
+        stdio.printf("enum str[%d]='%c'\n", idx, ch)
+        last_idx = idx
+        cnt += 1
+    testcheck.check(cnt == 4, "enumerate str OK (4)", "enumerate str FAILED expect 4")
+    testcheck.check(last_idx == 3, "enumerate str last_idx OK (3)", "enumerate str last_idx FAILED expect 3")
+
+
+def test_enumerate_range():
+    testcheck.section("Test 10: enumerate(range)")
+    cnt: t.CInt = 0
+    last_idx: t.CInt = -1
+    last_val: t.CInt = -1
+    for idx, v in enumerate(range(5)):
+        stdio.printf("enum range[%d]=%d\n", idx, v)
+        last_idx = idx
+        last_val = v
+        cnt += 1
+    testcheck.check(cnt == 5, "enumerate range OK (5)", "enumerate range FAILED expect 5")
+    testcheck.check(last_idx == 4, "enumerate range last_idx OK (4)", "enumerate range last_idx FAILED expect 4")
+    testcheck.check(last_val == 4, "enumerate range last_val OK (4)", "enumerate range last_val FAILED expect 4")
+
+
+def main() -> t.CInt:
+    testcheck.begin("ForAndLoopTest: 迭代器与循环测试")
+
+    test_for_in_range()
+    test_for_in_str()
+    test_for_in_list()
+    test_zip_list_list()
+    test_zip_range_list()
+    test_zip_str_str()
+    test_zip_range_len_list()
+    test_enumerate_list()
+    test_enumerate_str()
+    test_enumerate_range()
+
+    return testcheck.end()

@@ -1,0 +1,106 @@
+import t, c
+import config
+import logic_test
+import testcheck
+
+
+def main() -> t.CInt:
+    testcheck.begin("LogicFlowTest: For/While/Match/控制流测试")
+
+    testcheck.section("For Range Basic Test (stop=5)")
+    logic_test.ForRangeBasicTest(5)
+    testcheck.ok("For Range Basic Test (5)")
+
+    testcheck.section("For Range With Start Stop Step (start=1, stop=10, step=2)")
+    logic_test.ForRangeWithStartStop(1, 10, 2)
+    testcheck.ok("For Range With Start Stop (1, 10, 2)")
+
+    testcheck.section("Nested For Range Test (rows=2, cols=3)")
+    logic_test.NestedForRangeTest(2, 3)
+    testcheck.ok("Nested For Range Test (2, 3)")
+
+    testcheck.section("For With If Break Test (size=8)")
+    logic_test.ForWithIfBreakTest(8)
+    testcheck.ok("For With If Break Test (8)")
+
+    testcheck.section("For With If Continue Test (n=10)")
+    logic_test.ForWithIfContinueTest(10)
+    testcheck.ok("For With If Continue Test (10)")
+
+    testcheck.section("For With Elif Branch Test (value=10)")
+    logic_test.ForWithElifBranchTest(10)
+    testcheck.ok("For With Elif Branch Test (10)")
+
+    testcheck.section("While With If Elif Else Test (iterations=7)")
+    logic_test.WhileWithIfElifElseTest(7)
+    testcheck.ok("While With If Elif Else Test (7)")
+
+    testcheck.section("While With Nested If Test (limit=4)")
+    logic_test.WhileWithNestedIfTest(4)
+    testcheck.ok("While With Nested If Test (4)")
+
+    testcheck.section("While With Match Case Test (value=2)")
+    logic_test.WhileWithMatchCaseTest(2)
+    testcheck.ok("While With Match Case Test (2)")
+
+    testcheck.section("While With Match Case Test (value=99)")
+    logic_test.WhileWithMatchCaseTest(99)
+    testcheck.ok("While With Match Case Test (99)")
+
+    testcheck.section("While With Match Case NoBreak Test (value=3)")
+    logic_test.WhileWithMatchCaseNoBreakTest(3)
+    testcheck.ok("While With Match Case NoBreak Test (3)")
+
+    testcheck.section("Complex For While Match Test (outer=3, inner=3)")
+    logic_test.ComplexForWhileMatchTest(3, 3)
+    testcheck.ok("Complex For While Match Test (3, 3)")
+
+    testcheck.section("For With Case And NoBreak Test (n=5)")
+    logic_test.ForWithCaseAndNoBreakTest(5)
+    testcheck.ok("For With Case And NoBreak Test (5)")
+
+    testcheck.section("While With Break Condition Test (limit=6)")
+    logic_test.WhileWithBreakConditionTest(6)
+    testcheck.ok("While With Break Condition Test (6)")
+
+    testcheck.section("Nested While With Multiple BreakPoints (depth=3, width=4)")
+    logic_test.NestedWhileWithMultipleBreakPoints(3, 4)
+    testcheck.ok("Nested While With Multiple BreakPoints (3, 4)")
+
+    testcheck.section("For With Match Case In Loop Test (iterations=9)")
+    logic_test.ForWithMatchCaseInLoopTest(9)
+    testcheck.ok("For With Match Case In Loop Test (9)")
+
+    testcheck.section("Complex Logic With Elif Chains (a=3, b=5, c=7)")
+    logic_test.ComplexLogicWithElifChains(3, 5, 7)
+    testcheck.ok("Complex Logic With Elif Chains (3, 5, 7)")
+
+    testcheck.section("For Range With Step And Condition (n=12, step=2)")
+    logic_test.ForRangeWithStepAndCondition(12, 2)
+    testcheck.ok("For Range With Step And Condition (12, 2)")
+
+    testcheck.section("Match Case With Guard Conditions (value=1)")
+    logic_test.MatchCaseWithGuardConditions(1)
+    testcheck.ok("Match Case With Guard Conditions (1)")
+
+    testcheck.section("While With Multiple Match Cases (iterations=12)")
+    logic_test.WhileWithMultipleMatchCases(12)
+    testcheck.ok("While With Multiple Match Cases (12)")
+
+    testcheck.section("For While Mix With Break And Continue (n=5)")
+    logic_test.ForWhileMixWithBreakAndContinue(5)
+    testcheck.ok("For While Mix With Break And Continue (5)")
+
+    testcheck.section("Complex Case Matching With Ranges (start=0, end=35)")
+    logic_test.ComplexCaseMatchingWithRanges(0, 35)
+    testcheck.ok("Complex Case Matching With Ranges (0, 35)")
+
+    testcheck.section("While With Elif In Elif Chain (limit=7)")
+    logic_test.WhileWithElifInElifChain(7)
+    testcheck.ok("While With Elif In Elif Chain (7)")
+
+    testcheck.section("For With Case NoBreak Nested (inner_limit=4)")
+    logic_test.ForWithCaseNoBreakNested(4)
+    testcheck.ok("For With Case NoBreak Nested (4)")
+
+    return testcheck.end()

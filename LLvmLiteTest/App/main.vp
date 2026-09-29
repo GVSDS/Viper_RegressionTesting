@@ -1,0 +1,1149 @@
+import t, c
+from stdint import *
+import stdio
+import string
+import stdlib
+import memhub
+import testcheck
+import llvmlite
+
+
+# 内存大小
+POOL_SIZE: t.CDefine = 524288  # 512KB
+
+
+# ============================================================
+# 测试 1: TypePrint 类型打印
+# ============================================================
+def test_type_print(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 1: TypePrint")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(64)
+
+    # i32
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    buf[0] = 0
+    core.PrintType(buf, 64, ty_i32)
+    testcheck.check(string.strcmp(buf, "i32") == 0,
+                    "Int32 -> i32",
+                    "Int32 fail")
+
+    # i32*
+    ty_ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(ty_i32)
+    buf[0] = 0
+    core.PrintType(buf, 64, ty_ptr)
+    testcheck.check(string.strcmp(buf, "i32*") == 0,
+                    "Ptr(Int32) -> i32*",
+                    "Ptr fail")
+
+    # void
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+    buf[0] = 0
+    core.PrintType(buf, 64, ty_void)
+    testcheck.check(string.strcmp(buf, "void") == 0,
+                    "Void -> void",
+                    "Void fail")
+
+    # i64
+    ty_i64: llvmlite.LLVMType | t.CPtr = core.Int64()
+    buf[0] = 0
+    core.PrintType(buf, 64, ty_i64)
+    testcheck.check(string.strcmp(buf, "i64") == 0,
+                    "Int64 -> i64",
+                    "Int64 fail")
+
+
+# ============================================================
+# 测试 2: ValuePrint 值打印
+# ============================================================
+def test_value_print(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 2: ValuePrint")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(64)
+
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    # 常量 42
+    val42: llvmlite.Value | t.CPtr = mcore.ConstInt32(42)
+    buf[0] = 0
+    mcore.PrintValue(buf, 64, val42)
+    testcheck.check(string.strcmp(buf, "i32 42") == 0,
+                    "ConstInt(42) -> i32 42",
+                    "ConstInt fail")
+
+    # SSA 值 %0
+    name_ssa: t.CChar | t.CPtr = pool.alloc(16)
+    string.strcpy(name_ssa, "%0")
+    val_ssa: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, name_ssa)
+    buf[0] = 0
+    mcore.PrintValue(buf, 64, val_ssa)
+    testcheck.check(string.strcmp(buf, "i32 %0") == 0,
+                    "SSAValue(%0) -> i32 %0",
+                    "SSAValue fail")
+
+
+# ============================================================
+# 测试 3: 构建 add 函数
+# define i32 @add(i32 %a, i32 %b) {
+# entry:
+#   %0 = add i32 %a, %b
+#   ret i32 %0
+# }
+# ============================================================
+def test_build_add(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 3: build_add function")
+
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    # 创建模块 + 函数
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_add")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+
+    # 添加参数
+    mcore.AddParam(func, ty_i32, "%a")
+    mcore.AddParam(func, ty_i32, "%b")
+
+    # 创建 entry 块
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+
+    # 创建 builder
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    # 为参数创建 Value 包装
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+
+    # %0 = add i32 %a, %b
+    v_c: llvmlite.Value | t.CPtr = llvmlite.build_add(builder, v_a, v_b)
+
+    # ret i32 %0
+    llvmlite.build_ret(builder, v_c)
+
+    # 打印函数
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    # 验证关键内容
+    testcheck.check(string.strstr(buf, "add i32") is not None,
+                    "contains 'add i32'",
+                    "missing 'add i32'")
+    testcheck.check(string.strstr(buf, "ret i32") is not None,
+                    "contains 'ret i32'",
+                    "missing 'ret i32'")
+    testcheck.check(string.strstr(buf, "define i32 @add") is not None,
+                    "contains 'define i32 @add'",
+                    "missing function definition")
+
+
+# ============================================================
+# 测试 4: 构建 if-then-else 函数（max）
+# define i32 @max(i32 %a, i32 %b) {
+# entry:
+#   %0 = icmp sgt i32 %a, %b
+#   br i1 %0, label %then, label %else
+# then:
+#   ret i32 %a
+# else:
+#   ret i32 %b
+# }
+# ============================================================
+def test_build_if_else(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 4: build if-then-else (max)")
+
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_max")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "max", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    mcore.AddParam(func, ty_i32, "%b")
+
+    entry:    llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    then_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "then")
+    else_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "else")
+
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+
+    # entry: %0 = icmp sgt i32 %a, %b; br i1 %0, label %then, label %else
+    llvmlite.position_at_end(builder, entry)
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_cond: llvmlite.Value | t.CPtr = llvmlite.build_icmp(builder, llvmlite.ICMP_SGT, v_a, v_b)
+    llvmlite.build_cond_br(builder, v_cond, then_blk, else_blk)
+
+    # then: ret i32 %a
+    llvmlite.position_at_end(builder, then_blk)
+    llvmlite.build_ret(builder, v_a)
+
+    # else: ret i32 %b
+    llvmlite.position_at_end(builder, else_blk)
+    llvmlite.build_ret(builder, v_b)
+
+    # 打印函数
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    # 验证关键内容
+    testcheck.check(string.strstr(buf, "icmp sgt") is not None,
+                    "contains 'icmp sgt'",
+                    "missing 'icmp sgt'")
+    testcheck.check(string.strstr(buf, "br i1") is not None,
+                    "contains 'br i1'",
+                    "missing 'br i1'")
+    testcheck.check(string.strstr(buf, "label %then") is not None,
+                    "contains 'label %then'",
+                    "missing 'label %then'")
+    testcheck.check(string.strstr(buf, "label %else") is not None,
+                    "contains 'label %else'",
+                    "missing 'label %else'")
+
+
+# ============================================================
+# 测试 5: 完整模块 ModulePrint
+# ============================================================
+def test_module_print(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 5: ModulePrint")
+
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+
+    # 创建模块
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_module")
+    llvmlite.module_set_target(mod, "x86_64-pc-windows-gnu")
+    llvmlite.module_set_datalayout(mod, "e-m:w-p270:32:32")
+
+    # 函数 1: add
+    func_add: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    mcore.AddParam(func_add, ty_i32, "%a")
+    mcore.AddParam(func_add, ty_i32, "%b")
+    entry1: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func_add, "entry")
+    builder1: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func_add)
+    llvmlite.position_at_end(builder1, entry1)
+    v_a1: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b1: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_sum: llvmlite.Value | t.CPtr = llvmlite.build_add(builder1, v_a1, v_b1)
+    llvmlite.build_ret(builder1, v_sum)
+
+    # 函数 2: void 函数
+    func_void: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "noop", ty_void)
+    entry2: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func_void, "entry")
+    builder2: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func_void)
+    llvmlite.position_at_end(builder2, entry2)
+    llvmlite.build_ret_void(builder2)
+
+    # 打印模块
+    buf: t.CChar | t.CPtr = pool.alloc(8192)
+    buf[0] = 0
+    mcore.PrintModule(buf, 8192, mod)
+    testcheck.info(buf)
+
+    # 验证关键内容
+    testcheck.check(string.strstr(buf, "ModuleID") is not None,
+                    "contains 'ModuleID'",
+                    "missing 'ModuleID'")
+    testcheck.check(string.strstr(buf, "target triple") is not None,
+                    "contains 'target triple'",
+                    "missing 'target triple'")
+    testcheck.check(string.strstr(buf, "define i32 @add") is not None,
+                    "contains 'define i32 @add'",
+                    "missing add function")
+    testcheck.check(string.strstr(buf, "define void @noop") is not None,
+                    "contains 'define void @noop'",
+                    "missing noop function")
+    testcheck.check(string.strstr(buf, "ret void") is not None,
+                    "contains 'ret void'",
+                    "missing 'ret void'")
+
+
+# ============================================================
+# 测试 6: 数组类型打印
+# ============================================================
+def test_array_type(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 6: ArrayType")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(128)
+
+    # [4 x i32]
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_arr: llvmlite.LLVMType | t.CPtr = core.Array(ty_i32, 4)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_arr)
+    testcheck.check(string.strcmp(buf, "[4 x i32]") == 0,
+                    "Array(i32,4) -> [4 x i32]",
+                    "Array fail")
+
+    # [2 x [3 x i8]] (嵌套数组)
+    ty_i8: llvmlite.LLVMType | t.CPtr = core.Int8()
+    ty_inner: llvmlite.LLVMType | t.CPtr = core.Array(ty_i8, 3)
+    ty_nested: llvmlite.LLVMType | t.CPtr = core.Array(ty_inner, 2)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_nested)
+    testcheck.check(string.strcmp(buf, "[2 x [3 x i8]]") == 0,
+                    "nested array -> [2 x [3 x i8]]",
+                    "nested array fail")
+
+
+# ============================================================
+# 测试 7: 结构体类型打印
+# ============================================================
+def test_struct_type(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 7: StructType")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(128)
+
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_i8: llvmlite.LLVMType | t.CPtr = core.Int8()
+    ty_i8ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+
+    # {i32, i8*}
+    n1: llvmlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
+    n2: llvmlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
+    head: llvmlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, n1)
+    core.ParamListAppend(head, n1, n2)
+    ty_struct: llvmlite.LLVMType | t.CPtr = core.Struct(head, 2)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_struct)
+    testcheck.check(string.strcmp(buf, "{i32, i8*}") == 0,
+                    "struct {i32, i8*}",
+                    "struct fail")
+
+    # 空结构体 {}
+    ty_empty: llvmlite.LLVMType | t.CPtr = core.Struct(None, 0)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_empty)
+    testcheck.check(string.strcmp(buf, "{}") == 0,
+                    "empty struct -> {}",
+                    "empty struct fail")
+
+
+# ============================================================
+# 测试 8: 函数类型打印
+# ============================================================
+def test_func_type(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 8: FuncType")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(128)
+
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_i8: llvmlite.LLVMType | t.CPtr = core.Int8()
+    ty_i8ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+
+    # i32 (i32, i8*)
+    n1: llvmlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
+    n2: llvmlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
+    head: llvmlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, n1)
+    core.ParamListAppend(head, n1, n2)
+    ty_func: llvmlite.LLVMType | t.CPtr = core.Func(ty_i32, head, 2)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_func)
+    testcheck.check(string.strcmp(buf, "i32 (i32, i8*)") == 0,
+                    "func type -> i32 (i32, i8*)",
+                    "func type fail")
+
+    # void () — 无参数函数类型
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+    ty_func_void: llvmlite.LLVMType | t.CPtr = core.Func(ty_void, None, 0)
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_func_void)
+    testcheck.check(string.strcmp(buf, "void ()") == 0,
+                    "void func -> void ()",
+                    "void func fail")
+
+
+# ============================================================
+# 测试 9: 声明系统（declare vs define）
+# ============================================================
+def test_declare(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 9: Declare vs Define")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_declare")
+
+    # declare i32 @extern_func(i32)
+    func_decl: llvmlite.Function | t.CPtr = mcore.CreateDeclare(mod, "extern_func", ty_i32)
+    mcore.AddParam(func_decl, ty_i32, "%x")
+
+    # define i32 @defined_func(i32) { entry: ret i32 %x }
+    func_def: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "defined_func", ty_i32)
+    mcore.AddParam(func_def, ty_i32, "%x")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func_def, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func_def)
+    llvmlite.position_at_end(builder, entry)
+    v_x: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%x")
+    llvmlite.build_ret(builder, v_x)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintModule(buf, 4096, mod)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "declare i32 @extern_func") is not None,
+                    "contains 'declare i32 @extern_func'",
+                    "missing declare")
+    testcheck.check(string.strstr(buf, "define i32 @defined_func") is not None,
+                    "contains 'define i32 @defined_func'",
+                    "missing define")
+    testcheck.check(string.strstr(buf, "declare i32 @extern_func(i32 %x)") is not None,
+                    "declare has param",
+                    "declare missing param")
+    testcheck.check(string.strstr(buf, "ret i32 %x") is not None,
+                    "define has body",
+                    "define missing body")
+
+
+# ============================================================
+# 测试 10: 浮点类型与 ConstFloat
+# ============================================================
+def test_float_types(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 10: Float Types & ConstFloat")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    buf: t.CChar | t.CPtr = pool.alloc(128)
+
+    # half
+    ty_half: llvmlite.LLVMType | t.CPtr = core.Half()
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_half)
+    testcheck.check(string.strcmp(buf, "half") == 0,
+                    "Half -> half",
+                    "Half fail")
+
+    # float
+    ty_float: llvmlite.LLVMType | t.CPtr = core.Float()
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_float)
+    testcheck.check(string.strcmp(buf, "float") == 0,
+                    "Float -> float",
+                    "Float fail")
+
+    # double
+    ty_double: llvmlite.LLVMType | t.CPtr = core.Double()
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_double)
+    testcheck.check(string.strcmp(buf, "double") == 0,
+                    "Double -> double",
+                    "Double fail")
+
+    # fp128
+    ty_fp128: llvmlite.LLVMType | t.CPtr = core.FP128()
+    buf[0] = 0
+    core.PrintType(buf, 128, ty_fp128)
+    testcheck.check(string.strcmp(buf, "fp128") == 0,
+                    "FP128 -> fp128",
+                    "FP128 fail")
+
+    # ConstFloat(3.14) -> "double 0x40091EB851EB851F"
+    # （LLVM IR 浮点常量规范为十六进制位模式，非科学计数法；位模式无精度损失）
+    val_pi: llvmlite.Value | t.CPtr = mcore.ConstFloat(ty_double, 3.14)
+    buf[0] = 0
+    mcore.PrintValue(buf, 128, val_pi)
+    testcheck.check(string.strstr(buf, "double") is not None,
+                    "ConstFloat has 'double'",
+                    "ConstFloat missing type")
+    testcheck.check(string.strstr(buf, "0x") is not None,
+                    "ConstFloat has hex bit pattern",
+                    "ConstFloat missing hex pattern")
+
+
+# ============================================================
+# 测试 11: 浮点二元运算
+# ============================================================
+def test_float_binops(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 11: Float Binary Ops")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_double: llvmlite.LLVMType | t.CPtr = core.Double()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_fadd")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "fadd", ty_double)
+    mcore.AddParam(func, ty_double, "%a")
+    mcore.AddParam(func, ty_double, "%b")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_double, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_double, "%b")
+    v_c: llvmlite.Value | t.CPtr = llvmlite.build_fadd(builder, v_a, v_b)
+    llvmlite.build_ret(builder, v_c)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "fadd double") is not None,
+                    "contains 'fadd double'",
+                    "missing 'fadd double'")
+    testcheck.check(string.strstr(buf, "ret double") is not None,
+                    "contains 'ret double'",
+                    "missing 'ret double'")
+
+
+# ============================================================
+# 测试 12: 位运算与移位
+# ============================================================
+def test_bitwise_ops(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 12: Bitwise & Shift Ops")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_bitops")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "bitops", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    mcore.AddParam(func, ty_i32, "%b")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+
+    # and -> or -> xor -> shl -> ret
+    v_and: llvmlite.Value | t.CPtr = llvmlite.build_and(builder, v_a, v_b)
+    v_or: llvmlite.Value | t.CPtr = llvmlite.build_or(builder, v_and, v_b)
+    v_xor: llvmlite.Value | t.CPtr = llvmlite.build_xor(builder, v_or, v_a)
+    v_shl: llvmlite.Value | t.CPtr = llvmlite.build_shl(builder, v_xor, v_b)
+    llvmlite.build_ret(builder, v_shl)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "and i32") is not None, "has 'and i32'", "missing 'and i32'")
+    testcheck.check(string.strstr(buf, "or i32") is not None, "has 'or i32'", "missing 'or i32'")
+    testcheck.check(string.strstr(buf, "xor i32") is not None, "has 'xor i32'", "missing 'xor i32'")
+    testcheck.check(string.strstr(buf, "shl i32") is not None, "has 'shl i32'", "missing 'shl i32'")
+
+
+# ============================================================
+# 测试 13: FCMP 比较
+# ============================================================
+def test_fcmp(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 13: FCMP")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_double: llvmlite.LLVMType | t.CPtr = core.Double()
+    ty_i1: llvmlite.LLVMType | t.CPtr = core.Int1()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_fcmp")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "fcmp_test", ty_i1)
+    mcore.AddParam(func, ty_double, "%a")
+    mcore.AddParam(func, ty_double, "%b")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_double, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_double, "%b")
+    v_cond: llvmlite.Value | t.CPtr = llvmlite.build_fcmp(builder, llvmlite.FCMP_OEQ, v_a, v_b)
+    llvmlite.build_ret(builder, v_cond)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "fcmp oeq double") is not None,
+                    "contains 'fcmp oeq double'",
+                    "missing 'fcmp oeq double'")
+
+
+# ============================================================
+# 测试 14: 类型转换 (zext, ptrtoint, inttoptr)
+# ============================================================
+def test_casts(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 14: Casts (zext/ptrtoint/inttoptr)")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_i64: llvmlite.LLVMType | t.CPtr = core.Int64()
+    ty_i8: llvmlite.LLVMType | t.CPtr = core.Int8()
+    ty_i8ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_casts")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "cast_test", ty_i64)
+    mcore.AddParam(func, ty_i32, "%x")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_x: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%x")
+    # zext i32 %x to i64
+    v_ext: llvmlite.Value | t.CPtr = llvmlite.build_zext(builder, v_x, ty_i64)
+    # ptrtoint i8* null to i64
+    v_null: llvmlite.Value | t.CPtr = mcore.ConstNull(ty_i8ptr, "null")
+    v_p2i: llvmlite.Value | t.CPtr = llvmlite.build_ptrtoint(builder, v_null, ty_i64)
+    # inttoptr i64 %p2i to i8*
+    v_i2p: llvmlite.Value | t.CPtr = llvmlite.build_inttoptr(builder, v_p2i, ty_i8ptr)
+    # ret i64 %ext
+    llvmlite.build_ret(builder, v_ext)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "zext i32") is not None, "has 'zext i32'", "missing 'zext i32'")
+    testcheck.check(string.strstr(buf, "ptrtoint i8*") is not None, "has 'ptrtoint i8*'", "missing 'ptrtoint i8*'")
+    testcheck.check(string.strstr(buf, "inttoptr i64") is not None, "has 'inttoptr i64'", "missing 'inttoptr i64'")
+
+
+# ============================================================
+# 测试 15: 浮点转换 (fp2si, si2fp)
+# ============================================================
+def test_fp_conversions(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 15: FP Conversions (fp2si/si2fp)")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_double: llvmlite.LLVMType | t.CPtr = core.Double()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_fpconv")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "fpconv", ty_double)
+    mcore.AddParam(func, ty_i32, "%n")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_n: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%n")
+    # sitofp i32 %n to double
+    v_d: llvmlite.Value | t.CPtr = llvmlite.build_si2fp(builder, v_n, ty_double)
+    # fptosi double %d to i32
+    v_i: llvmlite.Value | t.CPtr = llvmlite.build_fp2si(builder, v_d, ty_i32)
+    # sitofp i32 %i to double (return)
+    v_r: llvmlite.Value | t.CPtr = llvmlite.build_si2fp(builder, v_i, ty_double)
+    llvmlite.build_ret(builder, v_r)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "sitofp i32") is not None, "has 'sitofp i32'", "missing 'sitofp i32'")
+    testcheck.check(string.strstr(buf, "fptosi double") is not None, "has 'fptosi double'", "missing 'fptosi double'")
+
+
+# ============================================================
+# 测试 16: Phi 节点
+# ============================================================
+def test_phi(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 16: Phi Node")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_phi")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "phi_test", ty_i32)
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    then_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "then")
+    else_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "else")
+    merge: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "merge")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+
+    # entry: br label %then
+    llvmlite.position_at_end(builder, entry)
+    llvmlite.build_br(builder, then_blk)
+
+    # then: br label %merge
+    llvmlite.position_at_end(builder, then_blk)
+    v_1: llvmlite.Value | t.CPtr = mcore.ConstInt32(1)
+    llvmlite.build_br(builder, merge)
+
+    # else: br label %merge
+    llvmlite.position_at_end(builder, else_blk)
+    v_2: llvmlite.Value | t.CPtr = mcore.ConstInt32(2)
+    llvmlite.build_br(builder, merge)
+
+    # merge: %r = phi i32 [1, %then], [2, %else]; ret i32 %r
+    llvmlite.position_at_end(builder, merge)
+    inc1: llvmlite.PhiIncoming | t.CPtr = llvmlite.new_phi_incoming(pool, v_1, then_blk)
+    inc2: llvmlite.PhiIncoming | t.CPtr = llvmlite.new_phi_incoming(pool, v_2, else_blk)
+    inc1.Next = inc2
+    v_r: llvmlite.Value | t.CPtr = llvmlite.build_phi(builder, ty_i32, inc1, 2)
+    llvmlite.build_ret(builder, v_r)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "phi i32") is not None, "has 'phi i32'", "missing 'phi i32'")
+    testcheck.check(string.strstr(buf, "[") is not None, "has '['", "missing '['")
+    testcheck.check(string.strstr(buf, "%then") is not None, "has '%then'", "missing '%then'")
+    testcheck.check(string.strstr(buf, "%else") is not None, "has '%else'", "missing '%else'")
+
+
+# ============================================================
+# 测试 17: Switch
+# ============================================================
+def test_switch(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 17: Switch")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_switch")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "switch_test", ty_void)
+    mcore.AddParam(func, ty_i32, "%x")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    case0: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "case0")
+    case1: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "case1")
+    default_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "default")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+
+    # entry: switch i32 %x, label %default [i32 0, label %case0; i32 1, label %case1]
+    llvmlite.position_at_end(builder, entry)
+    v_x: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%x")
+    v_0: llvmlite.Value | t.CPtr = mcore.ConstInt32(0)
+    v_1: llvmlite.Value | t.CPtr = mcore.ConstInt32(1)
+    c0: llvmlite.SwitchCase | t.CPtr = llvmlite.new_switch_case(pool, v_0, case0)
+    c1: llvmlite.SwitchCase | t.CPtr = llvmlite.new_switch_case(pool, v_1, case1)
+    c0.Next = c1
+    llvmlite.build_switch(builder, v_x, default_blk, c0, 2)
+
+    # case0/case1/default: ret void
+    llvmlite.position_at_end(builder, case0)
+    llvmlite.build_ret_void(builder)
+    llvmlite.position_at_end(builder, case1)
+    llvmlite.build_ret_void(builder)
+    llvmlite.position_at_end(builder, default_blk)
+    llvmlite.build_ret_void(builder)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "switch i32") is not None, "has 'switch i32'", "missing 'switch i32'")
+    testcheck.check(string.strstr(buf, "label %default") is not None, "has 'label %default'", "missing 'label %default'")
+    testcheck.check(string.strstr(buf, "label %case0") is not None, "has 'label %case0'", "missing 'label %case0'")
+
+
+# ============================================================
+# 测试 18: Select
+# ============================================================
+def test_select(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 18: Select")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_select")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "sel_test", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    mcore.AddParam(func, ty_i32, "%b")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_cond: llvmlite.Value | t.CPtr = llvmlite.build_icmp(builder, llvmlite.ICMP_SLT, v_a, v_b)
+    v_sel: llvmlite.Value | t.CPtr = llvmlite.build_select(builder, v_cond, v_a, v_b)
+    llvmlite.build_ret(builder, v_sel)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "select i1") is not None, "has 'select i1'", "missing 'select i1'")
+
+
+# ============================================================
+# 测试 19: 全局变量 (字符串常量 + 整数)
+# ============================================================
+def test_globals(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 19: Global Variables")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_globals")
+    llvmlite.module_set_target(mod, "x86_64-pc-windows-gnu")
+
+    # 字符串常量: @.str = private unnamed_addr constant [6 x i8] c"hello\00"
+    mcore.CreateGlobalString(mod, ".str", "hello")
+
+    # 整数全局变量: @counter = global i32 0
+    mcore.CreateGlobalInt(mod, "counter", 32, 0)
+
+    # 添加一个简单函数使模块非空
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "use_global", ty_void)
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+    llvmlite.build_ret_void(builder)
+
+    buf: t.CChar | t.CPtr = pool.alloc(8192)
+    buf[0] = 0
+    mcore.PrintModule(buf, 8192, mod)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "@.str =") is not None, "has '@.str ='", "missing '@.str ='")
+    testcheck.check(string.strstr(buf, "private unnamed_addr constant") is not None,
+                    "has 'private unnamed_addr constant'",
+                    "missing 'private unnamed_addr constant'")
+    testcheck.check(string.strstr(buf, "c\"hello") is not None, "has 'c\"hello'", "missing string content")
+    testcheck.check(string.strstr(buf, "@counter =") is not None, "has '@counter ='", "missing '@counter ='")
+    testcheck.check(string.strstr(buf, "global i32 0") is not None, "has 'global i32 0'", "missing 'global i32 0'")
+
+
+# ============================================================
+# 测试 20: 函数与参数属性
+# ============================================================
+def test_attributes(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 20: Function & Param Attributes")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_i8ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(core.Int8())
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_attrs")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "attr_test", ty_i32)
+
+    # 参数 0: i32 noundef %x
+    p0: llvmlite.Param | t.CPtr = mcore.AddParam(func, ty_i32, "%x")
+    mcore.ParamSetAttrs(p0, "noundef")
+
+    # 参数 1: i8* nocapture %p
+    p1: llvmlite.Param | t.CPtr = mcore.AddParam(func, ty_i8ptr, "%p")
+    mcore.ParamSetAttrs(p1, "nocapture")
+
+    # 函数属性: nounwind
+    mcore.FunctionSetAttrs(func, "nounwind")
+
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+    v_x: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%x")
+    llvmlite.build_ret(builder, v_x)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "noundef i32") is not None, "has 'noundef i32'", "missing 'noundef i32'")
+    testcheck.check(string.strstr(buf, "nocapture i8*") is not None, "has 'nocapture i8*'", "missing 'nocapture i8*'")
+    testcheck.check(string.strstr(buf, ") nounwind") is not None, "has ') nounwind'", "missing ') nounwind'")
+
+
+# ============================================================
+# 测试 21: 原子操作 (atomicrmw / cmpxchg)
+# ============================================================
+def test_atomic(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 21: Atomic Ops")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+    ty_i32ptr: llvmlite.LLVMType | t.CPtr = core.Ptr(ty_i32)
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_atomic")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "atomic_test", ty_i32)
+    mcore.AddParam(func, ty_i32ptr, "%p")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+
+    v_p: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32ptr, "%p")
+    v_1: llvmlite.Value | t.CPtr = mcore.ConstInt32(1)
+    # atomicrmw add i32* %p, i32 1 monotonic
+    v_r: llvmlite.Value | t.CPtr = llvmlite.build_atomicrmw(builder, llvmlite.ATOMIC_ADD,
+                                                            v_p, v_1, llvmlite.ATOMIC_ORDER_MONOTONIC)
+    llvmlite.build_ret(builder, v_r)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "atomicrmw add") is not None, "has 'atomicrmw add'", "missing 'atomicrmw add'")
+    testcheck.check(string.strstr(buf, "monotonic") is not None, "has 'monotonic'", "missing 'monotonic'")
+
+
+# ============================================================
+# 测试 22: 内联汇编 + unreachable
+# ============================================================
+def test_inline_asm_unreachable(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 22: Inline ASM & Unreachable")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_void: llvmlite.LLVMType | t.CPtr = core.Void()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("test_asm")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "asm_test", ty_void)
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    trap_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "trap")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+
+    # entry: call void asm sideeffect "nop", ""(); br label %trap
+    llvmlite.position_at_end(builder, entry)
+    llvmlite.build_inline_asm(builder, ty_void, "nop", "", 1)
+    llvmlite.build_br(builder, trap_blk)
+
+    # trap: unreachable
+    llvmlite.position_at_end(builder, trap_blk)
+    llvmlite.build_unreachable(builder)
+
+    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf[0] = 0
+    mcore.PrintFunction(buf, 4096, func)
+    testcheck.info(buf)
+
+    testcheck.check(string.strstr(buf, "asm sideeffect") is not None, "has 'asm sideeffect'", "missing 'asm sideeffect'")
+    testcheck.check(string.strstr(buf, "unreachable") is not None, "has 'unreachable'", "missing 'unreachable'")
+
+
+# ============================================================
+# 测试 23: SSA 验证 - 合法函数通过
+# ============================================================
+def test_verify_valid(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 23: Verify Valid Function")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("verify_valid")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    mcore.AddParam(func, ty_i32, "%b")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_c: llvmlite.Value | t.CPtr = llvmlite.build_add(builder, v_a, v_b)
+    llvmlite.build_ret(builder, v_c)
+
+    result: llvmlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
+    err_count: t.CInt = mcore.VerifyFunction(func, result)
+    testcheck.check(err_count == 0,
+                    "valid add function: 0 errors",
+                    "valid function should pass verification")
+    testcheck.check(result.ErrorCode == llvmlite.VERIFY_OK,
+                    "error code = VERIFY_OK",
+                    "wrong error code for valid function")
+
+
+# ============================================================
+# 测试 24: SSA 验证 - 缺少终止指令
+# ============================================================
+def test_verify_no_terminator(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 24: Verify Missing Terminator")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("verify_noterm")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "noterm", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    llvmlite.build_add(builder, v_a, v_a)  # 无 ret
+
+    result: llvmlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
+    err_count: t.CInt = mcore.VerifyFunction(func, result)
+    testcheck.check(err_count > 0,
+                    "missing terminator detected",
+                    "should detect missing terminator")
+    testcheck.check(result.ErrorCode == llvmlite.VERIFY_ERR_NO_TERMINATOR,
+                    "error code = NO_TERMINATOR",
+                    "wrong error code for missing terminator")
+
+
+# ============================================================
+# 测试 25: SSA 验证 - 重复定义
+# ============================================================
+def test_verify_duplicate_def(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 25: Verify Duplicate Definition")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("verify_dup")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "dup_test", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    builder: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    llvmlite.position_at_end(builder, entry)
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_c: llvmlite.Value | t.CPtr = llvmlite.build_add(builder, v_a, v_a)
+
+    # 手动追加重复定义行 "%0 = add i32 %a, %a"
+    dup_text: t.CChar | t.CPtr = pool.alloc(64)
+    string.strcpy(dup_text, "%0 = add i32 %a, %a")
+    llvmlite.block_append_text(pool, entry, dup_text)
+
+    llvmlite.build_ret(builder, v_c)
+
+    result: llvmlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
+    err_count: t.CInt = mcore.VerifyFunction(func, result)
+    testcheck.check(err_count > 0,
+                    "duplicate definition detected",
+                    "should detect duplicate definition")
+    testcheck.check(result.ErrorCode == llvmlite.VERIFY_ERR_DUPLICATE_DEF,
+                    "error code = DUPLICATE_DEF",
+                    "wrong error code for duplicate def")
+
+
+# ============================================================
+# 测试 26: SSA 验证 - 未定义引用
+# ============================================================
+def test_verify_undef_use(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 26: Verify Undefined Use")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("verify_undef")
+    func: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "undef_test", ty_i32)
+    mcore.AddParam(func, ty_i32, "%a")
+    entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+
+    # 手动追加含未定义引用的行 "%0 = add i32 %ghost, %a"
+    line1: t.CChar | t.CPtr = pool.alloc(64)
+    string.strcpy(line1, "%0 = add i32 %ghost, %a")
+    llvmlite.block_append_text(pool, entry, line1)
+
+    # 手动追加终止指令
+    line2: t.CChar | t.CPtr = pool.alloc(64)
+    string.strcpy(line2, "ret i32 %0")
+    llvmlite.block_append_text(pool, entry, line2)
+    entry.IsTerminated = 1
+
+    result: llvmlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
+    err_count: t.CInt = mcore.VerifyFunction(func, result)
+    testcheck.check(err_count > 0,
+                    "undefined use detected",
+                    "should detect undefined use")
+    testcheck.check(result.ErrorCode == llvmlite.VERIFY_ERR_UNDEFINED_USE,
+                    "error code = UNDEFINED_USE",
+                    "wrong error code for undefined use")
+
+
+# ============================================================
+# 测试 27: SSA 验证 - 模块级验证（含 phi/分支，验证块标签修复）
+# ============================================================
+def test_verify_module(pool: memhub.MemPool | t.CPtr):
+    testcheck.section("Test 27: Verify Module (phi/labels)")
+    core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
+    mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
+    ty_i32: llvmlite.LLVMType | t.CPtr = core.Int32()
+
+    mod: llvmlite.Module | t.CPtr = mcore.NewModule("verify_module")
+
+    # 函数 1: 简单 add（合法）
+    func1: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    mcore.AddParam(func1, ty_i32, "%a")
+    mcore.AddParam(func1, ty_i32, "%b")
+    entry1: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func1, "entry")
+    builder1: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func1)
+    llvmlite.position_at_end(builder1, entry1)
+    v_a: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
+    v_b: llvmlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_c: llvmlite.Value | t.CPtr = llvmlite.build_add(builder1, v_a, v_b)
+    llvmlite.build_ret(builder1, v_c)
+
+    # 函数 2: 含 phi 与分支（合法，验证块标签不被误报为未定义）
+    func2: llvmlite.Function | t.CPtr = mcore.CreateFunction(mod, "phi_test", ty_i32)
+    f2_entry: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func2, "entry")
+    then_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func2, "then")
+    else_blk: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func2, "else")
+    merge: llvmlite.BasicBlock | t.CPtr = mcore.CreateBlock(func2, "merge")
+    builder2: llvmlite.IRBuilder | t.CPtr = mcore.NewBuilder(func2)
+
+    # entry: br label %then
+    llvmlite.position_at_end(builder2, f2_entry)
+    llvmlite.build_br(builder2, then_blk)
+
+    # then: br label %merge
+    llvmlite.position_at_end(builder2, then_blk)
+    v_1: llvmlite.Value | t.CPtr = mcore.ConstInt32(1)
+    llvmlite.build_br(builder2, merge)
+
+    # else: br label %merge
+    llvmlite.position_at_end(builder2, else_blk)
+    v_2: llvmlite.Value | t.CPtr = mcore.ConstInt32(2)
+    llvmlite.build_br(builder2, merge)
+
+    # merge: %r = phi i32 [1, %then], [2, %else]; ret i32 %r
+    llvmlite.position_at_end(builder2, merge)
+    inc1: llvmlite.PhiIncoming | t.CPtr = llvmlite.new_phi_incoming(pool, v_1, then_blk)
+    inc2: llvmlite.PhiIncoming | t.CPtr = llvmlite.new_phi_incoming(pool, v_2, else_blk)
+    inc1.Next = inc2
+    v_r: llvmlite.Value | t.CPtr = llvmlite.build_phi(builder2, ty_i32, inc1, 2)
+    llvmlite.build_ret(builder2, v_r)
+
+    result: llvmlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
+    err_count: t.CInt = mcore.VerifyModule(mod, result)
+    testcheck.check(err_count == 0,
+                    "module with phi/branches: 0 errors",
+                    "valid module with phi should pass verification")
+    testcheck.check(result.ErrorCode == llvmlite.VERIFY_OK,
+                    "error code = VERIFY_OK",
+                    "wrong error code for valid module")
+
+
+def main() -> int:
+    testcheck.begin("LLvmLiteTest: llvmlite 库（LLVM IR 生成）")
+
+    # 初始化 mpool
+    pool_mem: bytes = stdlib.malloc(POOL_SIZE)
+    if pool_mem is None:
+        stdio.printf("FAIL: malloc for pool failed\n")
+        return 1
+    pool: memhub.MemPool | t.CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
+    if pool is None:
+        stdio.printf("FAIL: memhub.MemPool init failed\n")
+        return 1
+
+    test_type_print(pool)
+    test_value_print(pool)
+    test_build_add(pool)
+    test_build_if_else(pool)
+    test_module_print(pool)
+    test_array_type(pool)
+    test_struct_type(pool)
+    test_func_type(pool)
+    test_declare(pool)
+    test_float_types(pool)
+    test_float_binops(pool)
+    test_bitwise_ops(pool)
+    test_fcmp(pool)
+    test_casts(pool)
+    test_fp_conversions(pool)
+    test_phi(pool)
+    test_switch(pool)
+    test_select(pool)
+    test_globals(pool)
+    test_attributes(pool)
+    test_atomic(pool)
+    test_inline_asm_unreachable(pool)
+    test_verify_valid(pool)
+    test_verify_no_terminator(pool)
+    test_verify_duplicate_def(pool)
+    test_verify_undef_use(pool)
+    test_verify_module(pool)
+
+    return testcheck.end()

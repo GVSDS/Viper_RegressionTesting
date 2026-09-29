@@ -1,0 +1,38 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import memhub
+import stdlib
+import sys
+import os
+import os._win32
+import os._posix
+import os.path
+import shutil
+import subprocess
+import syslibtest_impl
+
+
+# MBuddy arena 大小：1MB
+ARENA_SIZE: t.CDefine = 1048576
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    # 初始化全局 MBuddy 内存分配器
+    arena: bytes = stdlib.malloc(ARENA_SIZE)
+    mbuddy_obj: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, ARENA_SIZE)
+
+    # 将 MBuddy 对象赋值给所有需要内存分配的模块
+    sys._mbuddy = mbuddy_obj
+    os._mbuddy = mbuddy_obj
+    os._win32._mbuddy = mbuddy_obj
+    os._posix._mbuddy = mbuddy_obj
+    os.path._mbuddy = mbuddy_obj
+    shutil._mbuddy = mbuddy_obj
+    subprocess._mbuddy = mbuddy_obj
+
+    return syslibtest_impl.run()

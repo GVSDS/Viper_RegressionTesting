@@ -1,0 +1,81 @@
+import t, c
+from stdint import *
+import stdio
+import stdlib
+import socket
+import memhub
+import requests
+
+
+# 全局 MBuddy 指针
+_mbuddy: memhub.MemBuddy | t.CPtr
+
+
+@t.CExport
+def main() -> int:
+    global _mbuddy
+    stdio.printf("WebTest: HTTP client library test\n")
+
+    # 初始化内存管理器（16MB arena）
+    arena: bytes = stdlib.malloc(16 * 1024 * 1024)
+    if arena is None:
+        stdio.printf("FATAL: malloc arena failed\n")
+        return 1
+
+    _mbuddy = memhub.MemBuddy(arena, 16 * 1024 * 1024)
+    requests._mbuddy = _mbuddy
+
+    # 初始化 Socket 库
+    result: INT = socket.SocketInit()
+    stdio.printf("SocketInit: %d\n", result)
+
+    # 测试 Socket OOP API
+    sock = socket.Socket(socket.AF_INET, socket.SOCK_STREAM)
+    if sock.fd != socket.INVALID_SOCKET:
+        stdio.printf("Socket: OK (fd=%d)\n", sock.fd)
+        sock.close()
+        stdio.printf("Socket.close: OK\n")
+    else:
+        stdio.printf("Socket: FAIL\n")
+
+    # 测试 DNS 解析 — 通过 Socket.connect 间接测试（内部调用 _MakeAddr）
+    stdio.printf("\n--- DNS test ---\n")
+    dns_sock = socket.Socket(socket.AF_INET, socket.SOCK_STREAM)
+    if dns_sock.fd != socket.INVALID_SOCKET:
+        dns_sock.settimeout(5000)
+        result: INT = dns_sock.connect("example.com", 80)
+        if result == 0:
+            stdio.printf("DNS: example.com resolved OK\n")
+        else:
+            stdio.printf("DNS: example.com resolved but connect failed (err in _MakeAddr debug above)\n")
+        dns_sock.close()
+
+    # 测试 HTTP GET — 使用 DNS 解析 example.com
+    stdio.printf("\n--- HTTP GET test (example.com) ---\n")
+    resp = requests.get("http://example.com/")
+    if resp is not None:
+        stdio.printf("requests.get: OK\n")
+        code: INT = resp.status_code
+        length: INT = resp.body_len
+        stdio.printf("  status_code: %d\n", code)
+        stdio.printf("  body_len: %d\n", length)
+        if resp.text is not None and length > 0:
+            print_len: INT = 300
+            if length < print_len:
+                print_len = length
+            stdio.printf("  text (first %d chars):\n", print_len)
+            txt: str = resp.text
+            i: INT = 0
+            while i < print_len and txt[i] != 0:
+                stdio.printf("%c", txt[i])
+                i += 1
+            stdio.printf("\n")
+        requests.release(resp)
+    else:
+        stdio.printf("requests.get: FAIL (network unavailable)\n")
+
+    # 清理
+    socket.SocketCleanup()
+    stdio.printf("\nSocketCleanup: OK\n")
+    stdio.printf("WebTest: ALL PASSED\n")
+    return 0

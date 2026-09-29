@@ -1,0 +1,39 @@
+import t
+import stdio
+import testcheck
+
+
+# ============================================================
+# ClosureCallTest - t.CPtr 函数指针调用最小化复现
+#
+# closure_test.py 中 f: t.CPtr = make_counter() 后调用 f() 报错：
+#   Undefined function: 'f'
+# 根因：f 是 t.CPtr(i8*)，line 322 检查 pointee 是 FunctionType 失败
+# ============================================================
+
+
+# nonlocal 关键字测试：嵌套函数修改外层局部变量
+def make_counter() -> t.CPtr:
+    count: int = 0
+
+    # 内部函数（闭包）捕获 count
+    def counter() -> int:
+        nonlocal count
+        count = count + 1
+        return count
+
+    return counter
+
+
+def test_closure_call():
+    """验证 t.CPtr 函数指针调用"""
+    testcheck.section("Closure call via t.CPtr")
+    f: t.CPtr = make_counter()
+    v: int = f()
+    testcheck.check(v == 1, "f() first call = 1", "expect 1")
+
+
+def main() -> t.CInt:
+    testcheck.begin("ClosureCallTest: t.CPtr function pointer call")
+    test_closure_call()
+    return testcheck.end()

@@ -1,0 +1,136 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CPtr, CChar, CInt32T, CUInt64T, CFloat64T, CExport, State
+import viperlib
+import stdlib
+import testcheck
+
+
+# === 函数泛型 ===
+
+def add[T](a: T, b: T) -> T:
+    return a + b
+
+def add_u64[T](a: T, b: T, c: CUInt64T) -> T:
+    return a + b + T(c)
+
+def fxi[T1, T2](a: T1, b: T2) -> T1:
+    return a + fxi2(a, b, CUInt64T(178900))
+
+def fxi2[T1, T2, T3](a: T1, b: T2, c: T3) -> T1:
+    return a + T1(b) + T1(c)
+
+def wrap_add[T](a: T, b: T) -> T:
+    return add(a, b)
+
+def double_add[T](a: T, b: T) -> T:
+    return add(a, b) + add(a, b)
+
+
+# === 结构体泛型 ===
+
+class A[T]():
+    a: T
+    def __init__(self, a: T):
+        self.a = T(a)
+    def get_a(self) -> T:
+        return self.a
+
+class Pair[T1, T2]():
+    first: T1
+    second: T2
+    def __init__(self, first: T1, second: T2):
+        self.first = T1(first)
+        self.second = T2(second)
+    def get_first(self) -> T1:
+        return self.first
+    def get_second(self) -> T2:
+        return self.second
+
+class Calculator[T]():
+    val: T
+    def __init__(self, init_val: T):
+        self.val = T(init_val)
+    def compute(self, other: T) -> T:
+        return add(self.val, other)
+    def double_compute(self, other: T) -> T:
+        return double_add(self.val, other)
+
+class Container[T]():
+    value: T
+    flag: CInt32T
+    def __init__(self, v: T):
+        self.value = T(v)
+        self.flag = CInt32T(1)
+    def get_value(self) -> T:
+        return self.value
+    def get_flag(self) -> CInt32T:
+        return self.flag
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("GenericOopTest: 泛型专项测试")
+
+    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+
+    # === 基础函数泛型 ===
+    testcheck.section("基础函数泛型")
+    print(add(3, 5))
+    print(add(1.5, 2.5))
+    print(add_u64(1, 2, CUInt64T(3000000000000000)))
+    print(fxi(0.2, 6))
+    print(wrap_add(10, 20))
+    print(double_add(5, 7))
+    testcheck.ok("基础函数泛型测试完成")
+
+    # === 基础结构体泛型 ===
+    testcheck.section("基础结构体泛型")
+    a = A(100)
+    print(a.get_a())
+    p1 = Pair(10, 20)
+    print(p1.get_first())
+    print(p1.get_second())
+    testcheck.ok("基础结构体泛型测试完成")
+
+    # === 泛型 + OOP 组合 ===
+    testcheck.section("泛型 + OOP 组合")
+    calc1 = Calculator(10)
+    print(calc1.compute(5))
+    calc2 = Calculator(2)
+    print(calc2.compute(3))
+
+    c1_gen = Container(42)
+    print(c1_gen.get_value())
+    print(c1_gen.get_flag())
+    testcheck.ok("泛型 + OOP 组合测试完成")
+
+    # === snprintf 格式化 ===
+    testcheck.section("snprintf 格式化")
+    viperlib.snprintf(buf, 256, "int=%d, float=%.2f", 42, 3.14)
+    print(buf)
+    viperlib.snprintf(buf, 256, "result=%d", add(100, 200))
+    print(buf)
+    testcheck.ok("snprintf 格式化测试完成")
+
+    # === 新语法类型强转 (t1|t2)(x) ===
+    testcheck.section("新语法类型强转 (t1|t2)(x)")
+    val_i64: CUInt64T = CUInt64T(42)
+    val_i32 = (t.CInt)(val_i64)
+    print(val_i32)
+
+    ptr_raw = stdlib.malloc(8)
+    ptr_typed = (t.CInt | t.CPtr)(ptr_raw)
+    viperlib.snprintf(buf, 256, "cast ptr=%p", ptr_typed)
+    print(buf)
+
+    val_f = (t.CDouble)(42)
+    viperlib.snprintf(buf, 256, "cast float=%.1f", val_f)
+    print(buf)
+    testcheck.ok("新语法类型强转测试完成")
+
+    stdlib.free(buf)
+    return testcheck.end()

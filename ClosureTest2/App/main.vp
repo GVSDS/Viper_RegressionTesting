@@ -1,0 +1,220 @@
+import t
+import stdio
+import testcheck
+
+# ============================================================
+# Test 1: nonlocal 在条件分支中修改
+# ============================================================
+def test_nonlocal_conditional():
+    testcheck.section("Test 1: nonlocal in conditional branches")
+    x: t.CInt = 0
+    def modify(flag: t.CInt):
+        nonlocal x
+        if flag:
+            x += 10
+        else:
+            x += 100
+    modify(1)
+    modify(0)
+    modify(1)
+    testcheck.check(x == 120, "nonlocal conditional (x == 120)", "nonlocal conditional (expect 120)")
+
+# ============================================================
+# Test 2: 多个nonlocal变量同时修改
+# ============================================================
+def test_nonlocal_multi_var():
+    testcheck.section("Test 2: multiple nonlocal variables")
+    a: t.CInt = 1
+    b: t.CInt = 2
+    c_val: t.CInt = 3
+    def swap_add():
+        nonlocal a, b, c_val
+        tmp: t.CInt = a
+        a = b
+        b = c_val
+        c_val = tmp
+    swap_add()
+    testcheck.check(a == 2 and b == 3 and c_val == 1, "multi nonlocal (a==2 b==3 c==1)", "multi nonlocal (expect 2 3 1)")
+
+# ============================================================
+# Test 3: global 在多个函数中交叉修改
+# ============================================================
+g_counter: t.CInt = 0
+
+def inc_global():
+    global g_counter
+    g_counter += 1
+
+def add_global(n: t.CInt):
+    global g_counter
+    g_counter += n
+
+def test_global_cross_functions():
+    testcheck.section("Test 3: global cross-function modification")
+    global g_counter
+    g_counter = 0
+    inc_global()
+    inc_global()
+    add_global(10)
+    inc_global()
+    testcheck.check(g_counter == 13, "global cross (g_counter == 13)", "global cross (expect 13)")
+
+# ============================================================
+# Test 4: 嵌套函数修改外层局部变量（引用捕获）
+# ============================================================
+def test_nested_ref_capture():
+    testcheck.section("Test 4: nested function ref capture")
+    arr: t.CArray[t.CInt, 4] = [0]
+    def fill():
+        nonlocal arr
+        for i in range(4):
+            arr[i] = (i + 1) * 10
+    fill()
+    total: t.CInt = arr[0] + arr[1] + arr[2] + arr[3]
+    testcheck.check(total == 100, "ref capture (total == 100)", "ref capture (expect 100)")
+
+# ============================================================
+# Test 5: lambda捕获后修改原变量
+# ============================================================
+def test_lambda_capture_then_modify():
+    testcheck.section("Test 5: lambda capture then modify")
+    x: t.CInt = 10
+    f = lambda: x
+    r1: t.CInt = f()
+    x = 20
+    r2: t.CInt = f()
+    testcheck.check(r1 == 10 and r2 == 10, "lambda value capture (before==10 after==10)", "lambda value capture (expect 10 10)")
+
+# ============================================================
+# Test 6: 嵌套函数中nonlocal与循环结合
+# ============================================================
+def test_nonlocal_loop_accumulate():
+    testcheck.section("Test 6: nonlocal with loop accumulate")
+    sum_val: t.CInt = 0
+    count: t.CInt = 0
+    def add_numbers(n: t.CInt):
+        nonlocal sum_val, count
+        for i in range(1, n + 1):
+            sum_val += i
+            count += 1
+    add_numbers(5)  # 1+2+3+4+5=15
+    add_numbers(3)  # 1+2+3=6
+    testcheck.check(sum_val == 21 and count == 8, "loop accumulate (sum==21 count==8)", "loop accumulate (expect 21 8)")
+
+# ============================================================
+# Test 7: 三层嵌套中每层修改不同变量
+# ============================================================
+def test_deep_nested_vars():
+    testcheck.section("Test 7: deep nested different vars")
+    a: t.CInt = 0
+    b: t.CInt = 0
+    c_val: t.CInt = 0
+    def level1():
+        nonlocal a
+        a += 1
+        def level2():
+            nonlocal b
+            b += 10
+            def level3():
+                nonlocal c_val
+                c_val += 100
+            level3()
+        level2()
+    level1()
+    level1()
+    testcheck.check(a == 2 and b == 20 and c_val == 200, "deep nested (a==2 b==20 c==200)", "deep nested (expect 2 20 200)")
+
+# ============================================================
+# Test 8: global + nonlocal 在同一嵌套函数中
+# ============================================================
+g_state: t.CInt = 0
+
+def test_global_nonlocal_same_func():
+    testcheck.section("Test 8: global+nonlocal in same nested func")
+    global g_state
+    g_state = 0
+    local_state: t.CInt = 0
+    def worker(n: t.CInt):
+        nonlocal local_state
+        global g_state
+        for i in range(n):
+            g_state += 1
+            local_state += 2
+    worker(5)
+    testcheck.check(g_state == 5 and local_state == 10, "global+nonlocal same (g==5 l==10)", "global+nonlocal same (expect 5 10)")
+
+# ============================================================
+# Test 9: lambda带默认参数与捕获
+# ============================================================
+def test_lambda_default_and_capture():
+    testcheck.section("Test 9: lambda with arg and capture")
+    base: t.CInt = 100
+    multiply = lambda x: base * x
+    r1: t.CInt = multiply(3)
+    r2: t.CInt = multiply(5)
+    testcheck.check(r1 == 300 and r2 == 500, "lambda arg+capture (100*3==300 100*5==500)", "lambda arg+capture (expect 300 500)")
+
+# ============================================================
+# Test 10: 嵌套函数多次调用累积
+# ============================================================
+def test_nested_accumulate():
+    testcheck.section("Test 10: nested function accumulate")
+    total: t.CInt = 0
+    def add_val(n: t.CInt):
+        nonlocal total
+        total += n
+    add_val(10)
+    add_val(20)
+    add_val(30)
+    testcheck.check(total == 60, "nested accumulate (total == 60)", "nested accumulate (expect 60)")
+
+# ============================================================
+# Test 11: nonlocal在while循环中
+# ============================================================
+def test_nonlocal_while():
+    testcheck.section("Test 11: nonlocal in while loop")
+    result: t.CInt = 0
+    def countdown(n: t.CInt):
+        nonlocal result
+        i: t.CInt = n
+        while i > 0:
+            result += i
+            i -= 1
+    countdown(5)  # 5+4+3+2+1=15
+    testcheck.check(result == 15, "nonlocal while (result == 15)", "nonlocal while (expect 15)")
+
+# ============================================================
+# Test 12: 嵌套函数修改结构体字段
+# ============================================================
+class Point:
+    x: t.CInt
+    y: t.CInt
+
+def test_nested_modify_struct():
+    testcheck.section("Test 12: nested modify struct")
+    p: Point = Point()
+    p.x = 0
+    p.y = 0
+    def translate(dx: t.CInt, dy: t.CInt):
+        nonlocal p
+        p.x += dx
+        p.y += dy
+    translate(10, 20)
+    translate(5, 15)
+    testcheck.check(p.x == 15 and p.y == 35, "nested struct (x==15 y==35)", "nested struct (expect 15 35)")
+
+def main() -> t.CInt:
+    testcheck.begin("ClosureTest2: Advanced Closure/Lambda/Global/Nonlocal")
+    test_nonlocal_conditional()
+    test_nonlocal_multi_var()
+    test_global_cross_functions()
+    test_nested_ref_capture()
+    test_lambda_capture_then_modify()
+    test_nonlocal_loop_accumulate()
+    test_deep_nested_vars()
+    test_global_nonlocal_same_func()
+    test_lambda_default_and_capture()
+    test_nested_accumulate()
+    test_nonlocal_while()
+    test_nested_modify_struct()
+    return testcheck.end()

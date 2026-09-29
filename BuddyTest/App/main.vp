@@ -1,0 +1,18 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import memhub
+import mbuddytest
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    # memhub 的 [MEMDBG] 悬空/重复 free 检测默认开启（_memdbg_enable=1）。
+    # BuddyTest 含"故意双重 free，期望静默拒绝且状态不损坏"的负向用例，
+    # 若保持开启会在第二次 free 处终止进程 → 在此关闭 debug 模式。
+    memhub._memdbg_enable = 0
+
+    return mbuddytest.mbuddy_main()

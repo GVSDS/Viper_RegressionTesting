@@ -1,0 +1,11 @@
+import t, c
+import testcheck
+import vectortest
+
+
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("VectorGenericTest: Vector 泛型测试")
+    testcheck.section("Vector 泛型")
+    vectortest.vector_main()
+    testcheck.ok("Vector 泛型测试完成")
+    return testcheck.end()

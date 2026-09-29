@@ -1,0 +1,154 @@
+import t
+import stdio
+import testcheck
+import stdlib
+from g4node import G4Node, new_g4node, g4node_get_next, g4node_set_next
+import memhub
+import caller1
+import caller2
+import caller3
+
+# ============================================================
+# G4: 验证 includes 中继承 GSListNode[X] 的类是否会出现
+# Next 字段缺失或类型降级的问题
+#
+# G4Node 类在 includes/g4node.py 中（走 Phase1 路径）
+# G4Node 有 5 个自有字段 + 1 个继承字段(Next) = 6 字段
+# caller1/caller2/caller3 模拟 TransPyV 多模块环境
+# ============================================================
+
+
+def test_g4node_create():
+    testcheck.section("Test 1: G4Node create (from includes)")
+    arena: bytes = stdlib.malloc(4096)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
+    n: G4Node | t.CPtr = new_g4node(pool)
+    if n is None:
+        testcheck.check(False, "new_g4node", "FAIL")
+        return
+    n.IntVal = 42
+    v: t.CInt = n.IntVal
+    testcheck.check(v == 42, "G4Node.IntVal = 42", "expect 42")
+
+
+def test_g4node_next_field():
+    testcheck.section("Test 2: Next field from GSListNode[G4Node]")
+    arena: bytes = stdlib.malloc(4096)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
+    n1: G4Node | t.CPtr = new_g4node(pool)
+    n2: G4Node | t.CPtr = new_g4node(pool)
+    if n1 is None or n2 is None:
+        testcheck.check(False, "new_g4node", "FAIL")
+        return
+    n1.IntVal = 10
+    n2.IntVal = 20
+    g4node_set_next(n1, n2)
+    next_node: G4Node | t.CPtr = g4node_get_next(n1)
+    if next_node is None:
+        testcheck.check(False, "g4node_get_next", "FAIL")
+        return
+    v: t.CInt = next_node.IntVal
+    testcheck.check(v == 20, "n1.Next.IntVal = 20", "expect 20")
+
+
+def test_g4node_chain():
+    testcheck.section("Test 3: G4Node chain traversal")
+    arena: bytes = stdlib.malloc(4096)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
+    a: G4Node | t.CPtr = new_g4node(pool)
+    b: G4Node | t.CPtr = new_g4node(pool)
+    c: G4Node | t.CPtr = new_g4node(pool)
+    if a is None or b is None or c is None:
+        testcheck.check(False, "new_g4node", "FAIL")
+        return
+    a.IntVal = 1
+    b.IntVal = 2
+    c.IntVal = 3
+    g4node_set_next(a, b)
+    g4node_set_next(b, c)
+    sum: t.CInt = a.IntVal
+    p: G4Node | t.CPtr = g4node_get_next(a)
+    sum = sum + p.IntVal
+    p = g4node_get_next(p)
+    sum = sum + p.IntVal
+    testcheck.check(sum == 6, "chain sum = 1+2+3 = 6", "expect 6")
+
+
+def test_caller1_direct_access():
+    """caller1: 直接访问 Next 字段（不通过访问器）"""
+    testcheck.section("Test 4: caller1 direct Next access")
+    arena: bytes = stdlib.malloc(8192)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
+    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    if head is None:
+        testcheck.check(False, "caller1_make_chain", "FAIL")
+        return
+    total: t.CInt = caller1.caller1_sum_chain(head)
+    stdio.printf("caller1 chain total = %d\n", total)
+    testcheck.check(total == 600, "caller1 sum = 100+200+300 = 600", "expect 600")
+
+
+def test_caller2_reverse():
+    """caller2: 反转链表直接访问 Next"""
+    testcheck.section("Test 5: caller2 reverse chain")
+    arena: bytes = stdlib.malloc(8192)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
+    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    if head is None:
+        testcheck.check(False, "caller1_make_chain", "FAIL")
+        return
+    count_before: t.CInt = caller2.caller2_count_nodes(head)
+    reversed_head: G4Node | t.CPtr = caller2.caller2_reverse_chain(head)
+    count_after: t.CInt = caller2.caller2_count_nodes(reversed_head)
+    stdio.printf("caller2 count before=%d after=%d\n", count_before, count_after)
+    testcheck.check(count_before == 3 and count_after == 3,
+                    "caller2 reverse count OK (3,3)", "caller2 count mismatch")
+
+
+def test_caller3_append():
+    """caller3: 追加节点直接访问 Next"""
+    testcheck.section("Test 6: caller3 append node")
+    arena: bytes = stdlib.malloc(8192)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
+    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    if head is None:
+        testcheck.check(False, "caller1_make_chain", "FAIL")
+        return
+    extra: G4Node | t.CPtr = new_g4node(pool)
+    if extra is None:
+        testcheck.check(False, "new_g4node", "FAIL")
+        return
+    extra.IntVal = 400
+    head = caller3.caller3_append(head, extra)
+    total: t.CInt = caller1.caller1_sum_chain(head)
+    stdio.printf("caller3 after append total = %d\n", total)
+    testcheck.check(total == 1000, "caller3 append sum = 600+400 = 1000", "expect 1000")
+
+
+def main() -> t.CInt:
+    testcheck.begin("G4: GSListNode inheritance from includes (Phase1 path)")
+    test_g4node_create()
+    test_g4node_next_field()
+    test_g4node_chain()
+    test_caller1_direct_access()
+    test_caller2_reverse()
+    test_caller3_append()
+    return testcheck.end()

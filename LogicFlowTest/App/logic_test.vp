@@ -1,0 +1,372 @@
+import config
+import t, c
+
+
+def ForRangeBasicTest(stop: t.CInt):
+    i: t.CInt = 0
+    for i in range(stop):
+        print("For range: ", i)
+    print("Done")
+
+
+def ForRangeWithStartStop(start: t.CInt, stop: t.CInt, step: t.CInt):
+    i: t.CInt = 0
+    for i in range(start, stop, step):
+        print("Range: ", i)
+    print("Done")
+
+
+def NestedForRangeTest(rows: t.CInt, cols: t.CInt):
+    r: t.CInt = 0
+    c_val: t.CInt = 0
+    for r in range(rows):
+        for c_val in range(cols):
+            print("Cell: ", r, c_val)
+    print("Grid done")
+
+
+def ForWithIfBreakTest(data_size: t.CInt):
+    i: t.CInt = 0
+    found: t.CInt = 0
+    for i in range(data_size):
+        if i == 5:
+            print("Found at: ", i)
+            found = 1
+            break
+        print("Checking: ", i)
+    if found == 0:
+        print("Not found")
+
+
+def ForWithIfContinueTest(n: t.CInt):
+    i: t.CInt = 0
+    count: t.CInt = 0
+    for i in range(n):
+        if i % 2 == 0:
+            continue
+        print("Odd: ", i)
+        count += 1
+    print("Total odd: ", count)
+
+
+def ForWithElifBranchTest(value: t.CInt):
+    i: t.CInt = 0
+    result: t.CInt = 0
+    for i in range(value):
+        if i < 3:
+            result += 1
+        elif i < 6:
+            result += 2
+        elif i < 9:
+            result += 3
+        else:
+            result += 4
+    print("Elif branch result: ", result)
+
+
+def WhileWithIfElifElseTest(iterations: t.CInt):
+    counter: t.CInt = 0
+    while counter < iterations:
+        if counter < 2:
+            print("Phase 1: ", counter)
+        elif counter < 4:
+            print("Phase 2: ", counter)
+        elif counter < 6:
+            print("Phase 3: ", counter)
+        else:
+            print("Phase 4: ", counter)
+        counter += 1
+    print("While done")
+
+
+def WhileWithNestedIfTest(limit: t.CInt):
+    outer: t.CInt = 0
+    while outer < limit:
+        inner: t.CInt = 0
+        while inner < limit:
+            if inner == 2 and outer == 1:
+                print("Target: ", outer, inner)
+                inner += 1
+                continue
+            if inner > 3:
+                break
+            print("Inner: ", inner)
+            inner += 1
+        outer += 1
+
+
+def WhileWithMatchCaseTest(value: t.CInt):
+    result: t.CInt = 0
+    match value:
+        case 1:
+            result = 100
+            print("Case 1")
+        case 2:
+            result = 200
+            print("Case 2")
+        case 3:
+            result = 300
+            print("Case 3")
+        case _:
+            result = 999
+            print("Default case")
+    print("Match result: ", result)
+
+
+def WhileWithMatchCaseNoBreakTest(value: t.CInt):
+    result: t.CInt = 0
+    match value:
+        case 1:
+            result = 10
+            print("Case 1: ", result)
+        case 2:
+            result = 20
+            print("Case 2: ", result)
+            result += 5
+        case 3:
+            result = 30
+            print("Case 3: ", result)
+        case _:
+            result = 0
+    print("No break match result: ", result)
+
+
+def ComplexForWhileMatchTest(outer_limit: t.CInt, inner_limit: t.CInt):
+    i: t.CInt = 0
+    j: t.CInt = 0
+    result: t.CInt = 0
+    for i in range(outer_limit):
+        j = 0
+        while j < inner_limit:
+            match (i, j):
+                case (0, 0):
+                    result += 1
+                case (1, 1):
+                    result += 10
+                case (2, _):
+                    result += 100
+                case (_, 0):
+                    result += 1000
+                case _:
+                    result += 10000
+            j += 1
+    print("Complex match result: ", result)
+
+
+def ForWithCaseAndNoBreakTest(n: t.CInt):
+    i: t.CInt = 0
+    result: t.CInt = 0
+    for i in range(n):
+        match i:
+            case 0:
+                result += 1
+            case 1:
+                result += 2
+            case 2:
+                result += 3
+                result += 10
+            case _:
+                result += i
+        c.NoBreak
+    print("NoBreak result: ", result)
+
+
+def WhileWithBreakConditionTest(limit: t.CInt):
+    i: t.CInt = 0
+    early_exit: t.CInt = 0
+    while i < limit:
+        if i == 3:
+            early_exit = 1
+            break
+        if i == 2:
+            i += 1
+            continue
+        print("While i: ", i)
+        i += 1
+
+
+def NestedWhileWithMultipleBreakPoints(depth: t.CInt, width: t.CInt):
+    d: t.CInt = 0
+    w: t.CInt = 0
+    count: t.CInt = 0
+    while d < depth:
+        w = 0
+        while w < width:
+            if w == 2:
+                break
+            if d == 1 and w == 1:
+                c.Break
+            count += 1
+            w += 1
+        d += 1
+    print("Nested break count: ", count)
+
+
+def ForWithMatchCaseInLoopTest(iterations: t.CInt):
+    i: t.CInt = 0
+    sum_even: t.CInt = 0
+    sum_odd: t.CInt = 0
+    for i in range(iterations):
+        match i % 3:
+            case 0:
+                sum_even += i
+            case 1:
+                sum_odd += i
+            case 2:
+                sum_even += i * 2
+            case _:
+                pass
+    print("Sum even: ", sum_even)
+    print("Sum odd: ", sum_odd)
+
+
+def ComplexLogicWithElifChains(a: t.CInt, b: t.CInt, c_val: t.CInt):
+    i: t.CInt = 0
+    result: t.CInt = 0
+    while i < 10:
+        if i < a:
+            if i < b:
+                result += 1
+            elif i < c_val:
+                result += 2
+            else:
+                result += 3
+        elif i < b:
+            if i < c_val:
+                result += 4
+            else:
+                result += 5
+        elif i < c_val:
+            result += 6
+        else:
+            result += 7
+        i += 1
+    print("Complex elif chain result: ", result)
+
+
+def ForRangeWithStepAndCondition(n: t.CInt, step: t.CInt):
+    i: t.CInt = 0
+    count: t.CInt = 0
+    for i in range(0, n, step):
+        if i % 2 == 0:
+            print("Even step: ", i)
+            count += 1
+        else:
+            if i > 5:
+                print("Large odd: ", i)
+            else:
+                print("Small odd: ", i)
+    print("Total steps: ", count)
+
+
+def MatchCaseWithGuardConditions(value: t.CInt):
+    result: t.CInt = 0
+    match value:
+        case 1 if config.TRUE == 1:
+            result = 100
+        case 2 if config.FALSE == 0:
+            result = 200
+        case 3:
+            result = 300
+        case _:
+            result = 0
+    print("Guard match result: ", result)
+
+
+def WhileWithMultipleMatchCases(iterations: t.CInt):
+    i: t.CInt = 0
+    state: t.CInt = 0
+    while i < iterations:
+        match state:
+            case 0:
+                if i > 3:
+                    state = 1
+            case 1:
+                if i > 6:
+                    state = 2
+            case 2:
+                if i > 9:
+                    state = 0
+        print("State at i=", i, ": ", state)
+        i += 1
+
+
+def ForWhileMixWithBreakAndContinue(n: t.CInt):
+    i: t.CInt = 0
+    j: t.CInt = 0
+    count: t.CInt = 0
+    for i in range(n):
+        j = 0
+        while j < n:
+            if j == 2:
+                j += 1
+                continue
+            if i == 3 and j == 3:
+                break
+            count += 1
+            j += 1
+    print("Mix break continue count: ", count)
+
+
+def ComplexCaseMatchingWithRanges(start: t.CInt, end: t.CInt):
+    i: t.CInt = 0
+    bucket0: t.CInt = 0
+    bucket1: t.CInt = 0
+    bucket2: t.CInt = 0
+    bucket3: t.CInt = 0
+    for i in range(start, end):
+        match i:
+            case _ if i < 10:
+                bucket0 += 1
+            case _ if i < 20:
+                bucket1 += 1
+            case _ if i < 30:
+                bucket2 += 1
+            case _:
+                bucket3 += 1
+    print("Bucket0 (<10): ", bucket0)
+    print("Bucket1 (10-19): ", bucket1)
+    print("Bucket2 (20-29): ", bucket2)
+    print("Bucket3 (>=30): ", bucket3)
+
+
+def WhileWithElifInElifChain(limit: t.CInt):
+    i: t.CInt = 0
+    result: t.CInt = 0
+    while i < limit:
+        if i < 2:
+            if i == 0:
+                result = 1
+            else:
+                result = 2
+        elif i < 4:
+            if i == 2:
+                result = 3
+            else:
+                result = 4
+        elif i < 6:
+            if i == 4:
+                result = 5
+            else:
+                result = 6
+        else:
+            result = 7
+        print("Chain result[", i, "]: ", result)
+        i += 1
+
+
+def ForWithCaseNoBreakNested(inner_limit: t.CInt):
+    i: t.CInt = 0
+    j: t.CInt = 0
+    result: t.CInt = 0
+    for i in range(3):
+        for j in range(inner_limit):
+            match j:
+                case 0:
+                    result += 1
+                case 1:
+                    result += 2
+                case _:
+                    result += 3
+            c.NoBreak
+    print("Nested NoBreak result: ", result)

@@ -1,0 +1,63 @@
+import t
+import stdio
+import testcheck
+from linkedlist import GSListNode
+
+# ============================================================
+# G3: 测试 F-bounded polymorphism
+# class Node(GSListNode[Node]) — 继承泛型基类，特化自身为类型参数
+# 这与 TransPyV 中 class Value(GSListNode[Value]) 是相同的模式
+# ============================================================
+
+@t.NoVTable
+class Node(GSListNode[Node]):
+    value: t.CInt
+
+    def __init__(self):
+        self.value = 0
+        self.Next = None
+
+
+def test_node_create():
+    testcheck.section("Test 1: Node(GSListNode[Node]) create")
+    n: Node = Node()
+    n.value = 42
+    testcheck.check(n.value == 42, "Node.value = 42", "expect 42")
+
+
+def test_node_next_field():
+    testcheck.section("Test 2: Next field from GSListNode[Node]")
+    n1: Node = Node()
+    n2: Node = Node()
+    n1.value = 10
+    n2.value = 20
+    n1.Next = n2
+    next_node: Node = n1.Next
+    v: t.CInt = next_node.value
+    testcheck.check(v == 20, "n1.Next.value = 20", "expect 20")
+
+
+def test_node_chain():
+    testcheck.section("Test 3: Node chain traversal")
+    a: Node = Node()
+    b: Node = Node()
+    c: Node = Node()
+    a.value = 1
+    b.value = 2
+    c.value = 3
+    a.Next = b
+    b.Next = c
+    sum: t.CInt = a.value
+    p: Node = a.Next
+    sum = sum + p.value
+    p = p.Next
+    sum = sum + p.value
+    testcheck.check(sum == 6, "chain sum = 1+2+3 = 6", "expect 6")
+
+
+def main() -> t.CInt:
+    testcheck.begin("G3: GSListNode inheritance (F-bounded polymorphism)")
+    test_node_create()
+    test_node_next_field()
+    test_node_chain()
+    return testcheck.end()

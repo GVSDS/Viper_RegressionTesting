@@ -1,0 +1,120 @@
+from stdint import *
+import t, c
+from t import CPtr, CInt, CExport
+import testcheck
+
+
+# ============================================================
+# super() 语义专项测试（由 TransPyV.exe 编译）
+#
+# 覆盖场景：
+#   1. super().__init__(args) — 子类构造调父类构造（字段由父类设置）
+#   2. super().method() 静态绑定父类实现（不触发子类 override / 虚分派）
+#   3. super() 调未覆盖的父类方法（父类字段区前缀对齐，this 无需调整）
+#   4. 三层继承链 super().__init__（Leaf → Mid → Grand 逐层传递，
+#      每个中间类的 super() 沿各自 CurClassName 的 MRO 跳自身找父类）
+#   5. super().method 沿 MRO 找实际定义类（Mid 未定义 Base → 找到 Grand.Base）
+# ============================================================
+
+
+# ========== 单继承：super().__init__ + super().method ==========
+
+@t.CVTable
+class Animal:
+    Tag: CInt
+
+    def __init__(self, tag: CInt):
+        self.Tag = tag
+
+    def Speak(self) -> CInt:
+        return 0
+
+    def Greet(self) -> CInt:
+        return self.Tag + 1000
+
+
+@t.CVTable
+class Dog(Animal):
+    Breed: CInt
+
+    def __init__(self, tag: CInt, breed: CInt):
+        super().__init__(tag)   # 调 Animal.__init__ 设置 Tag
+        self.Breed = breed
+
+    def Speak(self) -> CInt:
+        return 1
+
+    def ParentSpeak(self) -> CInt:
+        return super().Speak()  # 静态绑定 Animal.Speak → 0（不走虚分派）
+
+    def FullGreet(self) -> CInt:
+        # super() 调父类 Greet（Dog 未覆盖），再加自身字段
+        return super().Greet() + self.Breed
+
+
+# ========== 三层继承链：Grand → Mid → Leaf ==========
+
+@t.CVTable
+class Grand:
+    G: CInt
+
+    def __init__(self, v: CInt):
+        self.G = v
+
+    def Base(self) -> CInt:
+        return self.G
+
+
+@t.CVTable
+class Mid(Grand):
+    M: CInt
+
+    def __init__(self, v: CInt):
+        super().__init__(v + 1)   # 调 Grand.__init__
+        self.M = v
+
+    def MidOnly(self) -> CInt:
+        return self.M
+
+
+@t.CVTable
+class Leaf(Mid):
+    def __init__(self, v: CInt):
+        super().__init__(v + 2)   # 调 Mid.__init__（Mid 内部再 super 到 Grand）
+
+    def GetBase(self) -> CInt:
+        return super().Base()     # Mid 未定义 Base → 沿 MRO 找 Grand.Base
+
+    def CallMidOnly(self) -> CInt:
+        return super().MidOnly()  # 调 Mid.MidOnly
+
+
+def main() -> CInt | CExport:
+    testcheck.begin("SuperTest: super() 语义测试")
+
+    # --- 1. super().__init__ 设置父类字段 ---
+    d: Dog | CPtr = Dog(42, 7)
+    testcheck.check(d.Tag == 42, "super().__init__ 设置父类字段 OK",
+                    "super().__init__ FAILED")
+    testcheck.check(d.Breed == 7, "子类字段 OK", "子类字段 FAILED")
+
+    # --- 2. super().method 静态绑定（不虚分派到子类 override） ---
+    testcheck.check(d.ParentSpeak() == 0, "super().Speak() 静态绑定父类 OK",
+                    "super().Speak() FAILED")
+    testcheck.check(d.Speak() == 1, "子类 Speak() override OK", "Speak() FAILED")
+
+    # --- 3. super() 调未覆盖的父类方法（42+1000+7 = 1049） ---
+    testcheck.check(d.FullGreet() == 1049, "super() 调未覆盖父类方法 OK",
+                    "FullGreet() FAILED")
+
+    # --- 4. 三层继承链 super().__init__（Leaf(10) → Mid(12) → Grand(13)） ---
+    lf: Leaf | CPtr = Leaf(10)
+    testcheck.check(lf.G == 13, "三层 super().__init__ 链 G OK", "三层 G FAILED")
+    testcheck.check(lf.M == 12, "中间类 M OK", "中间类 M FAILED")
+
+    # --- 5. super().method 沿 MRO 找实际定义类 ---
+    testcheck.check(lf.GetBase() == 13, "super().Base() 沿 MRO OK", "GetBase() FAILED")
+    testcheck.check(lf.CallMidOnly() == 12, "super().MidOnly() OK", "CallMidOnly() FAILED")
+
+    testcheck.ok("super() 全部测试完成")
+    return testcheck.end()

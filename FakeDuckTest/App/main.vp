@@ -1,0 +1,308 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import _fakeduck
+import stdio
+import stdlib
+import string
+import memhub
+import testcheck
+import _withcontent
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    # FakeDuck 测试: str 类型调用扩展方法 b()
+    a: str = "Hello"
+
+    # Type 通用基类测试: str 变量调用 Type 的方法 type_id()
+    tid: CInt = a.type_id()
+
+    if tid == 99:
+        stdio.printf("Type OK: a.type_id() = %d\n", tid)
+    else:
+        stdio.printf("Type FAIL: a.type_id() = %d\n", tid)
+
+    # 直接字段访问测试: 读取 a.__data__ (应等于 a 本身)
+    data_ptr: str = a.__data__
+    stdio.printf("a.__data__ = %s\n", data_ptr)
+
+    # upper() 测试: 通过 mbuddy 分配内存，返回大写字符串
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+
+    # 直接字段赋值: a.__mbuddy__ = bd (语法糖, 等价于 a.set_mbuddy(bd))
+    a.__mbuddy__ = bd
+    upper_str: str = a.upper()
+    stdio.printf("upper('Hello') = %s\n", upper_str)
+
+    # 验证 per-instance 不污染: b 没有设置 __mbuddy__ (初始为 NULL)
+    b: str = "World"
+
+    # 直接字段读取: b.__mbuddy__ (应返回 NULL)
+    b_buddy: memhub.MemBuddy | t.CPtr = b.__mbuddy__
+    if t.CInt(b_buddy) == 0:
+        stdio.printf("mbuddy OK: b.__mbuddy__ is NULL (no pollution)\n")
+    else:
+        stdio.printf("mbuddy FAIL: b.__mbuddy__ polluted!\n")
+
+    # b 也设置 mbuddy 并 upper
+    b.__mbuddy__ = bd
+    upper_b: str = b.upper()
+    stdio.printf("upper('World') = %s\n", upper_b)
+
+    # lower() 测试
+    lower_str: str = a.lower()
+    stdio.printf("lower('Hello') = %s\n", lower_str)
+
+    # capitalize() 测试
+    cap_str: str = a.capitalize()
+    stdio.printf("capitalize('Hello') = %s\n", cap_str)
+
+    # swapcase() 测试
+    swap_str: str = a.swapcase()
+    stdio.printf("swapcase('Hello') = %s\n", swap_str)
+
+    # casefold() 测试
+    cf_str: str = a.casefold()
+    stdio.printf("casefold('Hello') = %s\n", cf_str)
+
+    # title() 测试
+    t_str: str = "hello world"
+    t_str.__mbuddy__ = bd
+    title_result: str = t_str.title()
+    stdio.printf("title('hello world') = %s\n", title_result)
+
+    # 布尔判断函数测试 (不需要 __mbuddy__)
+    u: str = "HELLO"
+    lo: str = "hello"
+    dig: str = "12345"
+    alnum_s: str = "Hello123"
+    space_s: str = "   "
+    title_s: str = "Hello World"
+    punct_s: str = "Hello!"
+
+    stdio.printf("isupper('HELLO') = %d\n", u.isupper())
+    stdio.printf("isupper('Hello') = %d\n", a.isupper())
+    stdio.printf("islower('hello') = %d\n", lo.islower())
+    stdio.printf("islower('Hello') = %d\n", a.islower())
+    stdio.printf("isalpha('Hello') = %d\n", a.isalpha())
+    stdio.printf("isalpha('Hello123') = %d\n", alnum_s.isalpha())
+    stdio.printf("isdigit('12345') = %d\n", dig.isdigit())
+    stdio.printf("isdigit('Hello') = %d\n", a.isdigit())
+    stdio.printf("isalnum('Hello123') = %d\n", alnum_s.isalnum())
+    stdio.printf("isalnum('Hello!') = %d\n", punct_s.isalnum())
+    stdio.printf("isspace('   ') = %d\n", space_s.isspace())
+    stdio.printf("isspace('Hello') = %d\n", a.isspace())
+    stdio.printf("isascii('Hello') = %d\n", a.isascii())
+    stdio.printf("istitle('Hello World') = %d\n", title_s.istitle())
+    stdio.printf("istitle('hello world') = %d\n", t_str.istitle())
+
+    # === split() 测试 ===
+    testcheck.begin("FakeDuck split() 测试")
+
+    # Test 1: 基本分割
+    testcheck.section("Test 1: 基本分割 'a,b,c'")
+    s1: str = "a,b,c"
+    s1.__mbuddy__ = bd
+    parts = s1.split(',')
+    n1: t.CSizeT = parts.__len__()
+    stdio.printf("split('a,b,c', ',') len=%lu\n", n1)
+    testcheck.check(n1 == 3, "split len OK (3)", "split len FAILED expect 3")
+    p0: str = parts[0]
+    p1: str = parts[1]
+    p2: str = parts[2]
+    stdio.printf("parts[0]='%s' [1]='%s' [2]='%s'\n", p0, p1, p2)
+    testcheck.check(string.strcmp(p0, "a") == 0, "split[0]=='a' OK", "split[0] FAILED")
+    testcheck.check(string.strcmp(p1, "b") == 0, "split[1]=='b' OK", "split[1] FAILED")
+    testcheck.check(string.strcmp(p2, "c") == 0, "split[2]=='c' OK", "split[2] FAILED")
+
+    # Test 2: 空字符串分割
+    testcheck.section("Test 2: 无分隔符 'hello'")
+    s2: str = "hello"
+    s2.__mbuddy__ = bd
+    parts2 = s2.split(',')
+    n2: t.CSizeT = parts2.__len__()
+    stdio.printf("split('hello', ',') len=%lu\n", n2)
+    testcheck.check(n2 == 1, "no-delim len OK (1)", "no-delim len FAILED expect 1")
+    h0: str = parts2.get(0)
+    testcheck.check(string.strcmp(h0, "hello") == 0, "no-delim[0]=='hello' OK", "no-delim[0] FAILED")
+
+    # Test 3: 连续分隔符
+    testcheck.section("Test 3: 连续分隔符 'a,,b'")
+    s3: str = "a,,b"
+    s3.__mbuddy__ = bd
+    parts3 = s3.split(',')
+    n3: t.CSizeT = parts3.__len__()
+    stdio.printf("split('a,,b', ',') len=%lu\n", n3)
+    testcheck.check(n3 == 3, "consecutive len OK (3)", "consecutive len FAILED expect 3")
+    e0: str = parts3.get(0)
+    e1: str = parts3.get(1)
+    e2: str = parts3.get(2)
+    stdio.printf("parts[0]='%s' [1]='%s' [2]='%s'\n", e0, e1, e2)
+    testcheck.check(string.strcmp(e0, "a") == 0, "consec[0]=='a' OK", "consec[0] FAILED")
+    testcheck.check(string.strcmp(e1, "") == 0, "consec[1]=='' OK", "consec[1] FAILED")
+    testcheck.check(string.strcmp(e2, "b") == 0, "consec[2]=='b' OK", "consec[2] FAILED")
+
+    # Test 4: 空字符串
+    testcheck.section("Test 4: 空字符串 ''")
+    s4: str = ""
+    s4.__mbuddy__ = bd
+    parts4 = s4.split(',')
+    n4: t.CSizeT = parts4.__len__()
+    stdio.printf("split('', ',') len=%lu\n", n4)
+    testcheck.check(n4 == 1, "empty len OK (1)", "empty len FAILED expect 1")
+
+    # Test 5: 空格分割句子
+    testcheck.section("Test 5: 空格分割 'hello world foo'")
+    s5: str = "hello world foo"
+    s5.__mbuddy__ = bd
+    parts5 = s5.split(' ')
+    n5: t.CSizeT = parts5.__len__()
+    stdio.printf("split('hello world foo', ' ') len=%lu\n", n5)
+    testcheck.check(n5 == 3, "space len OK (3)", "space len FAILED expect 3")
+    w0: str = parts5[0]
+    w1: str = parts5[1]
+    w2: str = parts5[2]
+    stdio.printf("words[0]='%s' [1]='%s' [2]='%s'\n", w0, w1, w2)
+    testcheck.check(string.strcmp(w0, "hello") == 0, "space[0]=='hello' OK", "space[0] FAILED")
+    testcheck.check(string.strcmp(w1, "world") == 0, "space[1]=='world' OK", "space[1] FAILED")
+    testcheck.check(string.strcmp(w2, "foo") == 0, "space[2]=='foo' OK", "space[2] FAILED")
+
+    # Test 6: 多字符分隔符 '::'
+    testcheck.section("Test 6: 多字符分隔符 '::' on 'a::b::c'")
+    s6: str = "a::b::c"
+    s6.__mbuddy__ = bd
+    parts6 = s6.split("::")
+    n6: t.CSizeT = parts6.__len__()
+    stdio.printf("split('a::b::c', '::') len=%lu\n", n6)
+    testcheck.check(n6 == 3, "multi-colon len OK (3)", "multi-colon len FAILED expect 3")
+    m0: str = parts6[0]
+    m1: str = parts6[1]
+    m2: str = parts6[2]
+    stdio.printf("parts[0]='%s' [1]='%s' [2]='%s'\n", m0, m1, m2)
+    testcheck.check(string.strcmp(m0, "a") == 0, "multi-colon[0]=='a' OK", "multi-colon[0] FAILED")
+    testcheck.check(string.strcmp(m1, "b") == 0, "multi-colon[1]=='b' OK", "multi-colon[1] FAILED")
+    testcheck.check(string.strcmp(m2, "c") == 0, "multi-colon[2]=='c' OK", "multi-colon[2] FAILED")
+
+    # Test 7: 多字符分隔符 ', ' (逗号+空格)
+    testcheck.section("Test 7: 多字符分隔符 ', ' on 'hello, world, foo'")
+    s7: str = "hello, world, foo"
+    s7.__mbuddy__ = bd
+    parts7 = s7.split(", ")
+    n7: t.CSizeT = parts7.__len__()
+    stdio.printf("split('hello, world, foo', ', ') len=%lu\n", n7)
+    testcheck.check(n7 == 3, "comma-space len OK (3)", "comma-space len FAILED expect 3")
+    cs0: str = parts7[0]
+    cs1: str = parts7[1]
+    cs2: str = parts7[2]
+    stdio.printf("parts[0]='%s' [1]='%s' [2]='%s'\n", cs0, cs1, cs2)
+    testcheck.check(string.strcmp(cs0, "hello") == 0, "comma-space[0]=='hello' OK", "comma-space[0] FAILED")
+    testcheck.check(string.strcmp(cs1, "world") == 0, "comma-space[1]=='world' OK", "comma-space[1] FAILED")
+    testcheck.check(string.strcmp(cs2, "foo") == 0, "comma-space[2]=='foo' OK", "comma-space[2] FAILED")
+
+    # Test 8: 多字符分隔符在首尾
+    testcheck.section("Test 8: 多字符分隔符首尾 '::a::b::'")
+    s8: str = "::a::b::"
+    s8.__mbuddy__ = bd
+    parts8 = s8.split("::")
+    n8: t.CSizeT = parts8.__len__()
+    stdio.printf("split('::a::b::', '::') len=%lu\n", n8)
+    testcheck.check(n8 == 4, "edge len OK (4)", "edge len FAILED expect 4")
+    ed0: str = parts8[0]
+    ed1: str = parts8[1]
+    ed2: str = parts8[2]
+    ed3: str = parts8[3]
+    stdio.printf("parts[0]='%s' [1]='%s' [2]='%s' [3]='%s'\n", ed0, ed1, ed2, ed3)
+    testcheck.check(string.strcmp(ed0, "") == 0, "edge[0]=='' OK", "edge[0] FAILED")
+    testcheck.check(string.strcmp(ed1, "a") == 0, "edge[1]=='a' OK", "edge[1] FAILED")
+    testcheck.check(string.strcmp(ed2, "b") == 0, "edge[2]=='b' OK", "edge[2] FAILED")
+    testcheck.check(string.strcmp(ed3, "") == 0, "edge[3]=='' OK", "edge[3] FAILED")
+
+    # === with 上下文自动注入测试 ===
+    testcheck.section("Test 9: with 上下文自动注入 __mbuddy__")
+
+    arena2: bytes = stdlib.malloc(65536)
+    with memhub.MemBuddy(arena2, 65536) as bd2:
+        # str 变量在 with 上下文内创建，__mbuddy__ 应自动注入（无需手动赋值）
+        w_str: str = "WithTest"
+
+        # 验证 __mbuddy__ 已自动注入（非 NULL）
+        w_buddy: memhub.MemBuddy | t.CPtr = w_str.__mbuddy__
+        testcheck.check(t.CInt(w_buddy) != 0, "with inject OK: __mbuddy__ auto-injected", "with inject FAIL: __mbuddy__ is NULL")
+
+        # upper() 不需要手动设置 __mbuddy__
+        w_upper: str = w_str.upper()
+        stdio.printf("with upper('WithTest') = %s\n", w_upper)
+        testcheck.check(string.strcmp(w_upper, "WITHTEST") == 0, "with upper OK", "with upper FAILED")
+
+        # lower() 不需要手动设置 __mbuddy__
+        w_lower: str = w_str.lower()
+        stdio.printf("with lower('WithTest') = %s\n", w_lower)
+        testcheck.check(string.strcmp(w_lower, "withtest") == 0, "with lower OK", "with lower FAILED")
+
+        # split() 不需要手动设置 __mbuddy__
+        w_split_str: str = "x,y,z"
+        w_parts = w_split_str.split(',')
+        w_n: t.CSizeT = len(w_parts)
+        stdio.printf("with split('x,y,z') len=%lu\n", w_n)
+        testcheck.check(w_n == 3, "with split len OK (3)", "with split len FAILED")
+
+        # 验证多个 str 变量都获得注入
+        w_str2: str = "Multiple"
+        w_buddy2: memhub.MemBuddy | t.CPtr = w_str2.__mbuddy__
+        testcheck.check(t.CInt(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
+
+        test_s: str = "www.gvsds.com"
+        list_s: list[str] = test_s.split('.')
+        # 迭代器测试: for idx, i in zip(range(len(list_s)), list_s)
+        iter_count: int = 0
+        for iter_idx, i in zip(range(len(list_s)), list_s):
+            stdio.printf("list_s[%d]='%s'\n", iter_idx, i)
+            iter_count += 1
+        testcheck.check(iter_count == 3, "zip(range(len), list) iter OK (3)", "zip(range(len), list) iter FAILED")
+        #for i in range(3):
+        #    stdio.printf("list_s[%d]='%s'\n", i, list_s[i])
+
+        # === zip() 内置测试 ===
+        testcheck.section("Test 10: zip(list, list) 元组解包")
+        za: str = "a,b,c"
+        zb: str = "1,2,3"
+        list_a: list[str] = za.split(',')
+        list_b: list[str] = zb.split(',')
+        zip_idx: int = 0
+        for ca, cb in zip(list_a, list_b):
+            stdio.printf("zip[%d]: '%s'='%s'\n", zip_idx, ca, cb)
+            zip_idx += 1
+        testcheck.check(zip_idx == 3, "zip list+list OK (3)", "zip list+list FAILED")
+
+        testcheck.section("Test 11: zip(range, list) 混合迭代")
+        zip_idx2: int = 0
+        for n, s in zip(range(3), list_a):
+            stdio.printf("zip range+list[%d]: %d='%s'\n", zip_idx2, n, s)
+            zip_idx2 += 1
+        testcheck.check(zip_idx2 == 3, "zip range+list OK (3)", "zip range+list FAILED")
+
+        testcheck.section("Test 12: zip(str, str) 字符级并行")
+        sa: str = "abc"
+        sb: str = "123"
+        zip_idx3: int = 0
+        for ch_a, ch_b in zip(sa, sb):
+            stdio.printf("zip str+str[%d]: '%c'%c\n", zip_idx3, ch_a, ch_b)
+            zip_idx3 += 1
+        testcheck.check(zip_idx3 == 3, "zip str+str OK (3)", "zip str+str FAILED")
+
+        stdio.printf("%d\n", " ".isspace())
+
+    stdlib.free(arena2)
+
+    stdlib.free(arena)
+
+    return testcheck.end()
+
+
+
+

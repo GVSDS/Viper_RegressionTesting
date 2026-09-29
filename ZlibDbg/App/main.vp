@@ -1,0 +1,74 @@
+from stdint import *
+import zlib.pyzlib as pyzlib
+import zlib.zdeflate as zdeflate
+import zlib.zinflate as zinflate
+import zlib.zdef as zdef
+import string
+import stdlib
+import t, c
+from stdio import printf
+
+
+def fill_data(data: BYTEPTR, size: t.CSizeT, seed: t.CSizeT, repeating: t.CInt):
+    i: t.CSizeT
+    for i in range(size):
+        if repeating:
+            data[i] = BYTE(65 + (i % 3))
+        else:
+            data[i] = BYTE((i * 31 + seed * 17 + (i * i) % 251) % 256)
+
+
+def roundtrip(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt, wbits: t.CInt) -> t.CInt:
+    data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
+    fill_data(data, size, seed, repeating)
+
+    out_len: t.CSizeT = 0
+    comp: BYTEPTR = pyzlib.compress(None, data, size,
+                                    pyzlib.Z_DEFAULT_COMPRESSION, wbits, c.Addr(out_len))
+    if not comp:
+        printf("  [seed=%zu size=%zu rep=%d wbits=%d] COMPRESS FAILED: %d %s\n",
+               seed, size, repeating, wbits, pyzlib.get_error_code(), pyzlib.get_error())
+        stdlib.free(data)
+        return -1
+
+    dec_len: t.CSizeT = 0
+    dec: BYTEPTR = pyzlib.decompress(None, comp, out_len, wbits,
+                                     pyzlib.DEF_BUF_SIZE, c.Addr(dec_len))
+    ok: t.CInt = 1
+    if not dec:
+        printf("  [seed=%zu size=%zu rep=%d wbits=%d] DECOMPRESS FAILED: err=%d msg=%s (comp=%zu bytes)\n",
+               seed, size, repeating, wbits, pyzlib.get_error_code(), pyzlib.get_error(), out_len)
+        ok = 0
+    else:
+        printf("  [seed=%zu size=%zu rep=%d wbits=%d] comp=%zu dec=%zu ",
+               seed, size, repeating, wbits, out_len, dec_len)
+        if dec_len != size or string.memcmp(dec, data, size) != 0:
+            printf("CONTENT MISMATCH\n")
+            ok = 0
+        else:
+            printf("OK\n")
+    if dec: stdlib.free(dec)
+    stdlib.free(comp)
+    stdlib.free(data)
+    return 0 if ok else -1
+
+
+def main() -> t.CInt:
+    printf("== zlib roundtrip >256B ==\n")
+    sizes: t.CArray[t.CSizeT, None] = [250, 255, 256, 257, 260, 300, 500, 1000, 4096, 20000]
+    n: t.CInt
+    failed: t.CInt = 0
+    for n in range(10):
+        if roundtrip(t.CSizeT(n), sizes[n], 0, pyzlib.MAX_WBITS) != 0: failed = 1
+    printf("-- random data done --\n")
+    sizes2: t.CArray[t.CSizeT, None] = [256, 257, 300, 1000, 20000]
+    n = 0
+    for n in range(5):
+        if roundtrip(t.CSizeT(n), sizes2[n], 1, pyzlib.MAX_WBITS) != 0: failed = 1
+    printf("-- repeating data done --\n")
+    sizes3: t.CArray[t.CSizeT, None] = [300, 1000]
+    n = 0
+    for n in range(2):
+        if roundtrip(t.CSizeT(n), sizes3[n], 0, pyzlib.MAX_WBITS + 16) != 0: failed = 1
+    printf("-- gzip container done --\n")
+    return 1 if failed else 0

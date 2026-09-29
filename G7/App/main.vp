@@ -1,0 +1,52 @@
+import t
+import stdio
+import testcheck
+import stdlib
+import memhub
+from conflict_node import Value
+
+# ============================================================
+# 关键冲突点：全局变量名 'Value' 与类名 'Value' 相同
+#
+# LlvmGenerator 预处理扫描会将 'Value' 注册为 IsVariable=True
+# 覆盖 SymbolTable 中的类条目。
+# 之后 _get_or_create_struct('Value') 发现 IsVariable=True，
+# 返回 _TypedPointerType 而非 IdentifiedStructType，
+# 导致 _TryLoadStructFromStub 中 set_body 被跳过。
+# ============================================================
+Value: t.CPtr = None
+
+
+def test_value_struct_fields():
+    """验证 Value struct 有 6 个字段（Next + 5 自有）"""
+    testcheck.section("Value struct field access (6 fields expected)")
+    arena: bytes = stdlib.malloc(4096)
+    if arena is None:
+        testcheck.check(False, "malloc arena", "FAIL")
+        return
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
+    node: Value | t.CPtr = pool.alloc(48)
+    if node is None:
+        testcheck.check(False, "alloc Value", "FAIL")
+        return
+    # 写入字段 0 (Next, 继承自 GSListNode)
+    node.Next = None
+    # 写入字段 1-5 (自有字段)
+    node.Ty = None
+    node.Name = None
+    node.IsConst = 1
+    node.IntVal = 42
+    node.FloatVal = 3.14
+    # 读取验证
+    v: t.CInt = node.IntVal
+    testcheck.check(v == 42, "Value.IntVal = 42", "expect 42")
+    f: t.CDouble = node.FloatVal
+    testcheck.check(f > 3.0 and f < 4.0, "Value.FloatVal = 3.14", "expect ~3.14")
+    c: t.CInt = node.IsConst
+    testcheck.check(c == 1, "Value.IsConst = 1", "expect 1")
+
+
+def main() -> t.CInt:
+    testcheck.begin("G7: Minimal repro - class name 'Value' conflicts with variable")
+    test_value_struct_fields()
+    return testcheck.end()

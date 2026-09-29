@@ -1,0 +1,1096 @@
+from stdint import *
+import numpy
+from stdio import printf
+from stdlib import calloc, free
+import string
+import math
+import memhub
+import w32.win32base
+import t, c
+
+# ============================================================
+# Constants
+# ============================================================
+EPS: t.CDouble = t.CDouble(1e-9)
+EPS_LOOSE: t.CDouble = t.CDouble(1e-5)
+SIMD_BLOCK: t.CSizeT = 4
+
+# ============================================================
+# Global state
+# ============================================================
+arena: t.CUInt8T | t.CPtr = None
+pool: memhub.MemPool | t.CPtr = None
+
+test_passed: t.CInt = 0
+test_failed: t.CInt = 0
+
+# ============================================================
+# Global check function
+# ============================================================
+def check(name: str, condition: t.CInt, detail: str):
+    global test_passed, test_failed
+    if condition:
+        test_passed += 1
+        printf("  [PASS] %s\n", name)
+    else:
+        test_failed += 1
+        printf("  [FAIL] %s  -- %s\n", name, detail if detail else "")
+
+
+# ============================================================
+# Approximate comparison (top-level, uses vipermath.fabs)
+# ============================================================
+def approx_eq(a: t.CDouble, b: t.CDouble) -> t.CInt:
+    d: t.CDouble = a - b
+    if d < t.CDouble(0.0):
+        d = t.CDouble(0.0) - d
+    if d < EPS:
+        return 1
+    return 0
+
+def approx_loose(a: t.CDouble, b: t.CDouble) -> t.CInt:
+    d: t.CDouble = a - b
+    if d < t.CDouble(0.0):
+        d = t.CDouble(0.0) - d
+    if d < EPS_LOOSE:
+        return 1
+    return 0
+
+
+# ============================================================
+# Section headers
+# ============================================================
+def section_header(title: str):
+    printf("\n+-- %s --+\n", title)
+
+def section_footer():
+    printf("+--------------------------------------------+\n")
+
+
+# ============================================================
+# Timer: 单调时钟（GetTickCount64 毫秒 → 秒）
+# 原 c.Timer() 无编译器支持（TPC/TPV 均无），改用 Win32 API
+# ============================================================
+def timer_sec() -> t.CDouble:
+    return t.CDouble(w32.win32base.GetTickCount64()) / t.CDouble(1000.0)
+
+
+# ============================================================
+# Utility: quick array creation
+# ============================================================
+def vec4(p: memhub.MemPool | t.CPtr, v0: t.CDouble, v1: t.CDouble, v2: t.CDouble, v3: t.CDouble) -> numpy.ndarray[t.CDouble] | t.CPtr:
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(p, 4)
+    a.data[0] = v0; a.data[1] = v1; a.data[2] = v2; a.data[3] = v3
+    return a
+
+def vec3(p: memhub.MemPool | t.CPtr, v0: t.CDouble, v1: t.CDouble, v2: t.CDouble) -> numpy.ndarray[t.CDouble] | t.CPtr:
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(p, 3)
+    a.data[0] = v0; a.data[1] = v1; a.data[2] = v2
+    return a
+
+def vec2(p: memhub.MemPool | t.CPtr, v0: t.CDouble, v1: t.CDouble) -> numpy.ndarray[t.CDouble] | t.CPtr:
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(p, 2)
+    a.data[0] = v0; a.data[1] = v1
+    return a
+
+
+# ============================================================
+# 1. Array creation
+# ============================================================
+def test_zeros_ones():
+    section_header("zeros / ones / full")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 5)
+    check("zeros not None", a != None, "zeros returned None")
+    check("zeros size == 5", a.size == 5, "size mismatch")
+    check("zeros [0]==0", a.data[0] == t.CDouble(0.0), "not zero")
+    check("zeros [4]==0", a.data[4] == t.CDouble(0.0), "not zero")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.ones(pool, 4)
+    check("ones not None", b != None, "ones returned None")
+    check("ones [0]==1", b.data[0] == t.CDouble(1.0), "not one")
+    check("ones [3]==1", b.data[3] == t.CDouble(1.0), "not one")
+
+    c: numpy.ndarray[t.CDouble] | t.CPtr = numpy.full(pool, 3, t.CDouble(7.5))
+    check("full not None", c != None, "full returned None")
+    check("full value", c.data[0] == t.CDouble(7.5), "value mismatch")
+
+    a.delete()
+    b.delete()
+    c.delete()
+    section_footer()
+
+
+def test_arange_linspace():
+    section_header("arange / linspace")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(0.0), t.CDouble(5.0), t.CDouble(1.0))
+    check("arange not None", a != None, "arange returned None")
+    check("arange size == 5", a.size == 5, "size mismatch")
+    check("arange [0]==0", approx_eq(a.data[0], t.CDouble(0.0)), "mismatch")
+    check("arange [4]==4", approx_eq(a.data[4], t.CDouble(4.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.linspace(pool, t.CDouble(0.0), t.CDouble(1.0), 5)
+    check("linspace not None", b != None, "linspace returned None")
+    check("linspace size == 5", b.size == 5, "size mismatch")
+    check("linspace [0]==0", approx_eq(b.data[0], t.CDouble(0.0)), "mismatch")
+    check("linspace [4]==1", approx_eq(b.data[4], t.CDouble(1.0)), "mismatch")
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+def test_eye_diag():
+    section_header("eye / diag")
+
+    e: numpy.ndarray[t.CDouble] | t.CPtr = numpy.eye(pool, 3)
+    check("eye not None", e != None, "eye returned None")
+    check("eye ndim == 2", e.ndim == 2, "ndim mismatch")
+    check("eye [0,0]==1", e.at2d(0, 0) == t.CDouble(1.0), "mismatch")
+    check("eye [0,1]==0", e.at2d(0, 1) == t.CDouble(0.0), "mismatch")
+    check("eye [1,1]==1", e.at2d(1, 1) == t.CDouble(1.0), "mismatch")
+
+    vals: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    d: numpy.ndarray[t.CDouble] | t.CPtr = numpy.diag(pool, vals)
+    check("diag not None", d != None, "diag returned None")
+    check("diag [0,0]==1", d.at2d(0, 0) == t.CDouble(1.0), "mismatch")
+    check("diag [1,1]==2", d.at2d(1, 1) == t.CDouble(2.0), "mismatch")
+    check("diag [2,2]==3", d.at2d(2, 2) == t.CDouble(3.0), "mismatch")
+
+    e.delete()
+    vals.delete()
+    d.delete()
+    section_footer()
+
+
+# ============================================================
+# 2. Methods
+# ============================================================
+def test_sum_mean_min_max():
+    section_header("sum / mean / min / max / argmax / argmin")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(1.0), t.CDouble(6.0), t.CDouble(1.0))
+    check("sum == 15", approx_eq(a.sum(), t.CDouble(15.0)), "mismatch")
+    check("mean == 3", approx_eq(a.mean(), t.CDouble(3.0)), "mismatch")
+    check("min == 1", approx_eq(a.min(), t.CDouble(1.0)), "mismatch")
+    check("max == 5", approx_eq(a.max(), t.CDouble(5.0)), "mismatch")
+    check("argmax == 4", a.argmax() == 4, "mismatch")
+    check("argmin == 0", a.argmin() == 0, "mismatch")
+
+    a.delete()
+    section_footer()
+
+
+def test_fill_copy():
+    section_header("fill / copy")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 3)
+    a.fill(t.CDouble(9.0))
+    check("fill [0]==9", a.data[0] == t.CDouble(9.0), "mismatch")
+    check("fill [2]==9", a.data[2] == t.CDouble(9.0), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = a.copy()
+    check("copy not None", b != None, "copy returned None")
+    check("copy [0]==9", b.data[0] == t.CDouble(9.0), "mismatch")
+
+    b.data[0] = t.CDouble(0.0)
+    check("copy is independent", a.data[0] == t.CDouble(9.0), "copy not independent")
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+# ============================================================
+# 3. Operator overloading
+# ============================================================
+def test_add_sub_mul_div():
+    section_header("__add__ / __sub__ / __mul__ / __truediv__")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(4.0), t.CDouble(5.0), t.CDouble(6.0))
+
+    c_add: numpy.ndarray[t.CDouble] | t.CPtr = a + b
+    check("a+b not None", c_add != None, "add returned None")
+    check("a+b [0]==5", c_add.data[0] == t.CDouble(5.0), "mismatch")
+    check("a+b [2]==9", c_add.data[2] == t.CDouble(9.0), "mismatch")
+
+    c_sub: numpy.ndarray[t.CDouble] | t.CPtr = a - b
+    check("a-b [0]==-3", c_sub.data[0] == t.CDouble(-3.0), "mismatch")
+
+    c_mul: numpy.ndarray[t.CDouble] | t.CPtr = a * b
+    check("a*b [1]==10", c_mul.data[1] == t.CDouble(10.0), "mismatch")
+
+    c_div: numpy.ndarray[t.CDouble] | t.CPtr = b / a
+    check("b/a [0]==4", c_div.data[0] == t.CDouble(4.0), "mismatch")
+    check("b/a [2]==2", c_div.data[2] == t.CDouble(2.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    c_add.delete()
+    c_sub.delete()
+    c_mul.delete()
+    c_div.delete()
+    section_footer()
+
+
+def test_neg():
+    section_header("__neg__")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(-2.0), t.CDouble(3.0))
+    neg_a: numpy.ndarray[t.CDouble] | t.CPtr = -a
+    check("neg not None", neg_a != None, "neg returned None")
+    check("neg [0]==-1", neg_a.data[0] == t.CDouble(-1.0), "mismatch")
+    check("neg [1]==2", neg_a.data[1] == t.CDouble(2.0), "mismatch")
+
+    a.delete()
+    neg_a.delete()
+    section_footer()
+
+
+def test_len():
+    section_header("__len__")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 10)
+    check("len == 10", len(a) == 10, "mismatch")
+
+    a.delete()
+    section_footer()
+
+
+# ============================================================
+# 4. Scalar operations
+# ============================================================
+def test_scalar_ops():
+    section_header("add_scalar / mul_scalar / sub_scalar / div_scalar")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.ones(pool, 3)
+
+    r1: numpy.ndarray[t.CDouble] | t.CPtr = numpy.add_scalar(a, t.CDouble(2.0))
+    check("add_scalar [0]==3", r1.data[0] == t.CDouble(3.0), "mismatch")
+
+    r2: numpy.ndarray[t.CDouble] | t.CPtr = numpy.mul_scalar(a, t.CDouble(5.0))
+    check("mul_scalar [0]==5", r2.data[0] == t.CDouble(5.0), "mismatch")
+
+    r3: numpy.ndarray[t.CDouble] | t.CPtr = numpy.sub_scalar(a, t.CDouble(0.5))
+    check("sub_scalar [0]==0.5", r3.data[0] == t.CDouble(0.5), "mismatch")
+
+    r4: numpy.ndarray[t.CDouble] | t.CPtr = numpy.div_scalar(a, t.CDouble(2.0))
+    check("div_scalar [0]==0.5", r4.data[0] == t.CDouble(0.5), "mismatch")
+
+    a.delete()
+    r1.delete()
+    r2.delete()
+    r3.delete()
+    r4.delete()
+    section_footer()
+
+
+# ============================================================
+# 5. Math functions
+# ============================================================
+def test_math_funcs():
+    section_header("np_abs / np_sqrt / np_pow")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(4.0), t.CDouble(9.0))
+
+    r_sqrt: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_sqrt(a)
+    check("sqrt [0]==1", approx_eq(r_sqrt.data[0], t.CDouble(1.0)), "mismatch")
+    check("sqrt [1]==2", approx_eq(r_sqrt.data[1], t.CDouble(2.0)), "mismatch")
+    check("sqrt [2]==3", approx_eq(r_sqrt.data[2], t.CDouble(3.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(-1.0), t.CDouble(-4.0), t.CDouble(9.0))
+    r_abs: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_abs(b)
+    check("abs [0]==1", approx_eq(r_abs.data[0], t.CDouble(1.0)), "mismatch")
+    check("abs [1]==4", approx_eq(r_abs.data[1], t.CDouble(4.0)), "mismatch")
+
+    c: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    r_pow: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_pow(c, t.CDouble(2.0))
+    check("pow [0]==1", approx_eq(r_pow.data[0], t.CDouble(1.0)), "mismatch")
+    check("pow [1]==4", approx_eq(r_pow.data[1], t.CDouble(4.0)), "mismatch")
+    check("pow [2]==9", approx_eq(r_pow.data[2], t.CDouble(9.0)), "mismatch")
+
+    a.delete()
+    b.delete()
+    c.delete()
+    r_sqrt.delete()
+    r_abs.delete()
+    r_pow.delete()
+    section_footer()
+
+
+# ============================================================
+# 6. Matrix operations
+# ============================================================
+def test_matmul():
+    section_header("matmul")
+
+    # [1,2;3,4] x [5,6;7,8] = [19,22;43,50]
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 2)
+    a.set2d(0, 0, t.CDouble(1.0)); a.set2d(0, 1, t.CDouble(2.0))
+    a.set2d(1, 0, t.CDouble(3.0)); a.set2d(1, 1, t.CDouble(4.0))
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 2)
+    b.set2d(0, 0, t.CDouble(5.0)); b.set2d(0, 1, t.CDouble(6.0))
+    b.set2d(1, 0, t.CDouble(7.0)); b.set2d(1, 1, t.CDouble(8.0))
+
+    c: numpy.ndarray[t.CDouble] | t.CPtr = numpy.matmul(a, b)
+    check("matmul not None", c != None, "matmul returned None")
+    check("matmul [0,0]==19", c.at2d(0, 0) == t.CDouble(19.0), "mismatch")
+    check("matmul [0,1]==22", c.at2d(0, 1) == t.CDouble(22.0), "mismatch")
+    check("matmul [1,0]==43", c.at2d(1, 0) == t.CDouble(43.0), "mismatch")
+    check("matmul [1,1]==50", c.at2d(1, 1) == t.CDouble(50.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    c.delete()
+    section_footer()
+
+
+def test_dot():
+    section_header("dot / dot_product")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(4.0), t.CDouble(5.0), t.CDouble(6.0))
+
+    d: t.CDouble = a.dot(b)
+    check("dot == 32", approx_eq(d, t.CDouble(32.0)), "mismatch")
+
+    d2: t.CDouble = numpy.dot_product(a, b)
+    check("dot_product == 32", approx_eq(d2, t.CDouble(32.0)), "mismatch")
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+def test_transpose():
+    section_header("T (transpose)")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 3)
+    a.set2d(0, 0, t.CDouble(1.0)); a.set2d(0, 1, t.CDouble(2.0)); a.set2d(0, 2, t.CDouble(3.0))
+    a.set2d(1, 0, t.CDouble(4.0)); a.set2d(1, 1, t.CDouble(5.0)); a.set2d(1, 2, t.CDouble(6.0))
+
+    at: numpy.ndarray[t.CDouble] | t.CPtr = a.T()
+    check("T not None", at != None, "T returned None")
+    check("T shape[0]==3", at.shape[0] == 3, "shape mismatch")
+    check("T shape[1]==2", at.shape[1] == 2, "shape mismatch")
+    check("T [0,0]==1", at.at2d(0, 0) == t.CDouble(1.0), "mismatch")
+    check("T [0,1]==4", at.at2d(0, 1) == t.CDouble(4.0), "mismatch")
+    check("T [1,0]==2", at.at2d(1, 0) == t.CDouble(2.0), "mismatch")
+
+    a.delete()
+    at.delete()
+    section_footer()
+
+
+# ============================================================
+# 7. Utility
+# ============================================================
+def test_var_std_norm():
+    section_header("var / std / norm")
+
+    # [2,4,4,4,5,5,7,9] mean=5, var=4, std=2
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 8)
+    a.data[0] = t.CDouble(2.0); a.data[1] = t.CDouble(4.0)
+    a.data[2] = t.CDouble(4.0); a.data[3] = t.CDouble(4.0)
+    a.data[4] = t.CDouble(5.0); a.data[5] = t.CDouble(5.0)
+    a.data[6] = t.CDouble(7.0); a.data[7] = t.CDouble(9.0)
+
+    v: t.CDouble = numpy.var(a)
+    printf("  var = %.6f (expect 4.0)\n", v)
+    check("var ~= 4", approx_eq(v, t.CDouble(4.0)), "mismatch")
+
+    s: t.CDouble = numpy.std(a)
+    printf("  std = %.6f (expect 2.0)\n", s)
+    check("std ~= 2", approx_eq(s, t.CDouble(2.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(3.0), t.CDouble(4.0))
+    n: t.CDouble = numpy.norm(b)
+    printf("  norm = %.6f (expect 5.0)\n", n)
+    check("norm ~= 5", approx_eq(n, t.CDouble(5.0)), "mismatch")
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+def test_clip_concatenate():
+    section_header("clip / concatenate")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(5.0), t.CDouble(10.0))
+    r: numpy.ndarray[t.CDouble] | t.CPtr = numpy.clip(a, t.CDouble(2.0), t.CDouble(8.0))
+    check("clip [0]==2", r.data[0] == t.CDouble(2.0), "mismatch")
+    check("clip [1]==5", r.data[1] == t.CDouble(5.0), "mismatch")
+    check("clip [2]==8", r.data[2] == t.CDouble(8.0), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(1.0), t.CDouble(2.0))
+    c: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(3.0), t.CDouble(4.0))
+    cat: numpy.ndarray[t.CDouble] | t.CPtr = numpy.concatenate(b, c)
+    check("concatenate not None", cat != None, "concatenate returned None")
+    check("concatenate size == 4", cat.size == 4, "size mismatch")
+    check("concatenate [0]==1", cat.data[0] == t.CDouble(1.0), "mismatch")
+    check("concatenate [3]==4", cat.data[3] == t.CDouble(4.0), "mismatch")
+
+    a.delete()
+    r.delete()
+    b.delete()
+    c.delete()
+    cat.delete()
+    section_footer()
+
+
+def test_sort_reverse():
+    section_header("sort_arr / reverse")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(3.0), t.CDouble(1.0), t.CDouble(2.0))
+    s: numpy.ndarray[t.CDouble] | t.CPtr = numpy.sort_arr(a)
+    check("sort not None", s != None, "sort returned None")
+    check("sort [0]==1", s.data[0] == t.CDouble(1.0), "mismatch")
+    check("sort [1]==2", s.data[1] == t.CDouble(2.0), "mismatch")
+    check("sort [2]==3", s.data[2] == t.CDouble(3.0), "mismatch")
+
+    r: numpy.ndarray[t.CDouble] | t.CPtr = numpy.reverse(a)
+    check("reverse not None", r != None, "reverse returned None")
+    check("reverse [0]==2", r.data[0] == t.CDouble(2.0), "mismatch")
+    check("reverse [1]==1", r.data[1] == t.CDouble(1.0), "mismatch")
+    check("reverse [2]==3", r.data[2] == t.CDouble(3.0), "mismatch")
+
+    a.delete()
+    s.delete()
+    r.delete()
+    section_footer()
+
+
+def test_print_arr():
+    section_header("print_arr")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    printf("  1D array: ")
+    a.print_arr()
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.eye(pool, 3)
+    printf("  2D eye(3):\n")
+    b.print_arr()
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+# ============================================================
+# 8. Additional operator overloading
+# ============================================================
+def test_floordiv_mod():
+    section_header("__floordiv__ / __mod__")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(7.0), t.CDouble(10.0), t.CDouble(15.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(2.0), t.CDouble(3.0), t.CDouble(4.0))
+
+    c_fd: numpy.ndarray[t.CDouble] | t.CPtr = a // b
+    check("7//2==3", c_fd.data[0] == t.CDouble(3.0), "mismatch")
+    check("10//3==3", c_fd.data[1] == t.CDouble(3.0), "mismatch")
+    check("15//4==3", c_fd.data[2] == t.CDouble(3.0), "mismatch")
+
+    c_mod: numpy.ndarray[t.CDouble] | t.CPtr = a % b
+    check("7%%2==1", c_mod.data[0] == t.CDouble(1.0), "mismatch")
+    check("10%%3==1", c_mod.data[1] == t.CDouble(1.0), "mismatch")
+    check("15%%4==3", c_mod.data[2] == t.CDouble(3.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    c_fd.delete()
+    c_mod.delete()
+    section_footer()
+
+
+# ============================================================
+# 9. Additional math functions
+# ============================================================
+def test_additional_math():
+    section_header("np_log10 / np_log2 / np_floor / np_ceil / np_round / np_sign")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(10.0), t.CDouble(100.0), t.CDouble(1000.0))
+    r_log10: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_log10(a)
+    check("log10(10)~=1", approx_loose(r_log10.data[0], t.CDouble(1.0)), "mismatch")
+    check("log10(100)~=2", approx_loose(r_log10.data[1], t.CDouble(2.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(2.0), t.CDouble(4.0), t.CDouble(8.0))
+    r_log2: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_log2(b)
+    check("log2(2)~=1", approx_loose(r_log2.data[0], t.CDouble(1.0)), "mismatch")
+    check("log2(4)~=2", approx_loose(r_log2.data[1], t.CDouble(2.0)), "mismatch")
+
+    c: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.5), t.CDouble(2.7), t.CDouble(-1.3))
+    r_floor: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_floor(c)
+    check("floor(1.5)==1", r_floor.data[0] == t.CDouble(1.0), "mismatch")
+    check("floor(2.7)==2", r_floor.data[1] == t.CDouble(2.0), "mismatch")
+    check("floor(-1.3)==-2", r_floor.data[2] == t.CDouble(-2.0), "mismatch")
+
+    r_ceil: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_ceil(c)
+    check("ceil(1.5)==2", r_ceil.data[0] == t.CDouble(2.0), "mismatch")
+    check("ceil(2.7)==3", r_ceil.data[1] == t.CDouble(3.0), "mismatch")
+    check("ceil(-1.3)==-1", r_ceil.data[2] == t.CDouble(-1.0), "mismatch")
+
+    d: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.4), t.CDouble(2.5), t.CDouble(3.6))
+    r_round: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_round(d)
+    check("round(1.4)==1", r_round.data[0] == t.CDouble(1.0), "mismatch")
+    check("round(3.6)==4", r_round.data[2] == t.CDouble(4.0), "mismatch")
+
+    e: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    e.data[0] = t.CDouble(-3.0); e.data[1] = t.CDouble(0.0); e.data[2] = t.CDouble(5.0); e.data[3] = t.CDouble(-0.1)
+    r_sign: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_sign(e)
+    check("sign(-3)==-1", r_sign.data[0] == t.CDouble(-1.0), "mismatch")
+    check("sign(0)==0", r_sign.data[1] == t.CDouble(0.0), "mismatch")
+    check("sign(5)==1", r_sign.data[2] == t.CDouble(1.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    c.delete()
+    d.delete()
+    e.delete()
+    r_log10.delete()
+    r_log2.delete()
+    r_floor.delete()
+    r_ceil.delete()
+    r_round.delete()
+    r_sign.delete()
+    section_footer()
+
+
+def test_trig_hyperbolic():
+    section_header("np_tanh / np_sinh / np_cosh / np_arcsin / np_arccos / np_arctan")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(1.0), t.CDouble(-1.0))
+
+    r_tanh: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_tanh(a)
+    check("tanh(0)~=0", approx_loose(r_tanh.data[0], t.CDouble(0.0)), "mismatch")
+
+    r_sinh: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_sinh(a)
+    check("sinh(0)~=0", approx_loose(r_sinh.data[0], t.CDouble(0.0)), "mismatch")
+
+    r_cosh: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_cosh(a)
+    check("cosh(0)~=1", approx_loose(r_cosh.data[0], t.CDouble(1.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(0.0), t.CDouble(0.5))
+    r_asin: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_arcsin(b)
+    check("arcsin(0)~=0", approx_loose(r_asin.data[0], t.CDouble(0.0)), "mismatch")
+
+    r_acos: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_arccos(b)
+    check("arccos(0)~=pi/2", approx_loose(r_acos.data[0], t.CDouble(1.5707963)), "mismatch")
+
+    r_atan: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_arctan(b)
+    check("arctan(0)~=0", approx_loose(r_atan.data[0], t.CDouble(0.0)), "mismatch")
+
+    a.delete()
+    b.delete()
+    r_tanh.delete()
+    r_sinh.delete()
+    r_cosh.delete()
+    r_asin.delete()
+    r_acos.delete()
+    r_atan.delete()
+    section_footer()
+
+
+def test_degrees_radians():
+    section_header("np_degrees / np_radians")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(0.0), t.CDouble(1.5707963267948966))
+
+    r_deg: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_degrees(a)
+    check("deg(0)~=0", approx_loose(r_deg.data[0], t.CDouble(0.0)), "mismatch")
+    check("deg(pi/2)~=90", approx_loose(r_deg.data[1], t.CDouble(90.0)), "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(0.0), t.CDouble(90.0))
+    r_rad: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_radians(b)
+    check("rad(0)~=0", approx_loose(r_rad.data[0], t.CDouble(0.0)), "mismatch")
+    check("rad(90)~=pi/2", approx_loose(r_rad.data[1], t.CDouble(1.5707963)), "mismatch")
+
+    a.delete()
+    b.delete()
+    r_deg.delete()
+    r_rad.delete()
+    section_footer()
+
+
+# ============================================================
+# 10. Additional array operations
+# ============================================================
+def test_cumsum_diff():
+    section_header("cumsum / diff")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0); a.data[1] = t.CDouble(2.0); a.data[2] = t.CDouble(3.0); a.data[3] = t.CDouble(4.0)
+
+    r_cs: numpy.ndarray[t.CDouble] | t.CPtr = numpy.cumsum(a)
+    check("cumsum not None", r_cs != None, "cumsum returned None")
+    check("cumsum[0]==1", r_cs.data[0] == t.CDouble(1.0), "mismatch")
+    check("cumsum[1]==3", r_cs.data[1] == t.CDouble(3.0), "mismatch")
+    check("cumsum[2]==6", r_cs.data[2] == t.CDouble(6.0), "mismatch")
+    check("cumsum[3]==10", r_cs.data[3] == t.CDouble(10.0), "mismatch")
+
+    r_diff: numpy.ndarray[t.CDouble] | t.CPtr = numpy.diff(a)
+    check("diff not None", r_diff != None, "diff returned None")
+    check("diff size==3", r_diff.size == 3, "size mismatch")
+    check("diff[0]==1", r_diff.data[0] == t.CDouble(1.0), "mismatch")
+    check("diff[2]==1", r_diff.data[2] == t.CDouble(1.0), "mismatch")
+
+    a.delete()
+    r_cs.delete()
+    r_diff.delete()
+    section_footer()
+
+
+def test_max_min_where():
+    section_header("np_maximum / np_minimum / np_where")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(5.0), t.CDouble(3.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(4.0), t.CDouble(2.0), t.CDouble(6.0))
+
+    r_max: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_maximum(a, b)
+    check("maximum[0]==4", r_max.data[0] == t.CDouble(4.0), "mismatch")
+    check("maximum[1]==5", r_max.data[1] == t.CDouble(5.0), "mismatch")
+    check("maximum[2]==6", r_max.data[2] == t.CDouble(6.0), "mismatch")
+
+    r_min: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_minimum(a, b)
+    check("minimum[0]==1", r_min.data[0] == t.CDouble(1.0), "mismatch")
+    check("minimum[1]==2", r_min.data[1] == t.CDouble(2.0), "mismatch")
+    check("minimum[2]==3", r_min.data[2] == t.CDouble(3.0), "mismatch")
+
+    # where: cond > 0 ? a : b
+    cond: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(1.0), t.CDouble(0.0))
+    r_where: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_where(cond, a, b)
+    check("where[0]==4", r_where.data[0] == t.CDouble(4.0), "mismatch")
+    check("where[1]==5", r_where.data[1] == t.CDouble(5.0), "mismatch")
+    check("where[2]==6", r_where.data[2] == t.CDouble(6.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    cond.delete()
+    r_max.delete()
+    r_min.delete()
+    r_where.delete()
+    section_footer()
+
+
+def test_flatten_trace():
+    section_header("flatten / trace")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 3)
+    a.set2d(0, 0, t.CDouble(1.0)); a.set2d(0, 1, t.CDouble(2.0)); a.set2d(0, 2, t.CDouble(3.0))
+    a.set2d(1, 0, t.CDouble(4.0)); a.set2d(1, 1, t.CDouble(5.0)); a.set2d(1, 2, t.CDouble(6.0))
+
+    r_flat: numpy.ndarray[t.CDouble] | t.CPtr = numpy.flatten(a)
+    check("flatten not None", r_flat != None, "flatten returned None")
+    check("flatten ndim==1", r_flat.ndim == 1, "ndim mismatch")
+    check("flatten size==6", r_flat.size == 6, "size mismatch")
+    check("flatten[0]==1", r_flat.data[0] == t.CDouble(1.0), "mismatch")
+
+    # trace of [[1,2],[3,4]] = 1+4 = 5
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 2)
+    b.set2d(0, 0, t.CDouble(1.0)); b.set2d(0, 1, t.CDouble(2.0))
+    b.set2d(1, 0, t.CDouble(3.0)); b.set2d(1, 1, t.CDouble(4.0))
+    tr: t.CDouble = numpy.trace(b)
+    check("trace == 5", tr == t.CDouble(5.0), "mismatch")
+
+    a.delete()
+    r_flat.delete()
+    b.delete()
+    section_footer()
+
+
+def test_outer():
+    section_header("outer")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec2(pool, t.CDouble(1.0), t.CDouble(2.0))
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(3.0), t.CDouble(4.0), t.CDouble(5.0))
+
+    r: numpy.ndarray[t.CDouble] | t.CPtr = numpy.outer(a, b)
+    check("outer not None", r != None, "outer returned None")
+    check("outer ndim==2", r.ndim == 2, "ndim mismatch")
+    check("outer[0,0]==3", r.at2d(0, 0) == t.CDouble(3.0), "mismatch")
+    check("outer[0,1]==4", r.at2d(0, 1) == t.CDouble(4.0), "mismatch")
+    check("outer[1,0]==6", r.at2d(1, 0) == t.CDouble(6.0), "mismatch")
+    check("outer[1,2]==10", r.at2d(1, 2) == t.CDouble(10.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    r.delete()
+    section_footer()
+
+
+# ============================================================
+# 11. Boolean / comparison
+# ============================================================
+def test_bool_comparison():
+    section_header("np_all / np_any / np_count_nonzero / np_equal / np_less / np_greater")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    a.data[0] = t.CDouble(1.0); a.data[1] = t.CDouble(0.0); a.data[2] = t.CDouble(3.0); a.data[3] = t.CDouble(0.0)
+    check("count_nonzero==2", numpy.np_count_nonzero(a) == 2, "mismatch")
+    check("any==1", numpy.np_any(a) == 1, "mismatch")
+
+    b: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    check("all(1,2,3)==1", numpy.np_all(b) == 1, "mismatch")
+
+    c: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 3)
+    check("all(0,0,0)==0", numpy.np_all(c) == 0, "mismatch")
+    check("any(0,0,0)==0", numpy.np_any(c) == 0, "mismatch")
+
+    d: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    e: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(0.0), t.CDouble(4.0))
+
+    r_eq: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_equal(d, e)
+    check("equal[0]==1", r_eq.data[0] == t.CDouble(1.0), "mismatch")
+    check("equal[1]==0", r_eq.data[1] == t.CDouble(0.0), "mismatch")
+
+    r_lt: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_less(d, e)
+    check("less[2]==1", r_lt.data[2] == t.CDouble(1.0), "mismatch")
+    check("less[0]==0", r_lt.data[0] == t.CDouble(0.0), "mismatch")
+
+    r_gt: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_greater(d, e)
+    check("greater[1]==1", r_gt.data[1] == t.CDouble(1.0), "mismatch")
+
+    a.delete()
+    b.delete()
+    c.delete()
+    d.delete()
+    e.delete()
+    r_eq.delete()
+    r_lt.delete()
+    r_gt.delete()
+    section_footer()
+
+
+# ============================================================
+# 12. Linear algebra
+# ============================================================
+def test_linalg():
+    section_header("det2x2 / inv2x2 / cross3 / prod / median / percentile")
+
+    # det2x2: [[1,2],[3,4]] -> 1*4-2*3 = -2
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.empty2d(pool, 2, 2)
+    a.set2d(0, 0, t.CDouble(1.0)); a.set2d(0, 1, t.CDouble(2.0))
+    a.set2d(1, 0, t.CDouble(3.0)); a.set2d(1, 1, t.CDouble(4.0))
+    d: t.CDouble = numpy.det2x2(a)
+    check("det2x2==-2", d == t.CDouble(-2.0), "mismatch")
+
+    # inv2x2 of [[1,2],[3,4]]
+    inv: numpy.ndarray[t.CDouble] | t.CPtr = numpy.inv2x2(a)
+    check("inv2x2 not None", inv != None, "inv2x2 returned None")
+    check("inv[0,0]==-2", approx_eq(inv.at2d(0, 0), t.CDouble(-2.0)), "mismatch")
+    check("inv[0,1]==1", approx_eq(inv.at2d(0, 1), t.CDouble(1.0)), "mismatch")
+
+    # cross3: [1,0,0] x [0,1,0] = [0,0,1]
+    x: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(0.0), t.CDouble(0.0))
+    y: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(1.0), t.CDouble(0.0))
+    cr: numpy.ndarray[t.CDouble] | t.CPtr = numpy.cross3(x, y)
+    check("cross not None", cr != None, "cross returned None")
+    check("cross[2]==1", cr.data[2] == t.CDouble(1.0), "mismatch")
+
+    # prod
+    p: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 4)
+    p.data[0] = t.CDouble(1.0); p.data[1] = t.CDouble(2.0); p.data[2] = t.CDouble(3.0); p.data[3] = t.CDouble(4.0)
+    check("prod==24", numpy.prod(p) == t.CDouble(24.0), "mismatch")
+
+    # median
+    m: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 5)
+    m.data[0] = t.CDouble(3.0); m.data[1] = t.CDouble(1.0); m.data[2] = t.CDouble(2.0)
+    m.data[3] = t.CDouble(5.0); m.data[4] = t.CDouble(4.0)
+    check("median==3", numpy.median(m) == t.CDouble(3.0), "mismatch")
+
+    # percentile
+    check("p50==3", approx_eq(numpy.percentile(m, t.CDouble(50.0)), t.CDouble(3.0)), "mismatch")
+
+    a.delete()
+    inv.delete()
+    x.delete()
+    y.delete()
+    cr.delete()
+    p.delete()
+    m.delete()
+    section_footer()
+
+
+# ============================================================
+# 13. Additional creation / constants
+# ============================================================
+def test_additional_creation():
+    section_header("full2d / zeros_like / ones_like / arange1 / constants")
+
+    f: numpy.ndarray[t.CDouble] | t.CPtr = numpy.full2d(pool, 2, 3, t.CDouble(7.0))
+    check("full2d not None", f != None, "full2d returned None")
+    check("full2d ndim==2", f.ndim == 2, "ndim mismatch")
+    check("full2d[0,0]==7", f.at2d(0, 0) == t.CDouble(7.0), "mismatch")
+    check("full2d[1,2]==7", f.at2d(1, 2) == t.CDouble(7.0), "mismatch")
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(1.0), t.CDouble(2.0), t.CDouble(3.0))
+    zl: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros_like(a)
+    check("zeros_like not None", zl != None, "returned None")
+    check("zeros_like size==3", zl.size == 3, "size mismatch")
+    check("zeros_like[0]==0", zl.data[0] == t.CDouble(0.0), "mismatch")
+
+    ol: numpy.ndarray[t.CDouble] | t.CPtr = numpy.ones_like(a)
+    check("ones_like not None", ol != None, "returned None")
+    check("ones_like[0]==1", ol.data[0] == t.CDouble(1.0), "mismatch")
+
+    ar: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange1(pool, t.CDouble(4.0))
+    check("arange1 not None", ar != None, "returned None")
+    check("arange1 size==4", ar.size == 4, "size mismatch")
+    check("arange1[0]==0", ar.data[0] == t.CDouble(0.0), "mismatch")
+    check("arange1[3]==3", ar.data[3] == t.CDouble(3.0), "mismatch")
+
+    # Constants
+    check("pi ~= 3.14", approx_loose(numpy.pi, t.CDouble(3.14159265)), "mismatch")
+    check("e ~= 2.71", approx_loose(numpy.e, t.CDouble(2.71828182)), "mismatch")
+
+    f.delete()
+    a.delete()
+    zl.delete()
+    ol.delete()
+    ar.delete()
+    section_footer()
+
+
+# ============================================================
+# 14. Interpolation
+# ============================================================
+def test_interp():
+    section_header("np_interp")
+
+    xp: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(1.0), t.CDouble(2.0))
+    fp: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(10.0), t.CDouble(20.0))
+
+    v: t.CDouble = numpy.np_interp(t.CDouble(0.5), xp, fp)
+    check("interp(0.5)==5", approx_eq(v, t.CDouble(5.0)), "mismatch")
+
+    v2: t.CDouble = numpy.np_interp(t.CDouble(1.5), xp, fp)
+    check("interp(1.5)==15", approx_eq(v2, t.CDouble(15.0)), "mismatch")
+
+    v3: t.CDouble = numpy.np_interp(t.CDouble(-1.0), xp, fp)
+    check("interp(-1)==0", approx_eq(v3, t.CDouble(0.0)), "mismatch")
+
+    v4: t.CDouble = numpy.np_interp(t.CDouble(3.0), xp, fp)
+    check("interp(3)==20", approx_eq(v4, t.CDouble(20.0)), "mismatch")
+
+    xp.delete()
+    fp.delete()
+    section_footer()
+
+
+# ============================================================
+# 15. Edge / boundary / exception tests
+# ============================================================
+def test_numpy_edge():
+    section_header("edge: size=0 / size=1 / non-SIMD-block / negative / div-zero")
+
+    # size=0: pool.alloc(0) returns None, so zeros(0) returns None (expected)
+    a0: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 0)
+    check("zeros(0) returns None", a0 == None, "expected None for size=0")
+
+    # size=1
+    a1: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 1)
+    check("zeros(1) not None", a1 != None, "returned None")
+    check("zeros(1) size==1", a1.size == 1, "size mismatch")
+    check("zeros(1) [0]==0", a1.data[0] == t.CDouble(0.0), "mismatch")
+    a1.delete()
+
+    # non-SIMD-block sizes (1,2,3,5,6,7)
+    a5: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(0.0), t.CDouble(5.0), t.CDouble(1.0))
+    check("arange(5) size==5", a5.size == 5, "size mismatch")
+    check("arange(5) sum==10", approx_eq(a5.sum(), t.CDouble(10.0)), "mismatch")
+    a5.delete()
+
+    a6: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(0.0), t.CDouble(6.0), t.CDouble(1.0))
+    check("arange(6) sum==15", approx_eq(a6.sum(), t.CDouble(15.0)), "mismatch")
+    a6.delete()
+
+    a7: numpy.ndarray[t.CDouble] | t.CPtr = numpy.arange(pool, t.CDouble(0.0), t.CDouble(7.0), t.CDouble(1.0))
+    check("arange(7) sum==21", approx_eq(a7.sum(), t.CDouble(21.0)), "mismatch")
+    a7.delete()
+
+    # negative values in sqrt
+    neg_arr: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(-1.0), t.CDouble(0.0), t.CDouble(4.0))
+    r_sqrt_neg: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_sqrt(neg_arr)
+    check("sqrt(neg) not None", r_sqrt_neg != None, "returned None")
+    # sqrt(4)=2, sqrt(0)=0; sqrt(-1) is NaN (implementation-defined)
+    check("sqrt(4)==2", approx_eq(r_sqrt_neg.data[2], t.CDouble(2.0)), "mismatch")
+    neg_arr.delete()
+    r_sqrt_neg.delete()
+
+    # div-by-zero: b/a where a has zeros
+    za: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(0.0), t.CDouble(2.0), t.CDouble(0.0))
+    zb: numpy.ndarray[t.CDouble] | t.CPtr = vec3(pool, t.CDouble(6.0), t.CDouble(4.0), t.CDouble(8.0))
+    r_divz: numpy.ndarray[t.CDouble] | t.CPtr = za / zb
+    check("0/6==0", r_divz.data[0] == t.CDouble(0.0), "mismatch")
+    check("2/4==0.5", r_divz.data[1] == t.CDouble(0.5), "mismatch")
+    za.delete()
+    zb.delete()
+    r_divz.delete()
+
+    # large array (non-aligned, non-SIMD-block)
+    big: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, 1000)
+    check("zeros(1000) not None", big != None, "returned None")
+    check("zeros(1000) size==1000", big.size == 1000, "size mismatch")
+    big.delete()
+
+    section_footer()
+
+
+# ============================================================
+# 16. Performance benchmark
+# ============================================================
+def bench_numpy_perf():
+    section_header("Benchmark: numpy ops")
+
+    N: t.CSizeT = 10000
+    ITERS: t.CInt = 5
+
+    a: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, N)
+    b: numpy.ndarray[t.CDouble] | t.CPtr = numpy.zeros(pool, N)
+    i: t.CSizeT = 0
+    while i < N:
+        a.data[i] = t.CDouble(1.0)
+        b.data[i] = t.CDouble(2.0)
+        i += 1
+
+    # add benchmark
+    t0: t.CDouble = timer_sec()
+    j: t.CInt = 0
+    while j < ITERS:
+        r: numpy.ndarray[t.CDouble] | t.CPtr = a + b
+        r.delete()
+        j += 1
+    t1: t.CDouble = timer_sec()
+    printf("  ADD:  %.1f ms\n", (t1 - t0) * t.CDouble(1000.0))
+
+    # mul benchmark
+    t0 = timer_sec()
+    j = 0
+    while j < ITERS:
+        r2: numpy.ndarray[t.CDouble] | t.CPtr = a * b
+        r2.delete()
+        j += 1
+    t1 = timer_sec()
+    printf("  MUL:  %.1f ms\n", (t1 - t0) * t.CDouble(1000.0))
+
+    # sqrt benchmark
+    t0 = timer_sec()
+    j = 0
+    while j < ITERS:
+        r3: numpy.ndarray[t.CDouble] | t.CPtr = numpy.np_sqrt(a)
+        r3.delete()
+        j += 1
+    t1 = timer_sec()
+    printf("  SQRT: %.1f ms\n", (t1 - t0) * t.CDouble(1000.0))
+
+    a.delete()
+    b.delete()
+    section_footer()
+
+
+# ============================================================
+# Entry points
+# ============================================================
+def test_numpy_correct() -> t.CInt:
+    global arena, pool, test_passed, test_failed
+
+    arena = calloc(2 * 1024 * 1024, 1)
+    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+
+    test_passed = 0
+    test_failed = 0
+
+    printf("==============================================\n")
+    printf("  numpy Correctness Tests\n")
+    printf("==============================================\n")
+
+    test_zeros_ones()
+    test_arange_linspace()
+    test_eye_diag()
+    test_sum_mean_min_max()
+    test_fill_copy()
+    test_add_sub_mul_div()
+    test_neg()
+    test_len()
+    test_scalar_ops()
+    test_math_funcs()
+    test_matmul()
+    test_dot()
+    test_transpose()
+    test_var_std_norm()
+    test_clip_concatenate()
+    test_sort_reverse()
+    test_print_arr()
+    test_floordiv_mod()
+    test_additional_math()
+    test_trig_hyperbolic()
+    test_degrees_radians()
+    test_cumsum_diff()
+    test_max_min_where()
+    test_flatten_trace()
+    test_outer()
+    test_bool_comparison()
+    test_linalg()
+    test_additional_creation()
+    test_interp()
+
+    printf("\n==============================================\n")
+    printf("  Correctness: %d passed, %d failed\n", test_passed, test_failed)
+    printf("==============================================\n")
+
+    return test_failed
+
+
+def test_numpy_edge_main() -> t.CInt:
+    global arena, pool, test_passed, test_failed
+
+    arena = calloc(2 * 1024 * 1024, 1)
+    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+
+    test_passed = 0
+    test_failed = 0
+
+    printf("==============================================\n")
+    printf("  numpy Edge / Boundary Tests\n")
+    printf("==============================================\n")
+
+    test_numpy_edge()
+
+    printf("\n==============================================\n")
+    printf("  Edge: %d passed, %d failed\n", test_passed, test_failed)
+    printf("==============================================\n")
+
+    return test_failed
+
+
+def bench_numpy_main() -> t.CInt:
+    global arena, pool
+
+    arena = calloc(8 * 1024 * 1024, 1)
+    pool = memhub.MemPool(arena, 8 * 1024 * 1024)
+
+    printf("==============================================\n")
+    printf("  numpy Performance Benchmark\n")
+    printf("==============================================\n")
+
+    bench_numpy_perf()
+
+    printf("==============================================\n")
+    return 0
+
+
+# Backward-compatible entry
+def test_numpy_main() -> t.CInt:
+    global arena, pool
+
+    arena = calloc(2 * 1024 * 1024, 1)
+    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+
+    failed: t.CInt = test_numpy_correct()
+    if failed == 0:
+        failed = test_numpy_edge_main()
+    if failed == 0:
+        bench_numpy_main()
+    return failed

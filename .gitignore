@@ -1,0 +1,54 @@
+# ============================================================
+# Viper 回归测试仓（Test/）
+# 仅提交测试源码：App/*.vp、project*.json、README.md、两个 .py 脚本
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 构建产物目录
+# output/ 及其变体（output_opt / output_orig / output_verify / output_dbg）、
+# temp/ 与 temp_opt/、TransPyV 的 .tpv_build/
+**/output*/
+**/temp*/
+**/.tpv_build/
+
+# 可执行文件与目标文件
+*.exe
+*.obj
+*.o
+*.out
+*.a
+*.lib
+*.dll
+
+# 编译器中间产物（LLVM IR / 存根 / 依赖记录 / 符号表 / 缓存）
+*.ll
+*.vpi
+*.pyi
+*.deps.txt
+*.deps.json
+*.doc.json
+*_sha1_map.txt
+_pyi_cache_v1.pkl
+_pyi_cache_v1.sig.json
+_shared_sym.json
+_phase1_manifest.json
+
+# 构建日志
+build_all.txt
+*.log
+
+# 备份
+*.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.trae/

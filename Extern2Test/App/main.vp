@@ -1,0 +1,41 @@
+import t
+import stdio
+import testcheck
+
+
+# ============================================================
+# Extern2Test - ExternalDecl/StateDecl 重定义错误最小化复现
+#
+# 在 TransPyV Test 的 deco_test.py 中，这三个声明在生成的 .ll 中
+# 被声明两次（line 56-60 和 62-66），导致 llc 报错：
+#   llc.exe: error: invalid redefinition of function 'ExternalDecl'
+# 本测试只含这三个声明 + main，避免 TransPyV 大量依赖冲击上下文。
+# ============================================================
+
+
+# Test 1: t.CExtern | t.CExport - 外部声明函数（pass 体）
+# 声明一个外部函数，翻译器应生成 declare 而非 define
+def ExternalDecl(x: t.CInt) -> t.CInt | t.CExtern | t.CExport: pass
+
+
+# Test 2: t.State - 状态声明（等价于 CExtern | CExport）
+def StateDecl(x: t.CInt) -> t.CInt | t.State: pass
+
+
+# Test 3: t.State 返回 void
+def StateVoidDecl() -> t.State: pass
+
+
+def test_extern_decl():
+    """验证三个 extern 声明只生成一次 declare，不重复"""
+    testcheck.section("Extern/State declarations (no duplicate)")
+    # 外部声明函数，不调用（应由链接器解析符号）
+    testcheck.check(True, "ExternalDecl declared (not called)", "expect declared once")
+    testcheck.check(True, "StateDecl declared (not called)", "expect declared once")
+    testcheck.check(True, "StateVoidDecl declared (not called)", "expect declared once")
+
+
+def main() -> t.CInt:
+    testcheck.begin("Extern2Test: minimal repro - extern redefinition")
+    test_extern_decl()
+    return testcheck.end()

@@ -1,0 +1,135 @@
+import t
+import stdio
+import string
+import testcheck
+
+
+# ============================================================
+# 复现：NoVTable 多继承下跨 Mixin self. 方法调用
+#
+# 缺陷：BaseB.caller 内 `self.helper()`（helper 定义在兄弟 Mixin BaseA，
+# 经 Combined 多继承组合）被 mangle 成 `<sha1>.BaseB.helper`
+# （用调用者自身/直接父类做前缀），而定义符号是 `<sha1>.BaseA.helper`
+# → ld.lld undefined symbol（TPV 侧 StmtGenMixin.translate_stmt 调
+# self.translate_return 同根因，符号成 StmtGenDeclMixin.translate_return）。
+# 期望：按实际定义类（BaseA）做前缀，或按最终组合类（Combined）。
+# ============================================================
+novirtual class BaseA:
+    a: t.CInt
+
+    def helper(self) -> int:
+        return self.a
+
+
+novirtual class BaseB:
+    b: t.CInt
+
+    def caller(self) -> int:
+        return self.helper()
+
+
+novirtual class Combined(BaseA, BaseB):
+    pass
+
+
+def test_cross_mixin_call():
+    testcheck.section("Test 1: cross-mixin self. call")
+    c: Combined = Combined()
+    c.a = 42
+    c.b = 7
+    testcheck.check(c.caller() == 42,
+                    "caller()==42 (BaseB->BaseA)",
+                    "cross-mixin call fail")
+
+
+# ============================================================
+# 扩展 Test 2：多级 Mixin 链（父类继承 + 兄弟）+ 字段写
+#
+# 覆盖 Handles 去壳核心要求：
+#   MixinB2 继承 MixinA2（1 级父类）；Combined2(MixinB2, MixinC2) 多继承。
+#   MixinC2.outer2 调兄弟 MixinB2.mid2（this_adjust 到 MixinB2 字段区），
+#   MixinB2.mid2 调父类 MixinA2.inner2（this_adjust 到 MixinA2 字段区），
+#   inner2 内写 self.a2（this_adjust 精确到组合类中 a2 字段）。
+# ============================================================
+novirtual class MixinA2:
+    a2: t.CInt
+
+    def inner2(self) -> int:
+        self.a2 = self.a2 + 10
+        return self.a2
+
+
+novirtual class MixinB2(MixinA2):
+    b2: t.CInt
+
+    def mid2(self) -> int:
+        return self.inner2() + self.b2
+
+
+novirtual class MixinC2:
+    c2: t.CInt
+
+    def outer2(self) -> int:
+        return self.mid2() + self.c2
+
+
+novirtual class Combined2(MixinB2, MixinC2):
+    pass
+
+
+def test_multilevel_chain():
+    testcheck.section("Test 2: multilevel mixin chain + field write")
+    c: Combined2 = Combined2()
+    c.a2 = 1
+    c.b2 = 2
+    c.c2 = 3
+    # outer2 -> mid2 -> inner2：inner2 写 a2(1->11)，mid2=11+2=13，outer2=13+3=16
+    testcheck.check(c.outer2() == 16,
+                    "outer2()==16 (C->B->A chain + field write)",
+                    "multilevel chain fail")
+
+
+# ============================================================
+# 扩展 Test 3：第二父类字段区偏移（this_adjust 非 0）+ 指针字段
+#
+# Combined3(PtrMixin, DataMixin)：PtrMixin 第一父类（字段区偏移 0），
+# DataMixin 第二父类（字段区偏移 = sizeof(PtrMixin)，非 0）。
+# DataMixin.get_val 内 self.val 需 this_adjust 到第二父类字段区。
+# ============================================================
+novirtual class PtrMixin:
+    name: t.CChar | t.CPtr
+
+    def get_name(self) -> t.CChar | t.CPtr:
+        return self.name
+
+
+novirtual class DataMixin:
+    val: t.CInt
+
+    def get_val(self) -> int:
+        return self.val
+
+
+novirtual class Combined3(PtrMixin, DataMixin):
+    pass
+
+
+def test_second_parent_offset():
+    testcheck.section("Test 3: second-parent field offset (this_adjust != 0)")
+    c: Combined3 = Combined3()
+    c.name = "hello"
+    c.val = 99
+    testcheck.check(string.strcmp(c.get_name(), "hello") == 0,
+                    "get_name()==hello (first parent)",
+                    "first parent fail")
+    testcheck.check(c.get_val() == 99,
+                    "get_val()==99 (second parent field offset)",
+                    "second parent this_adjust fail")
+
+
+def main() -> t.CInt:
+    testcheck.begin("NoVTableCrossMixinTest")
+    test_cross_mixin_call()
+    test_multilevel_chain()
+    test_second_parent_offset()
+    return testcheck.end()

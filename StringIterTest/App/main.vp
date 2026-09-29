@@ -1,0 +1,179 @@
+import t
+import stdio
+import string
+import c
+import testcheck
+
+# ============================================================
+# Test 1: 字符串指针迭代 - 逐字符直到\0
+# ============================================================
+def test_string_ptr_iter():
+    testcheck.section("Test 1: string pointer iteration")
+    s: t.CChar | t.CPtr = "Hello"
+    p: t.CChar | t.CPtr = s
+    count: t.CInt = 0
+    while c.Deref(p) != 0:
+        count += 1
+        p += 1
+    testcheck.check(count == 5, "ptr iter (count=5)", "ptr iter (count expect 5)")
+
+# ============================================================
+# Test 2: 字符串指针求和ASCII值
+# ============================================================
+def test_string_ascii_sum():
+    testcheck.section("Test 2: string ASCII sum")
+    s: t.CChar | t.CPtr = "ABC"
+    p: t.CChar | t.CPtr = s
+    total: t.CInt = 0
+    while c.Deref(p) != 0:
+        total += t.CInt(c.Deref(p))
+        p += 1
+    # A=65, B=66, C=67 => 198
+    testcheck.check(total == 198, "ASCII sum (total=198)", "ASCII sum (total expect 198)")
+
+# ============================================================
+# Test 3: 手动strcpy - 指针复制
+# ============================================================
+def test_manual_strcpy():
+    testcheck.section("Test 3: manual strcpy via pointers")
+    src: t.CChar | t.CPtr = "Test"
+    dst: t.CArray[t.CChar, 32] = [0]
+    sp: t.CChar | t.CPtr = src
+    dp: t.CChar | t.CPtr = c.Addr(dst)
+    while c.Deref(sp) != 0:
+        c.Set(c.Deref(dp), c.Deref(sp))
+        sp += 1
+        dp += 1
+    c.Set(c.Deref(dp), 0)
+    testcheck.check(dst[0] == 84 and dst[1] == 101 and dst[2] == 115 and dst[3] == 116, "manual strcpy (T=84 e=101 s=115 t=116)", "manual strcpy (expect T=84 e=101 s=115 t=116)")
+
+# ============================================================
+# Test 4: 指针比较和偏移
+# ============================================================
+def test_ptr_offset_compare():
+    testcheck.section("Test 4: pointer offset and compare")
+    arr: t.CArray[t.CInt, 5] = [0]
+    for i in range(5):
+        arr[i] = i * 10
+    p: t.CInt | t.CPtr = c.Addr(arr)
+    start: t.CInt | t.CPtr = p
+    total: t.CInt = 0
+    while p != start + 5:
+        total += c.Deref(p)
+        p += 1
+    testcheck.check(total == 100, "ptr offset (total=100)", "ptr offset (total expect 100)")
+
+# ============================================================
+# Test 5: 字符串长度手动计算
+# ============================================================
+def test_manual_strlen():
+    testcheck.section("Test 5: manual strlen")
+    s: t.CChar | t.CPtr = "Hello World!"
+    p: t.CChar | t.CPtr = s
+    length: t.CSizeT = 0
+    while c.Deref(p) != 0:
+        length += 1
+        p += 1
+    testcheck.check(length == 12, "manual strlen (len=12)", "manual strlen (len expect 12)")
+
+# ============================================================
+# Test 6: 指针反向遍历字符串
+# ============================================================
+def test_reverse_string_ptr():
+    testcheck.section("Test 6: reverse string via pointer")
+    src: t.CChar | t.CPtr = "abcd"
+    dst: t.CArray[t.CChar, 32] = [0]
+    # Find end of src
+    p: t.CChar | t.CPtr = src
+    length: t.CInt = 0
+    while c.Deref(p) != 0:
+        length += 1
+        p += 1
+    # Copy in reverse
+    dp: t.CChar | t.CPtr = c.Addr(dst)
+    p = src + length - 1
+    while p >= src:
+        c.Set(c.Deref(dp), c.Deref(p))
+        dp += 1
+        p -= 1
+    c.Set(c.Deref(dp), 0)
+    # "abcd" reversed = "dcba" = 100,99,98,97
+    testcheck.check(dst[0] == 100 and dst[1] == 99 and dst[2] == 98 and dst[3] == 97, "reverse string (d=100 c=99 b=98 a=97)", "reverse string (expect d=100 c=99 b=98 a=97)")
+
+# ============================================================
+# Test 7: 多级指针 - 指向指针的指针
+# ============================================================
+def test_double_pointer():
+    testcheck.section("Test 7: double pointer")
+    x: t.CInt = 42
+    px: t.CInt | t.CPtr = c.Addr(x)
+    ppx: t.CInt | t.CPtr | t.CPtr = c.Addr(px)
+    # Read through double pointer
+    val: t.CInt = c.Deref(c.Deref(ppx))
+    testcheck.check(val == 42, "double pointer (val=42)", "double pointer (val expect 42)")
+
+# ============================================================
+# Test 8: 指针算术 - 数组元素访问
+# ============================================================
+def test_ptr_arithmetic():
+    testcheck.section("Test 8: pointer arithmetic")
+    arr: t.CArray[t.CInt, 8] = [0]
+    for i in range(8):
+        arr[i] = (i + 1) * (i + 1)
+    p: t.CInt | t.CPtr = c.Addr(arr)
+    # Access arr[3] via pointer: p + 3
+    val: t.CInt = c.Deref(p + 3)
+    # arr[3] = 4*4 = 16
+    testcheck.check(val == 16, "ptr arithmetic (arr[3]=16)", "ptr arithmetic (arr[3] expect 16)")
+
+# ============================================================
+# Test 9: 字符串比较 - 逐字符指针
+# ============================================================
+def test_manual_strcmp():
+    testcheck.section("Test 9: manual strcmp via pointers")
+    s1: t.CChar | t.CPtr = "Hello"
+    s2: t.CChar | t.CPtr = "Hello"
+    p1: t.CChar | t.CPtr = s1
+    p2: t.CChar | t.CPtr = s2
+    equal: t.CInt = 1
+    while c.Deref(p1) != 0 and c.Deref(p2) != 0:
+        if c.Deref(p1) != c.Deref(p2):
+            equal = 0
+            break
+        p1 += 1
+        p2 += 1
+    if c.Deref(p1) != c.Deref(p2):
+        equal = 0
+    testcheck.check(equal == 1, "manual strcmp (equal=1)", "manual strcmp (equal expect 1)")
+
+# ============================================================
+# Test 10: 结构体指针访问
+# ============================================================
+class Vec2:
+    x: t.CInt
+    y: t.CInt
+
+def test_struct_ptr_access():
+    testcheck.section("Test 10: struct pointer access")
+    v: Vec2 = Vec2()
+    v.x = 10
+    v.y = 20
+    p: Vec2 | t.CPtr = c.Addr(v)
+    # Modify through pointer
+    c.Deref(p).x = 100
+    c.Deref(p).y = 200
+    testcheck.check(v.x == 100 and v.y == 200, "struct ptr (x=100 y=200)", "struct ptr (x y expect 100 200)")
+
+def main() -> t.CInt:
+    testcheck.begin("StringIterTest: String/Pointer Iteration Tests")
+    test_string_ptr_iter()
+    test_string_ascii_sum()
+    test_manual_strcpy()
+    test_ptr_offset_compare()
+    test_manual_strlen()
+    test_reverse_string_ptr()
+    test_double_pointer()
+    test_ptr_arithmetic()
+    test_manual_strcmp()
+    test_struct_ptr_access()
+    return testcheck.end()

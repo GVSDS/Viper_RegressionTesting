@@ -1,0 +1,42 @@
+import t
+import stdio
+import stdlib
+import memhub
+from g4node import G4Node, new_g4node
+
+
+# ============================================================
+# caller1: 导入 G4Node 并直接访问 Next 字段（不通过访问器）
+#
+# 模拟 TransPyV/HandlesExprCall.py 的情况：
+# 直接访问 n.Next 触发 GEP 指令，若 stub 字段缺失则 GEP 越界
+# ============================================================
+
+
+def caller1_make_chain(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
+    """创建 3 节点链表，直接访问 Next 字段"""
+    a: G4Node | t.CPtr = new_g4node(pool)
+    b: G4Node | t.CPtr = new_g4node(pool)
+    c: G4Node | t.CPtr = new_g4node(pool)
+    if a is None or b is None or c is None:
+        return None
+    a.IntVal = 100
+    b.IntVal = 200
+    c.IntVal = 300
+    # 直接访问 Next 字段（不通过 g4node_set_next 访问器）
+    a.Next = b
+    b.Next = c
+    return a
+
+
+def caller1_sum_chain(head: G4Node | t.CPtr) -> t.CInt:
+    """遍历链表求和，直接访问 Next 字段"""
+    if head is None:
+        return 0
+    total: t.CInt = head.IntVal
+    cur: G4Node | t.CPtr = head
+    # 直接访问 Next 字段（不通过 g4node_get_next 访问器）
+    while cur.Next is not None:
+        cur = cur.Next
+        total = total + cur.IntVal
+    return total

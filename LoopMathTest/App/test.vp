@@ -1,0 +1,298 @@
+import config
+import t, c
+
+
+def AboutSizeTWhileTest(length: t.CSizeT):
+    pos: t.CSizeT = 0
+    while pos < length:
+        print("Pos: ", pos)
+        if pos > config.POSMAX: break
+        pos += 1
+    while pos < length:
+        if pos > config.POSMAX:
+            print("Pos: ", pos)
+            pos += 1
+        else:
+            print("Pos: ", pos)
+            pos += 1
+            if pos > config.POSMAX: break
+            else:
+                pos += 1
+                print("Pos: ", pos)
+    while pos < length:
+        print("Pos: ", pos)
+        pos += 1
+
+
+def MathBasicTest(x: t.CInt, y: t.CInt) -> t.CInt:
+    result: t.CInt = 0
+    result = x + y
+    print("Add: ", result)
+    result = x - y
+    print("Sub: ", result)
+    result = x * y
+    print("Mul: ", result)
+    if y != 0:
+        result = x / y
+        print("Div: ", result)
+    result = x % y if y != 0 else 0
+    print("Mod: ", result)
+    return result
+
+
+def MathAdvancedTest(value: t.CInt) -> t.CInt:
+    counter: t.CInt = 0
+    scaled: t.CInt = 0
+    offset: t.CInt = 0
+    scaled = value * config.MATH_SCALE
+    print("Scaled: ", scaled)
+    offset = scaled + config.MATH_OFFSET
+    print("Offset: ", offset)
+    threshold: t.CInt = config.THRESHOLD
+    if offset > threshold:
+        print("Above threshold")
+        counter = 1
+    elif offset == threshold:
+        print("At threshold")
+        counter = 0
+    else:
+        print("Below threshold")
+        counter = -1
+    return counter
+
+
+def WhileWithElifElseTest(start: t.CInt, end: t.CInt):
+    idx: t.CInt = start
+    while idx < end:
+        if idx < 0:
+            print("Negative: ", idx)
+        elif idx == 0:
+            print("Zero: ", idx)
+        elif idx > 0 and idx < 5:
+            print("Small positive: ", idx)
+        elif idx >= 5 and idx < 10:
+            print("Medium positive: ", idx)
+        else:
+            print("Large: ", idx)
+        idx += 1
+
+
+def NestedWhileWithMacrosTest(outer_limit: t.CInt, inner_limit: t.CInt):
+    outer: t.CInt = 0
+    inner: t.CInt = 0
+    total_ops: t.CInt = 0
+    while outer < outer_limit:
+        inner = 0
+        while inner < inner_limit:
+            if inner == config.TRUE:
+                print("Inner loop break condition at: ", inner)
+            total_ops += 1
+            inner += 1
+        outer += 1
+    print("Total operations: ", total_ops)
+
+
+def ComplexConditionTest(a: t.CInt, b: t.CInt, c_val: t.CInt):
+    x: t.CInt = a
+    y: t.CInt = b
+    z: t.CInt = c_val
+    while x < config.LOOP_LIMIT:
+        if x > 0 and y > 0 and z > 0:
+            print("All positive: ", x, y, z)
+        elif x <= 0 and y <= 0 and z <= 0:
+            print("All non-positive: ", x, y, z)
+        else:
+            if x > 0:
+                print("X positive")
+            elif y > 0:
+                print("Y positive")
+            else:
+                print("Z positive")
+        x += 1
+        y += 1
+        z += 1
+
+
+def RetryLoopTest(retry_count: t.CInt) -> t.CInt:
+    attempt: t.CInt = 0
+    success: t.CInt = 0
+    while attempt < retry_count:
+        if attempt < config.MAX_RETRY:
+            print("Attempt: ", attempt, " less than max")
+            success = attempt * 2
+        elif attempt == config.MAX_RETRY:
+            print("At max retry")
+            success = -1
+        else:
+            print("Beyond max retry")
+            success = -2
+        attempt += 1
+    return success
+
+
+def BitwiseOperationsTest(value: t.CInt) -> t.CInt:
+    shifted: t.CInt = 0
+    masked: t.CInt = 0
+    xored: t.CInt = 0
+    anded: t.CInt = 0
+    ored: t.CInt = 0
+    shifted = value << config.SHIFT_AMOUNT
+    print("Left shift: ", shifted)
+    shifted = value >> config.SHIFT_AMOUNT
+    print("Right shift: ", shifted)
+    masked = value & config.MASK_VALUE
+    print("Bitwise AND mask: ", masked)
+    xored = value ^ config.MASK_VALUE
+    print("Bitwise XOR: ", xored)
+    anded = value & (config.MASK_VALUE >> config.SHIFT_AMOUNT)
+    print("Bitwise AND shifted mask: ", anded)
+    ored = value | config.SHIFT_AMOUNT
+    print("Bitwise OR shift: ", ored)
+    return masked
+
+
+def CompoundAssignmentMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
+    x: t.CInt = a
+    y: t.CInt = b
+    result: t.CInt = 0
+    x += y
+    print("x += y: ", x)
+    x -= y
+    print("x -= y: ", x)
+    x *= y
+    print("x *= y: ", x)
+    x = a
+    y = b
+    if b != 0:
+        x /= b
+        print("x /= y: ", x)
+    x = a
+    if b != 0:
+        x %= b
+        print("x %%= y: ", x)
+    x = a
+    x <<= config.SHIFT_AMOUNT
+    print("x <<= shift: ", x)
+    x >>= config.SHIFT_AMOUNT
+    print("x >>= shift: ", x)
+    x &= config.MASK_VALUE
+    print("x &= mask: ", x)
+    x |= config.SHIFT_AMOUNT
+    print("x |= shift: ", x)
+    result = (a + b) * config.MATH_SCALE - config.MATH_OFFSET
+    print("Compound: (a+b)*scale-offset: ", result)
+    result = (a * b) + (config.MATH_OFFSET / 2)
+    print("Compound: a*b+offset/2: ", result)
+    return result
+
+
+def PowerAndModuloTest(base: t.CInt, exponent: t.CInt) -> t.CInt:
+    result: t.CInt = 1
+    temp: t.CInt = 0
+    i: t.CInt = 0
+    while i < exponent:
+        result *= base
+        i += 1
+    print("Power: ", result)
+    temp = result % config.MODULO_DIVISOR
+    print("Power mod: ", temp)
+    temp = (base * config.EXPONENT_BASE) % config.MODULO_DIVISOR
+    print("base*exp %% divisor: ", temp)
+    temp = ((base + config.MATH_OFFSET) * config.MATH_SCALE) % config.MODULO_DIVISOR
+    print("(base+offset)*scale %% divisor: ", temp)
+    return result
+
+
+def MixedArithmeticTest(x: t.CInt, y: t.CInt, z: t.CInt) -> t.CInt:
+    result: t.CInt = 0
+    result = (x + y) * z
+    print("(x+y)*z: ", result)
+    result = x + (y * z)
+    print("x+(y*z): ", result)
+    result = ((x + y) * config.MATH_SCALE) - config.MATH_OFFSET
+    print("((x+y)*scale)-offset: ", result)
+    result = (x * config.MATH_SCALE) + (y * config.MATH_SCALE)
+    print("x*scale + y*scale: ", result)
+    result = ((x % config.MODULO_DIVISOR) + (y % config.MODULO_DIVISOR)) * config.MATH_SCALE
+    print("(x%%mod + y%%mod)*scale: ", result)
+    temp: t.CInt = 0
+    temp = x | y & z
+    print("x | y & z: ", temp)
+    temp = (x | y) & z
+    print("(x | y) & z: ", temp)
+    temp = x ^ y ^ z
+    print("x ^ y ^ z: ", temp)
+    return result
+
+
+def MathWithWhileLoopTest(start: t.CInt, count: t.CInt) -> t.CInt:
+    idx: t.CInt = 0
+    accumulator: t.CInt = 0
+    multiplier: t.CInt = config.MATH_SCALE
+    while idx < count:
+        temp: t.CInt = (start + idx) * multiplier
+        temp = temp + config.MATH_OFFSET
+        if temp > config.THRESHOLD:
+            temp = config.THRESHOLD
+        accumulator += temp
+        multiplier += 1
+        idx += 1
+    print("Accumulator: ", accumulator)
+    return accumulator
+
+
+def ComplexNestedMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
+    layer1: t.CInt = 0
+    layer2: t.CInt = 0
+    layer3: t.CInt = 0
+    i: t.CInt = 0
+    layer1 = (a + b) * config.MATH_SCALE
+    print("Layer1: ", layer1)
+    while i < config.BIT_RANGE:
+        layer2 += layer1 >> 1
+        i += 1
+    print("Layer2: ", layer2)
+    layer3 = layer1 + layer2 - config.MATH_OFFSET
+    print("Layer3: ", layer3)
+    layer3 = layer3 * config.MATH_SCALE / 2 if config.MATH_SCALE != 0 else layer3
+    print("Layer3 scaled: ", layer3)
+    return layer3
+
+
+def ConditionalMathChainTest(value: t.CInt) -> t.CInt:
+    result: t.CInt = 0
+    step: t.CInt = 0
+    while step < config.LOOP_LIMIT:
+        if step < 5:
+            result += step * config.MATH_SCALE
+            print("step<5: ", result)
+        elif step < 10:
+            result -= step - config.MATH_OFFSET
+            print("step<10: ", result)
+        elif step < 15:
+            result += (step * config.MATH_OFFSET) / config.MATH_SCALE
+            print("step<15: ", result)
+        else:
+            result = result * config.EXPONENT_BASE % config.MODULO_DIVISOR
+            print("step>=15: ", result)
+        step += 1
+    return result
+
+
+def BitManipulationMathTest(value: t.CInt) -> t.CInt:
+    original: t.CInt = value
+    nibble: t.CInt = 0
+    result: t.CInt = 0
+    result = (value << config.SHIFT_AMOUNT) | (value >> (8 - config.SHIFT_AMOUNT))
+    print("Rotate left: ", result)
+    result = (value >> config.SHIFT_AMOUNT) | (value << (8 - config.SHIFT_AMOUNT))
+    print("Rotate right: ", result)
+    nibble = value & 0xF
+    print("Lower nibble: ", nibble)
+    nibble = (value >> config.BIT_RANGE) & 0xF
+    print("Upper nibble: ", nibble)
+    result = ((value & config.MASK_VALUE) + config.MATH_OFFSET) * config.MATH_SCALE
+    print("Masked and scaled: ", result)
+    result = ((original << config.SHIFT_AMOUNT) ^ original) & config.MASK_VALUE
+    print("XOR shifted: ", result)
+    return result

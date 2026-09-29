@@ -1,0 +1,19 @@
+import t
+
+
+def remote_func() -> int:
+    "Remote function docstring."
+    return 0
+
+
+class RemoteClass:
+    "Remote class docstring."
+    value: t.CInt
+
+    def remote_method(self) -> int:
+        "Remote method docstring."
+        return 0
+
+
+def no_doc_func() -> int:
+    return 0

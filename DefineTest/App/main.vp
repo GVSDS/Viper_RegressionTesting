@@ -1,0 +1,421 @@
+import t, c
+from t import CInt, CInt32T, CUInt32T, CUInt64T, CFloat64T, CPtr, CChar, CDefine, CUInt16T
+import viperlib
+import stdlib
+import platmacro
+import w32.win32console
+import testcheck
+
+
+# ============================================================
+# DefineTest - CDefine 宏 / c.CIf / platmacro 专项测试
+#
+# 从 TestProject3/App/definetest.vp 独立提取。
+# 验证: CDefine 常量、宏函数、c.CIf/c.CIfdef/c.CIfndef、
+#       platmacro 平台宏（输出以 print 为准，人工核对）。
+# ============================================================
+
+
+MAX_SIZE: t.CDefine = 1024
+MIN_VAL: t.CDefine = 0
+MAX_VAL: t.CDefine = 100
+MASK_BYTE: t.CDefine = 0xFF
+SHIFT_BITS: t.CDefine = 8
+PI_INT: t.CDefine = 3
+ENABLED: t.CDefine = 1
+DISABLED: t.CDefine = 0
+PAGE_SIZE: t.CDefine = 4096
+BUFFER_LEN: t.CDefine = 256
+
+CODE_SEG:  t.CDefine | t.CUInt16T = 0x08
+DATA_SEG:  t.CDefine | t.CUInt16T = 0x10
+STACK_SEG: t.CDefine | t.CUInt16T = 0x20
+
+
+def MAKE_FLAG(bit: CInt32T) -> t.CDefine:
+    return 1 << bit
+
+def CLAMP(x: CInt32T, lo: CInt32T, hi: CInt32T) -> t.CDefine:
+    if x < lo:
+        return lo
+    if x > hi:
+        return hi
+    return x
+
+def test_basic_define() -> CInt:
+    print(MAX_SIZE)
+    print(MIN_VAL)
+    print(MAX_VAL)
+    print(MASK_BYTE)
+    print(SHIFT_BITS)
+    return 0
+
+def test_define_arithmetic() -> CInt:
+    a: CInt32T = 10
+    b: CInt32T = a + MAX_SIZE
+    print(b)
+    c_val: CInt32T = (a << SHIFT_BITS) & MASK_BYTE
+    print(c_val)
+    d: CInt32T = MAX_VAL - MIN_VAL
+    print(d)
+    e: CInt32T = PAGE_SIZE / 4
+    print(e)
+    return 0
+
+def test_define_conditional() -> CInt:
+    mode: CInt32T = ENABLED
+    if mode == ENABLED:
+        print(1)
+    else:
+        print(0)
+    if mode == DISABLED:
+        print(0)
+    else:
+        print(1)
+    val: CInt32T = 50
+    if val > MAX_VAL:
+        print(1)
+    else:
+        print(0)
+    if val < MAX_VAL:
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_define_loop() -> CInt:
+    i: CInt32T = 0
+    while i < MAX_VAL:
+        i = i + 1
+        if i > 10:
+            break
+    print(i)
+    i = 0
+    while i < MAX_SIZE:
+        i = i + PAGE_SIZE
+        if i >= PAGE_SIZE * 4:
+            break
+    print(i)
+    return 0
+
+def test_typed_define() -> CInt:
+    seg: CUInt16T = CODE_SEG | DATA_SEG | STACK_SEG
+    print(seg)
+    cs: CUInt16T = CODE_SEG
+    print(cs)
+    ds: CUInt16T = DATA_SEG
+    print(ds)
+    return 0
+
+def test_define_function() -> CInt:
+    flag0 = MAKE_FLAG(0)
+    print(flag0)
+    flag3 = MAKE_FLAG(3)
+    print(flag3)
+    flag7 = MAKE_FLAG(7)
+    print(flag7)
+    return 0
+
+def test_define_clamp() -> CInt:
+    v1 = CLAMP(50, 0, 100)
+    print(v1)
+    v2 = CLAMP(-10, 0, 100)
+    print(v2)
+    v3 = CLAMP(150, 0, 100)
+    print(v3)
+    return 0
+
+def test_define_string() -> CInt:
+    buf: CChar | CPtr = CPtr(stdlib.malloc(BUFFER_LEN))
+    viperlib.snprintf(buf, BUFFER_LEN, "MAX_SIZE=%d PAGE=%d MASK=0x%x", MAX_SIZE, PAGE_SIZE, MASK_BYTE)
+    print(buf)
+    stdlib.free(buf)
+    return 0
+
+def test_define_combined() -> CInt:
+    flags: CUInt32T = MAKE_FLAG(0) | MAKE_FLAG(1) | MAKE_FLAG(2)
+    print(flags)
+    shifted: CUInt32T = MASK_BYTE << SHIFT_BITS
+    print(shifted)
+    total: CUInt32T = PAGE_SIZE + BUFFER_LEN
+    print(total)
+    return 0
+
+
+def test_cif_basic() -> CInt:
+    if c.CIf(ENABLED):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(DISABLED):
+        print(0)
+    else:
+        print(1)
+    if c.CIf(MAX_SIZE > 512):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(MIN_VAL > 0):
+        print(0)
+    else:
+        print(1)
+    return 0
+
+def test_cif_elif_else() -> CInt:
+    val: CInt32T = 2
+    if c.CIf(val == 1):
+        print(1)
+    elif c.CIf(val == 2):
+        print(2)
+    elif c.CIf(val == 3):
+        print(3)
+    else:
+        print(0)
+    if c.CIf(val > 10):
+        print(10)
+    elif c.CIf(val > 5):
+        print(5)
+    else:
+        print(val)
+    return 0
+
+def test_cifdef_cifndef() -> CInt:
+    if c.CIfdef(MAX_SIZE):
+        print(MAX_SIZE)
+    else:
+        print(0)
+    if c.CIfdef(UNDEFINED_MACRO_XYZ):
+        print(0)
+    else:
+        print(1)
+    if c.CIfndef(UNDEFINED_MACRO_XYZ):
+        print(1)
+    else:
+        print(0)
+    if c.CIfndef(MAX_SIZE):
+        print(0)
+    else:
+        print(1)
+    return 0
+
+def test_cif_platform() -> CInt:
+    if c.CIfdef(_WIN32):
+        print(1)
+    else:
+        print(0)
+    if c.CIfdef(__x86_64__):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(SIZEOF_VOID_P == 8):
+        print(8)
+    elif c.CIf(SIZEOF_VOID_P == 4):
+        print(4)
+    else:
+        print(0)
+    return 0
+
+def test_cif_nested() -> CInt:
+    if c.CIf(ENABLED):
+        if c.CIf(MAX_SIZE > 512):
+            print(1)
+        else:
+            print(0)
+        if c.CIfdef(PAGE_SIZE):
+            print(PAGE_SIZE)
+        else:
+            print(0)
+    else:
+        print(0)
+    return 0
+
+def test_cif_expr() -> CInt:
+    if c.CIf(MASK_BYTE & 0x0F):
+        print(1)
+    else:
+        print(0)
+    if c.CIf((MAX_SIZE >> SHIFT_BITS) > 0):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(ENABLED and MAX_SIZE > 0):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(DISABLED or MAX_SIZE > 0):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_platmacro_platform() -> CInt:
+    if c.CIfdef(platmacro.IS_WINDOWS):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.IS_WINDOWS == 1):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.IS_LINUX == 0):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.IS_X86_64 == 1):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_platmacro_sizes() -> CInt:
+    print(platmacro.PTR_SIZE)
+    print(platmacro.SIZEOF_INT)
+    print(platmacro.SIZEOF_LONG)
+    print(platmacro.SIZEOF_DOUBLE)
+    print(platmacro.PAGE_SIZE)
+    print(platmacro.CACHE_LINE_SIZE)
+    return 0
+
+def test_platmacro_endian() -> CInt:
+    if c.CIf(platmacro.IS_LITTLE_ENDIAN == 1):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.IS_BIG_ENDIAN == 0):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.BYTE_ORDER_LE == 1):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_platmacro_features() -> CInt:
+    if c.CIf(platmacro.HAS_SSE2 == 1):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.HAS_AVX == 1):
+        print(1)
+    else:
+        print(0)
+    if c.CIf(platmacro.HAS_NEON == 0):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_platmacro_align() -> CInt:
+    print(platmacro.ALIGNOF_INT)
+    print(platmacro.ALIGNOF_PTR)
+    print(platmacro.ALIGNOF_DOUBLE)
+    if c.CIf(platmacro.ALIGNOF_PTR == 8):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_cifdef_cross_module() -> CInt:
+    if c.CIfdef(platmacro.IS_WINDOWS):
+        if c.CIf(platmacro.PTR_SIZE == 8):
+            print(64)
+        else:
+            print(32)
+    else:
+        print(0)
+    if c.CIfndef(platmacro.IS_ARM64):
+        print(1)
+    else:
+        print(0)
+    if c.CIfdef(platmacro.HAS_AVX2):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_cifdef_guard() -> CInt:
+    MY_HEADER_GUARD: t.CDefine = 1
+    if c.CIfndef(MY_HEADER_GUARD):
+        print(0)
+    else:
+        print(1)
+    if c.CIfdef(MY_HEADER_GUARD):
+        print(1)
+    else:
+        print(0)
+    return 0
+
+def test_cifdef_undefined() -> CInt:
+    if c.CIfndef(NONEXISTENT_MACRO_ABC):
+        print(1)
+    else:
+        print(0)
+    if c.CIfndef(THIS_IS_ALSO_NOT_DEFINED):
+        print(1)
+    else:
+        print(0)
+    if c.CIfdef(NONEXISTENT_MACRO_ABC):
+        print(0)
+    else:
+        print(1)
+    return 0
+
+def test_cifdef_complex() -> CInt:
+    if c.CIfdef(platmacro.IS_WINDOWS) and c.CIf(platmacro.PTR_SIZE == 8):
+        print(1)
+    else:
+        print(0)
+    if c.CIfndef(platmacro.IS_ARM64) and c.CIf(platmacro.IS_X86_64 == 1):
+        print(1)
+    else:
+        print(0)
+    if c.CIfdef(platmacro.HAS_SSE2):
+        if c.CIfdef(platmacro.HAS_AVX):
+            print(2)
+        else:
+            print(1)
+    else:
+        print(0)
+    return 0
+
+
+def main() -> t.CInt:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("DefineTest: CDefine 宏与 c.CIf 测试")
+
+    testcheck.section("CDefine 基础")
+    test_basic_define()
+    test_define_arithmetic()
+    test_define_conditional()
+    test_define_loop()
+    test_typed_define()
+    test_define_function()
+    test_define_clamp()
+    test_define_string()
+    test_define_combined()
+
+    testcheck.section("c.CIf")
+    test_cif_basic()
+    test_cif_elif_else()
+    test_cifdef_cifndef()
+    test_cif_platform()
+    test_cif_nested()
+    test_cif_expr()
+
+    testcheck.section("platmacro")
+    test_platmacro_platform()
+    test_platmacro_sizes()
+    test_platmacro_endian()
+    test_platmacro_features()
+    test_platmacro_align()
+
+    testcheck.section("c.CIfdef 综合")
+    test_cifdef_cross_module()
+    test_cifdef_guard()
+    test_cifdef_undefined()
+    test_cifdef_complex()
+
+    return testcheck.end()

@@ -1,0 +1,115 @@
+import t, c
+from stdint import *
+import stdio
+import stdlib
+
+
+# ============================================================
+# 指针操作符全形态自检（TPC 侧）
+#
+# 解析实况（vast_c.c ParseSimpleStmt → ParseExprList + SetStoreContext）：
+#   `*p` 由 ParseFactor 产出 UnaryOp(op=Deref)，SetStoreContext **不改 UnaryOp**
+#   ⇒ `*p = v` 的赋值目标就是 UnaryOp(Deref)（ctx 仍是 Load），与读侧同形。
+# 若编译器目标分派没有 UnaryOp 分支，整条语句会被静默丢弃（不落盘、不报错），
+# 本程序即用于钉死这一点：每个形态都必须真的写进内存。
+# ============================================================
+
+def MakePair() -> tuple[int, int]:
+    return 1, 2
+
+
+def main() -> int:
+    fails: int = 0
+    buf: uint64* = (uint64*)stdlib.malloc(64)
+    if buf == None:
+        stdio.printf("FAIL: malloc\n")
+        return 9
+
+    # 形态 A：*p = v
+    *buf = 7
+    if buf[0] != 7:
+        stdio.printf("FAIL A  *p = v        : buf[0]=%llu（期望 7）\n", buf[0])
+        fails += 1
+
+    # 形态 B：*p = *q
+    q: uint64* = buf + 1
+    *q = 99
+    *buf = *q
+    if buf[0] != 99:
+        stdio.printf("FAIL B  *p = *q       : buf[0]=%llu（期望 99）\n", buf[0])
+        fails += 1
+
+    # 形态 C：&x 取址，*px = v
+    x: uint64 = 0
+    y: uint64 = 5
+    px: uint64* = &x
+    *px = 11
+    if x != 11:
+        stdio.printf("FAIL C  *px = v       : x=%llu（期望 11）\n", x)
+        fails += 1
+
+    # 形态 D：*&x = *&y
+    *&x = *&y
+    if x != 5:
+        stdio.printf("FAIL D  *&x = *&y     : x=%llu（期望 5）\n", x)
+        fails += 1
+
+    # 形态 E（对照）：下标写 p[i] = v
+    buf[0] = 123
+    if buf[0] != 123:
+        stdio.printf("FAIL E  p[0] = v      : buf[0]=%llu（期望 123）\n", buf[0])
+        fails += 1
+
+    # 形态 F：AugAssign 目标 *p += v
+    *buf += 5
+    if buf[0] != 128:
+        stdio.printf("FAIL F  *p += v       : buf[0]=%llu（期望 128）\n", buf[0])
+        fails += 1
+
+    # 形态 G1（对照）：Tuple 目标 a, b = f()
+    a: int = 0
+    b: int = 0
+    a, b = MakePair()
+    if a != 1 or b != 2:
+        stdio.printf("FAIL G1 a, b = f()   : a=%d b=%d（期望 1/2）\n", a, b)
+        fails += 1
+
+    # 形态 G2：List 目标 [c, d] = f()
+    cc: int = 0
+    dd: int = 0
+    [cc, dd] = MakePair()
+    if cc != 1 or dd != 2:
+        stdio.printf("FAIL G2 [c, d] = f() : c=%d d=%d（期望 1/2）\n", cc, dd)
+        fails += 1
+
+    # 形态 H：值位置的 *p（调用实参 f(*p)）——Starred(Load)
+    got: int = stdio.printf("INFO H  f(*p)         : %llu（期望 128）\n", *buf)
+    if got < 0:
+        stdio.printf("FAIL H  f(*p)        : printf 返回 %d\n", got)
+        fails += 1
+
+    # 形态 I：memhub 实际用的「两步式读块头」（关键回归点）
+    #   hd1 = *((uint64*)(blk))                       —— 直接读
+    #   hd2 = uint64(t.CPtr(*((uint64*)(blk))))       —— 两步式；注意 `*((...))` 位于
+    #         t.CPtr( ) 的**实参位置** ⇒ 解析为 Starred(Load)，旧 TPC 在这一形态落到
+    #         末尾兜底 `return i32 0` ⇒ t.CPtr(0)=NULL ⇒ hd2==0（内存里明明是 0x1234）
+    # 这正是 OOM 报告里 `hdr=0x9 / hdr2=0x0` 的成因。
+    w: uint64 = 0
+    pw: uint64* = &w
+    *pw = 0x1234
+    blk: t.CPtr = t.CPtr(uint64(pw))
+    hd1: uint64 = *((uint64*)(blk))
+    hd2: uint64 = uint64(t.CPtr(*((uint64*)(blk))))
+    if hd1 != 0x1234:
+        stdio.printf("FAIL I1 直接读块头     : hd1=0x%llX（期望 0x1234）\n", hd1)
+        fails += 1
+    if hd2 != 0x1234:
+        stdio.printf("FAIL I2 两步式读块头   : hd2=0x%llX（期望 0x1234）\n", hd2)
+        fails += 1
+
+    if fails == 0:
+        stdio.printf("ALL OK: 指针操作符全形态均真正落盘\n")
+    else:
+        stdio.printf("FAILS=%d\n", fails)
+    stdio.fflush(None)
+    return fails

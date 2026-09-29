@@ -1,0 +1,75 @@
+from stdint import *
+import t, c
+import stdio
+import testcheck
+
+
+# ============================================================
+# ExpandKeywordsTest - 验证 def 别名关键字 fn/fun/func/function
+# 语义与 def 完全相同（定义/调用/嵌套/泛型/空函数体）
+# ============================================================
+
+# fn: 单参数返回
+fn add_one(x: t.CInt) -> t.CInt:
+    return x + 1
+
+
+# fun: 双参数返回
+fun add_two(a: t.CInt, b: t.CInt) -> t.CInt:
+    return a + b
+
+
+# func: 浮点参数返回
+func mul_float(a: t.CDouble, b: t.CDouble) -> t.CDouble:
+    return a * b
+
+
+# function: 内部用 def 定义再调用（别名与 def 混用）
+function get_ten() -> t.CInt:
+    def inner() -> t.CInt:
+        return 10
+    return inner()
+
+
+# fn 泛型（PEP 695 风格类型参数）
+fn ident[T](x: T) -> T:
+    return x
+
+
+# fn 空函数体（pass）
+fn noop():
+    pass
+
+
+# fun 递归
+fun fact(n: t.CInt) -> t.CInt:
+    if n <= 1:
+        return 1
+    return n * fact(n - 1)
+
+
+# func 多语句 + 局部变量
+func avg3(a: t.CDouble, b: t.CDouble, c: t.CDouble) -> t.CDouble:
+    total: t.CDouble = a + b + c
+    return total / 3.0
+
+# func12344444 avg3(a: t.CDouble, b: t.CDouble, c: t.CDouble) -> t.CDouble:
+#    total: t.CDouble = a + b + c
+#    return total / 3.0
+
+
+def main() -> t.CInt:
+    testcheck.begin("ExpandKeywordsTest: fn/fun/func/function")
+    testcheck.section("function def keywords")
+
+    testcheck.check(add_one(41) == 42, "fn add_one(41)==42", "FAIL fn add_one")
+    testcheck.check(add_two(20, 22) == 42, "fun add_two==42", "FAIL fun add_two")
+    testcheck.check(mul_float(2.5, 4.0) == 10.0, "func mul_float==10", "FAIL func mul_float")
+    testcheck.check(get_ten() == 10, "function get_ten==10", "FAIL function get_ten")
+    testcheck.check(ident(7) == 7, "fn ident[T](7)==7", "FAIL fn ident")
+    testcheck.check(fact(5) == 120, "fun fact(5)==120", "FAIL fun fact")
+    testcheck.check(avg3(1.0, 2.0, 3.0) == 2.0, "func avg3==2", "FAIL func avg3")
+    noop()
+    testcheck.check(True, "fn noop() ran", "FAIL fn noop")
+
+    return testcheck.end()

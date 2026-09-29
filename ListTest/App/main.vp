@@ -1,0 +1,90 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import stdlib
+import stdio
+import memhub
+import testcheck
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    testcheck.begin("ListTest: list[T] 堆容器测试")
+
+    # 创建 mbuddy arena
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+
+    # === Test 1: 创建和 append ===
+    testcheck.section("Test 1: 创建和 append")
+    nums = list[int](bd)
+    nums.append(10)
+    nums.append(20)
+    nums.append(30)
+    v0: CInt = nums.get(0)
+    v1: CInt = nums.get(1)
+    v2: CInt = nums.get(2)
+    stdio.printf("v0=%d v1=%d v2=%d\n", v0, v1, v2)
+    testcheck.check(v0 == 10 and v1 == 20 and v2 == 30,
+                    "append+get OK (10,20,30)", "append+get FAILED")
+
+    # === Test 2: __len__ ===
+    testcheck.section("Test 2: __len__")
+    n: t.CSizeT = nums.__len__()
+    stdio.printf("len=%lu\n", n)
+    testcheck.check(n == 3, "__len__ OK (3)", "__len__ FAILED expect 3")
+
+    # === Test 3: set ===
+    testcheck.section("Test 3: set")
+    nums.set(1, 99)
+    v1b: CInt = nums.get(1)
+    stdio.printf("after set(1,99): v1=%d\n", v1b)
+    testcheck.check(v1b == 99, "set OK (idx1=99)", "set FAILED")
+
+    # === Test 4: pop ===
+    testcheck.section("Test 4: pop")
+    popped: CInt = nums.pop()
+    stdio.printf("popped=%d\n", popped)
+    testcheck.check(popped == 30, "pop OK (30)", "pop FAILED expect 30")
+    n2: t.CSizeT = nums.__len__()
+    testcheck.check(n2 == 2, "pop len OK (2)", "pop len FAILED expect 2")
+
+    # === Test 5: clear ===
+    testcheck.section("Test 5: clear")
+    nums.clear()
+    n3: t.CSizeT = nums.__len__()
+    testcheck.check(n3 == 0, "clear OK (0)", "clear FAILED expect 0")
+
+    # === Test 6: 容量增长 (append 超过初始容量 8) ===
+    testcheck.section("Test 6: 容量增长")
+    nums2 = list[int](bd)
+    i: CInt
+    for i in range(20):
+        nums2.append(i * 5)
+    n4: t.CSizeT = nums2.__len__()
+    stdio.printf("after 20 appends: len=%lu\n", n4)
+    testcheck.check(n4 == 20, "grow len OK (20)", "grow len FAILED")
+    ok: CInt = 1
+    for i in range(20):
+        v: CInt = nums2.get(i)
+        if v != i * 5:
+            stdio.printf("MISMATCH at %d: got %d expect %d\n", i, v, i * 5)
+            ok = 0
+            break
+    testcheck.check(ok == 1, "grow data OK", "grow data FAILED")
+
+    # === Test 7: 重新 append 后验证 ===
+    testcheck.section("Test 7: 重新 append")
+    nums2.clear()
+    nums2.append(100)
+    nums2.append(200)
+    va: CInt = nums2.get(0)
+    vb: CInt = nums2.get(1)
+    stdio.printf("re-append: va=%d vb=%d\n", va, vb)
+    testcheck.check(va == 100 and vb == 200, "re-append OK", "re-append FAILED")
+
+    stdlib.free(arena)
+    return testcheck.end()

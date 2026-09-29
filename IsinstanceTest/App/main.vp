@@ -1,0 +1,153 @@
+from stdint import *
+import t, c
+import testcheck
+import geom_lib
+from t import CInt, CPtr, CExport
+
+
+# ============================================================
+# isinstance 内建函数测试（运行时 vtable 继承链比较）
+#
+# 场景覆盖：
+#   1. CVTable 自身/子类→基类
+#   2. 运行时多态（基类指针指向子类对象）
+#   3. 元组 (A, B)
+#   4. 多继承（AB 同时是 A 和 B 的实例）
+#   5. NoVTable 类（编译时静态判断）
+# ============================================================
+
+
+# ========== CVTable 继承 ==========
+
+@t.CVTable
+class Animal:
+    Name: str
+
+    def __init__(self, name: str):
+        self.Name = name
+
+    def speak(self) -> str:
+        return "..."
+
+
+@t.CVTable
+class Dog(Animal):
+    def __init__(self, name: str):
+        self.Name = name
+
+    def speak(self) -> str:
+        return "Woof"
+
+
+@t.CVTable
+class Cat(Animal):
+    def speak(self) -> str:
+        return "Meow"
+
+
+# ========== 多继承 ==========
+
+@t.CVTable
+class A:
+    a: CInt
+
+    def get_a(self) -> CInt:
+        return self.a
+
+
+@t.CVTable
+class B:
+    b: CInt
+
+    def get_b(self) -> CInt:
+        return self.b
+
+
+@t.CVTable
+class AB(A, B):
+    def __init__(self, a: CInt, b: CInt):
+        self.a = a
+        self.b = b
+
+
+# ========== NoVTable（编译时判断） ==========
+
+@t.NoVTable
+class Plain:
+    v: CInt
+
+
+def main() -> CInt | CExport:
+    testcheck.begin("IsinstanceTest: isinstance 内建函数测试")
+
+    # --- 1. 自身类型 + 子类→基类 ---
+    d: Dog | CPtr = Dog("dog")
+    testcheck.check(isinstance(d, Dog) == 1, "isinstance(d, Dog) 自身 OK",
+                    "isinstance(d, Dog) FAILED")
+    testcheck.check(isinstance(d, Animal) == 1, "isinstance(d, Animal) 子类→基类 OK",
+                    "isinstance(d, Animal) FAILED")
+    testcheck.check(isinstance(d, Cat) == 0, "isinstance(d, Cat) 不匹配 OK",
+                    "isinstance(d, Cat) FAILED")
+
+    # --- 2. 运行时多态：基类指针指向子类对象 ---
+    a: Animal | CPtr = (Animal | CPtr)(d)
+    testcheck.check(isinstance(a, Dog) == 1,
+                    "isinstance(Animal*, Dog 对象) 运行时多态 OK",
+                    "isinstance(Animal*, Dog) FAILED")
+    testcheck.check(isinstance(a, Animal) == 1,
+                    "isinstance(Animal*, Animal) 基类自身 OK",
+                    "isinstance(Animal*, Animal) FAILED")
+    testcheck.check(isinstance(a, Cat) == 0,
+                    "isinstance(Animal*, Cat) 运行时 False OK",
+                    "isinstance(Animal*, Cat) FAILED")
+
+    # --- 3. 元组 ---
+    testcheck.check(isinstance(d, (Cat, Dog)) == 1, "isinstance 元组命中 OK",
+                    "isinstance 元组 FAILED")
+    testcheck.check(isinstance(d, (Cat, A)) == 0, "isinstance 元组未命中 OK",
+                    "isinstance 元组未命中 FAILED")
+
+    # --- 4. 多继承 ---
+    ab: AB | CPtr = AB(1, 2)
+    testcheck.check(isinstance(ab, A) == 1, "isinstance(AB, A) 多继承 OK",
+                    "isinstance(AB, A) FAILED")
+    testcheck.check(isinstance(ab, B) == 1, "isinstance(AB, B) 多继承 OK",
+                    "isinstance(AB, B) FAILED")
+    testcheck.check(isinstance(ab, Animal) == 0, "isinstance(AB, Animal) False OK",
+                    "isinstance(AB, Animal) FAILED")
+    testcheck.check(ab.get_a() == 1 and ab.get_b() == 2, "AB 字段/方法正常 OK",
+                    "AB 字段/方法 FAILED")
+
+    # --- 5. NoVTable（编译时静态判断） ---
+    p: Plain | CPtr = Plain()
+    p.v = 42
+    testcheck.check(isinstance(p, Plain) == 1, "isinstance NoVTable 编译时 OK",
+                    "isinstance NoVTable FAILED")
+    testcheck.check(p.v == 42, "NoVTable 字段正常 OK", "NoVTable 字段 FAILED")
+
+    # --- 6. 跨模块 isinstance（vtable 跨 obj 链接解析） ---
+    cc: geom_lib.Circle | CPtr = geom_lib.Circle(5)
+    testcheck.check(isinstance(cc, geom_lib.Circle) == 1,
+                    "跨模块 isinstance 自身 OK", "跨模块 isinstance 自身 FAILED")
+    testcheck.check(isinstance(cc, geom_lib.Shape) == 1,
+                    "跨模块 isinstance 子类→基类 OK", "跨模块 isinstance 子类→基类 FAILED")
+    testcheck.check(isinstance(cc, geom_lib.Square) == 0,
+                    "跨模块 isinstance 不匹配 OK", "跨模块 isinstance 不匹配 FAILED")
+    sq: geom_lib.Square | CPtr = geom_lib.Square(3)
+    testcheck.check(isinstance(sq, geom_lib.Shape) == 1,
+                    "跨模块 Square→Shape OK", "跨模块 Square→Shape FAILED")
+    testcheck.check(isinstance(sq, geom_lib.Circle) == 0,
+                    "跨模块 Square vs Circle OK", "跨模块 Square vs Circle FAILED")
+    shp: geom_lib.Shape | CPtr = (geom_lib.Shape | CPtr)(cc)
+    testcheck.check(isinstance(shp, geom_lib.Circle) == 1,
+                    "跨模块运行时多态 OK", "跨模块运行时多态 FAILED")
+    testcheck.check(shp.area() == 5, "跨模块虚方法分派 OK", "跨模块虚方法分派 FAILED")
+    testcheck.check(cc.area() == 5, "跨模块 Circle.area OK", "跨模块 Circle.area FAILED")
+
+    # --- 7. NoVTable 跨模块静态判断 ---
+    ps: geom_lib.PlainShape | CPtr = geom_lib.PlainShape()
+    testcheck.check(isinstance(ps, geom_lib.PlainShape) == 1,
+                    "跨模块 NoVTable 静态 OK", "跨模块 NoVTable 静态 FAILED")
+
+    testcheck.ok("isinstance 全部测试完成")
+    return testcheck.end()

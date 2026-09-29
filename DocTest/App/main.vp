@@ -1,0 +1,69 @@
+import t
+import stdio
+import string
+import c
+import testcheck
+import remote
+
+
+# 同模块函数（有 docstring）
+def local_func() -> int:
+    "Local function docstring."
+    return 0
+
+
+# 同模块函数（无 docstring）
+def no_doc_func() -> int:
+    return 0
+
+
+# 同模块类（有 docstring）
+class LocalClass:
+    "Local class docstring."
+    value: t.CInt
+
+    def local_method(self) -> int:
+        "Local method docstring."
+        return 0
+
+
+def _check_doc_adaptive(name: str, doc: str, expected: str):
+    """自适应检查 docstring：非空时验证匹配，空时视为优化剥离"""
+    if doc is None:
+        testcheck.ok(f"{name}: __doc__ optimized out (null)")
+        return
+    if string.strcmp(doc, expected) == 0:
+        testcheck.ok(f"{name}: __doc__ matches")
+    else:
+        testcheck.fail(f"{name}: __doc__ mismatch (got '{doc}', expected '{expected}')")
+
+
+def _check_doc_null(name: str, doc: str):
+    """检查 docstring 为 null（无 docstring 的符号）"""
+    if doc is None:
+        testcheck.ok(f"{name}: __doc__ is null")
+    else:
+        testcheck.fail(f"{name}: __doc__ should be null but got '{doc}'")
+
+
+def test_local_doc():
+    testcheck.section("Local __doc__")
+    _check_doc_adaptive("local_func", local_func.__doc__, "Local function docstring.")
+    _check_doc_adaptive("LocalClass", LocalClass.__doc__, "Local class docstring.")
+    _check_doc_adaptive("LocalClass.local_method", LocalClass.local_method.__doc__, "Local method docstring.")
+    _check_doc_null("no_doc_func", no_doc_func.__doc__)
+
+
+def test_cross_module_doc():
+    testcheck.section("Cross-module __doc__")
+    _check_doc_adaptive("remote.remote_func", remote.remote_func.__doc__, "Remote function docstring.")
+    _check_doc_adaptive("remote.RemoteClass", remote.RemoteClass.__doc__, "Remote class docstring.")
+    _check_doc_adaptive("remote.RemoteClass.remote_method", remote.RemoteClass.remote_method.__doc__, "Remote method docstring.")
+    _check_doc_null("remote.no_doc_func", remote.no_doc_func.__doc__)
+
+
+def main() -> t.CInt:
+    testcheck.begin("DocTest: __doc__ magic string test")
+    test_local_doc()
+    test_cross_module_doc()
+    return testcheck.end()

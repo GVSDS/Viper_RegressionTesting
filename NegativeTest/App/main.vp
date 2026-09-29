@@ -1,0 +1,7 @@
+import t, c
+from stdint import *
+import stdio
+
+def main() -> int:
+    stdio.printf("NegativeTest baseline OK\n")
+    return 0

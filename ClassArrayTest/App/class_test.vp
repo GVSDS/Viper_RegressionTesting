@@ -1,0 +1,246 @@
+import stdio
+import stdlib
+import stdint
+import t, c
+
+
+class SimpleData():
+    x: t.CInt
+    y: t.CInt
+
+
+class Point3D():
+    x: t.CFloat
+    y: t.CFloat
+    z: t.CFloat
+
+
+class Student():
+    name: t.CChar | t.CPtr
+    age: t.CInt
+    score: t.CInt
+
+    def __init__(self, n: t.CChar | t.CPtr, a: t.CInt, s: t.CInt):
+        self.name = n
+        self.age = a
+        self.score = s
+
+    def get_age(self) -> t.CInt:
+        return self.age
+
+    def get_score(self) -> t.CInt:
+        return self.score
+
+
+class Counter():
+    value: t.CInt
+
+    def __init__(self, initial: t.CInt):
+        self.value = initial
+
+    def increment(self):
+        self.value += 1
+
+    def get_value(self) -> t.CInt:
+        return self.value
+
+
+class StackObj():
+    data: t.CInt
+    next_ptr: t.CPtr
+
+
+def TestBasicDataClass():
+    stdio.printf("=== Test Basic Data Class ===\n")
+    p: SimpleData = SimpleData()
+    p.x = 10
+    p.y = 20
+    stdio.printf("SimpleData: x=%d, y=%d\n", p.x, p.y)
+
+
+def TestPoint3DClass():
+    stdio.printf("=== Test Point3D Class ===\n")
+    pt: Point3D = Point3D()
+    pt.x = 1.5
+    pt.y = 2.5
+    pt.z = 3.5
+    stdio.printf("Point3D: x=%.1f, y=%.1f, z=%.1f\n", pt.x, pt.y, pt.z)
+
+
+def TestStudentClass():
+    stdio.printf("=== Test Student Class ===\n")
+    s: Student = Student("Alice", 20, 95)
+    stdio.printf("Student: name=%s, age=%d, score=%d\n", s.name, s.age, s.score)
+    stdio.printf("  get_age()=%d, get_score()=%d\n", s.get_age(), s.get_score())
+
+
+def TestCounterClass():
+    stdio.printf("=== Test Counter Class ===\n")
+    cnt: Counter = Counter(0)
+    stdio.printf("Initial value: %d\n", cnt.get_value())
+    cnt.increment()
+    cnt.increment()
+    cnt.increment()
+    stdio.printf("After 3 increments: %d\n", cnt.get_value())
+
+
+def TestStackAllocation():
+    stdio.printf("=== Test Stack Allocation ===\n")
+    obj1: SimpleData = SimpleData()
+    obj1.x = 100
+    obj1.y = 200
+    stdio.printf("Stack obj1: x=%d, y=%d\n", obj1.x, obj1.y)
+
+    obj2: Point3D = Point3D()
+    obj2.x = 10.0
+    obj2.y = 20.0
+    obj2.z = 30.0
+    stdio.printf("Stack obj2: x=%.1f, y=%.1f, z=%.1f\n", obj2.x, obj2.y, obj2.z)
+
+
+def TestHeapAllocation():
+    stdio.printf("=== Test Heap Allocation ===\n")
+    ptr: t.CPtr = stdlib.malloc(1024)
+    if ptr != 0:
+        stdio.printf("Allocated 1024 bytes at %p\n", ptr)
+        stdlib.free(ptr)
+        stdio.printf("Freed memory\n")
+    else:
+        stdio.printf("malloc failed\n")
+
+
+def TestHeapObjectWithInit():
+    stdio.printf("=== Test Heap Object with Init ===\n")
+    mem_size: t.CSizeT = 256
+    ptr: t.CPtr = stdlib.malloc(mem_size)
+    if ptr != 0:
+        stdio.printf("Allocated %d bytes\n", mem_size)
+        stdlib.free(ptr)
+    else:
+        stdio.printf("malloc failed\n")
+
+
+def TestMultipleStackObjects():
+    stdio.printf("=== Test Multiple Stack Objects ===\n")
+    objs: SimpleData = SimpleData()
+    objs.x = 1
+    objs.y = 2
+    obj2: Point3D = Point3D()
+    obj2.x = 5.0
+    obj2.y = 10.0
+    obj2.z = 15.0
+    obj3: Counter = Counter(42)
+    stdio.printf("objs: x=%d, y=%d\n", objs.x, objs.y)
+    stdio.printf("obj2: x=%.1f, y=%.1f, z=%.1f\n", obj2.x, obj2.y, obj2.z)
+    stdio.printf("obj3 initial: %d\n", obj3.get_value())
+    obj3.increment()
+    obj3.increment()
+    stdio.printf("obj3 after 2 increments: %d\n", obj3.get_value())
+
+
+def TestImplicitInitCall():
+    stdio.printf("=== Test Implicit Init Call ===\n")
+    stu1: Student = Student("Bob", 22, 88)
+    stu2: Student = Student("Charlie", 19, 77)
+    stdio.printf("stu1: name=%s, age=%d, score=%d\n", stu1.name, stu1.age, stu1.score)
+    stdio.printf("stu2: name=%s, age=%d, score=%d\n", stu2.name, stu2.age, stu2.score)
+
+
+def TestClassWithBitFields():
+    stdio.printf("=== Test Class with Bit Fields ===\n")
+    flags: StackObj = StackObj()
+    flags.data = 0
+    flags.next_ptr = 0
+    stdio.printf("StackObj: data=%d, next_ptr=%p\n", flags.data, flags.next_ptr)
+
+
+def TestIntArray():
+    stdio.printf("=== Test Int Array ===\n")
+    arr: t.CArray[t.CInt, 5] = t.CArray[t.CInt, 5]()
+    i: t.CInt = 0
+    while i < 5:
+        arr[i] = i * 10
+        i += 1
+    i = 0
+    while i < 5:
+        stdio.printf("arr[%d]=%d\n", i, arr[i])
+        i += 1
+
+
+def TestFloatArray():
+    stdio.printf("=== Test Float Array ===\n")
+    farr: t.CArray[t.CFloat, 4] = t.CArray[t.CFloat, 4]()
+    farr[0] = 1.5
+    farr[1] = 2.5
+    farr[2] = 3.5
+    farr[3] = 4.5
+    i: t.CInt = 0
+    while i < 4:
+        stdio.printf("farr[%d]=%.1f\n", i, farr[i])
+        i += 1
+
+
+def TestCharArray():
+    stdio.printf("=== Test Char Array (String) ===\n")
+    str_arr: t.CArray[t.CChar, 32] = t.CArray[t.CChar, 32]()
+    str_arr[0] = 'H'
+    str_arr[1] = 'e'
+    str_arr[2] = 'l'
+    str_arr[3] = 'l'
+    str_arr[4] = 'o'
+    str_arr[5] = '\0'
+    stdio.printf("String: %s\n", str_arr)
+
+
+def TestNestedArray():
+    stdio.printf("=== Test Nested Array (Array of Arrays) ===\n")
+    row0: t.CArray[t.CInt, 3] = t.CArray[t.CInt, 3]()
+    row1: t.CArray[t.CInt, 3] = t.CArray[t.CInt, 3]()
+    row0[0] = 0
+    row0[1] = 1
+    row0[2] = 2
+    row1[0] = 10
+    row1[1] = 11
+    row1[2] = 12
+    i: t.CInt = 0
+    while i < 3:
+        stdio.printf("row0[%d]=%d ", i, row0[i])
+        i += 1
+    stdio.printf("\n")
+    i = 0
+    while i < 3:
+        stdio.printf("row1[%d]=%d ", i, row1[i])
+        i += 1
+    stdio.printf("\n")
+
+
+def TestArrayWithStruct():
+    stdio.printf("=== Test Array with Struct ===\n")
+    points: t.CArray[SimpleData, 3] = t.CArray[SimpleData, 3]()
+    i: t.CInt = 0
+    while i < 3:
+        points[i].x = i * 10
+        points[i].y = i * 100
+        i += 1
+    i = 0
+    while i < 3:
+        stdio.printf("Point[%d]: x=%d, y=%d\n", i, points[i].x, points[i].y)
+        i += 1
+
+
+def TestArrayPointer():
+    stdio.printf("=== Test Array Pointer ===\n")
+    data: t.CArray[t.CInt, 8] = t.CArray[t.CInt, 8]()
+    data[0] = 100
+    data[1] = 200
+    data[2] = 300
+    ptr: t.CInt | t.CPtr = data
+    stdio.printf("ptr[0]=%d\n", ptr[0])
+    stdio.printf("ptr[1]=%d\n", ptr[1])
+    stdio.printf("ptr[2]=%d\n", ptr[2])
+
+
+def TestDynamicString():
+    stdio.printf("=== Test Dynamic String ===\n")
+    name: str = "TransPyC"
+    stdio.printf("Hello %s!\n", name)

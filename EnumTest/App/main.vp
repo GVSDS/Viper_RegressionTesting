@@ -1,0 +1,11 @@
+import t, c
+import testcheck
+import enumtest
+
+
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("EnumTest: 枚举类型测试")
+    testcheck.section("Enum")
+    enumtest.enum_main()
+    testcheck.ok("Enum 测试完成")
+    return testcheck.end()

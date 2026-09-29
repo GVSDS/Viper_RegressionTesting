@@ -1,0 +1,268 @@
+import t
+from stdint import *
+from stdio import printf
+from stdlib import malloc
+import testcheck
+
+
+# ============================================================
+# 测试 1：@property getter
+# ============================================================
+class Rect:
+    width: t.CInt
+    height: t.CInt
+
+    def __new__(self, w: t.CInt, h: t.CInt) -> 'Rect' | t.CPtr:
+        return t.CPtr(malloc(Rect.__sizeof__()))
+
+    def __init__(self, w: t.CInt, h: t.CInt):
+        self.width = w
+        self.height = h
+
+    @property
+    def area(self) -> t.CInt:
+        return self.width * self.height
+
+    @property
+    def is_square(self) -> bool:
+        return self.width == self.height
+
+
+def test_property_getter():
+    testcheck.section("@property getter")
+    r1: Rect = Rect(3, 4)
+    testcheck.check(r1.area == 12, "area == 12", "area expect 12")
+    testcheck.check(not r1.is_square, "not square", "should not be square")
+    r2: Rect = Rect(5, 5)
+    testcheck.check(r2.area == 25, "square area == 25", "square area expect 25")
+    testcheck.check(r2.is_square, "is_square", "should be square")
+
+
+# ============================================================
+# 测试 2：@property.setter
+# ============================================================
+class Temperature:
+    _celsius: t.CDouble
+
+    def __new__(self, celsius_val: t.CDouble) -> 'Temperature' | t.CPtr:
+        return t.CPtr(malloc(Temperature.__sizeof__()))
+
+    def __init__(self, celsius_val: t.CDouble):
+        self._celsius = celsius_val
+
+    @property
+    def celsius(self) -> t.CDouble:
+        return self._celsius
+
+    @celsius.setter
+    def celsius(self, val: t.CDouble):
+        self._celsius = val
+
+    @property
+    def fahrenheit(self) -> t.CDouble:
+        return self._celsius * 1.8 + 32.0
+
+
+def test_property_setter():
+    testcheck.section("@property.setter")
+    tmp1: Temperature = Temperature(0.0)
+    testcheck.check(tmp1.fahrenheit > 31.9 and tmp1.fahrenheit < 32.1, "0C == 32F", "0C expect 32F")
+    tmp1.celsius = 100.0
+    testcheck.check(tmp1.fahrenheit > 211.9 and tmp1.fahrenheit < 212.1, "100C == 212F", "100C expect 212F")
+    testcheck.check(tmp1.celsius > 99.9 and tmp1.celsius < 100.1, "celsius == 100", "celsius expect 100")
+
+
+# ============================================================
+# 测试 3：@property.getter（重新定义 getter）
+# ============================================================
+class Counter:
+    _count: t.CInt
+
+    def __new__(self) -> 'Counter' | t.CPtr:
+        return t.CPtr(malloc(Counter.__sizeof__()))
+
+    def __init__(self):
+        self._count = 0
+
+    @property
+    def value(self) -> t.CInt:
+        return self._count
+
+    @value.setter
+    def value(self, v: t.CInt):
+        self._count = v
+
+
+def test_property_getter_redef():
+    testcheck.section("@property.getter redef")
+    cnt: Counter = Counter()
+    testcheck.check(cnt.value == 0, "init == 0", "init expect 0")
+    cnt.value = 42
+    testcheck.check(cnt.value == 42, "set == 42", "set expect 42")
+
+
+# ============================================================
+# 测试 4：@property.deleter
+# ============================================================
+class Config:
+    _value: t.CInt
+    _deleted: t.CInt
+
+    def __new__(self, v: t.CInt) -> 'Config' | t.CPtr:
+        return t.CPtr(malloc(Config.__sizeof__()))
+
+    def __init__(self, v: t.CInt):
+        self._value = v
+        self._deleted = 0
+
+    @property
+    def value(self) -> t.CInt:
+        return self._value
+
+    @value.setter
+    def value(self, v: t.CInt):
+        self._value = v
+
+    @value.deleter
+    def value(self):
+        self._value = 0
+        self._deleted = 1
+
+    def is_deleted(self) -> bool:
+        return self._deleted != 0
+
+
+def test_property_deleter():
+    testcheck.section("@property.deleter")
+    cfg: Config = Config(99)
+    testcheck.check(cfg.value == 99, "init == 99", "init expect 99")
+    testcheck.check(not cfg.is_deleted(), "not deleted", "should not be deleted")
+    del cfg.value
+    testcheck.check(cfg.value == 0, "after del == 0", "after del expect 0")
+    testcheck.check(cfg.is_deleted(), "is_deleted", "should be deleted")
+
+
+# ============================================================
+# 测试 5：@staticmethod
+# ============================================================
+class MathUtils:
+    @staticmethod
+    def add(a: t.CInt, b: t.CInt) -> t.CInt:
+        return a + b
+
+    @staticmethod
+    def max_val(a: t.CInt, b: t.CInt) -> t.CInt:
+        return a if a > b else b
+
+
+def test_staticmethod():
+    testcheck.section("@staticmethod")
+    # 通过类名调用
+    testcheck.check(MathUtils.add(3, 4) == 7, "MathUtils.add(3,4)==7", "MathUtils.add(3,4) expect 7")
+    testcheck.check(MathUtils.max_val(5, 10) == 10, "MathUtils.max(5,10)==10", "MathUtils.max(5,10) expect 10")
+
+
+# ============================================================
+# 测试 6：@classmethod
+# ============================================================
+class Point:
+    x: t.CDouble
+    y: t.CDouble
+
+    def __new__(self, x: t.CDouble, y: t.CDouble) -> 'Point' | t.CPtr:
+        return t.CPtr(malloc(Point.__sizeof__()))
+
+    def __init__(self, x: t.CDouble, y: t.CDouble):
+        self.x = x
+        self.y = y
+
+    @classmethod
+    def origin(cls: Point) -> Point:
+        return Point(0.0, 0.0)
+
+    @classmethod
+    def from_int(cls: Point, x: t.CInt, y: t.CInt) -> Point:
+        return Point(x * 1.0, y * 1.0)
+
+    def dist_sq(self) -> t.CDouble:
+        return self.x * self.x + self.y * self.y
+
+
+def test_classmethod():
+    testcheck.section("@classmethod")
+    # 通过类名调用
+    p1: Point = Point.origin()
+    testcheck.check(p1.x > -0.01 and p1.x < 0.01, "origin.x ~= 0", "origin.x expect ~0")
+    testcheck.check(p1.y > -0.01 and p1.y < 0.01, "origin.y ~= 0", "origin.y expect ~0")
+    testcheck.check(p1.dist_sq() < 0.01, "origin.dist ~= 0", "origin.dist expect ~0")
+
+    p2: Point = Point.from_int(3, 4)
+    testcheck.check(p2.x > 2.99 and p2.x < 3.01, "from_int(3,4).x ~= 3", "from_int(3,4).x expect ~3")
+    testcheck.check(p2.y > 3.99 and p2.y < 4.01, "from_int(3,4).y ~= 4", "from_int(3,4).y expect ~4")
+    testcheck.check(p2.dist_sq() > 24.99 and p2.dist_sq() < 25.01, "dist_sq ~= 25", "dist_sq expect ~25")
+
+
+# ============================================================
+# 测试 7：综合测试 — @property + @staticmethod + @classmethod
+# ============================================================
+class Circle:
+    _radius: t.CDouble
+
+    def __new__(self, r: t.CDouble) -> 'Circle' | t.CPtr:
+        return t.CPtr(malloc(Circle.__sizeof__()))
+
+    def __init__(self, r: t.CDouble):
+        self._radius = r
+
+    @property
+    def radius(self) -> t.CDouble:
+        return self._radius
+
+    @radius.setter
+    def radius(self, val: t.CDouble):
+        self._radius = val
+
+    @property
+    def area(self) -> t.CDouble:
+        return 3.14159265 * self._radius * self._radius
+
+    @staticmethod
+    def is_unit(r: t.CDouble) -> bool:
+        return r > 0.99 and r < 1.01
+
+    @classmethod
+    def unit(cls: Circle) -> Circle:
+        return Circle(1.0)
+
+
+def test_combined():
+    testcheck.section("Combined @property + @staticmethod + @classmethod")
+    # 先测试直接构造
+    cr0: Circle = Circle(1.0)
+    testcheck.check(cr0.radius > 0.99 and cr0.radius < 1.01, "direct radius ~= 1", "direct radius expect ~1")
+    testcheck.check(cr0.area > 3.14 and cr0.area < 3.15, "direct area ~= pi", "direct area expect ~pi")
+    cr0.radius = 2.0
+    testcheck.check(cr0.radius > 1.99 and cr0.radius < 2.01, "direct radius 2.0", "direct radius expect 2.0")
+    testcheck.check(cr0.area > 12.56 and cr0.area < 12.58, "direct area ~= 4pi", "direct area expect ~4pi")
+    # 测试 classmethod
+    cr1: Circle = Circle.unit()
+    testcheck.check(cr1.radius > 0.99 and cr1.radius < 1.01, "unit radius ~= 1", "unit radius expect ~1")
+    testcheck.check(Circle.is_unit(1.0), "is_unit(1.0)", "is_unit(1.0) should be true")
+    testcheck.check(not Circle.is_unit(2.0), "not is_unit(2.0)", "is_unit(2.0) should be false")
+
+
+# ============================================================
+# 主函数
+# ============================================================
+def main() -> t.CInt | t.CExport:
+    testcheck.begin("Builtin Decorator Test")
+
+    test_property_getter()
+    test_property_setter()
+    test_property_getter_redef()
+    test_property_deleter()
+    test_staticmethod()
+    test_classmethod()
+    test_combined()
+
+    return testcheck.end()
