@@ -257,7 +257,7 @@ def main() -> CInt | CExport:
         testcheck.check(t.CInt(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
 
         test_s: str = "www.gvsds.com"
-        list_s: list[str] = test_s.split('.')
+        list_s: list[str] | t.CPtr = test_s.split('.')
         # 迭代器测试: for idx, i in zip(range(len(list_s)), list_s)
         iter_count: int = 0
         for iter_idx, i in zip(range(len(list_s)), list_s):
@@ -271,8 +271,8 @@ def main() -> CInt | CExport:
         testcheck.section("Test 10: zip(list, list) 元组解包")
         za: str = "a,b,c"
         zb: str = "1,2,3"
-        list_a: list[str] = za.split(',')
-        list_b: list[str] = zb.split(',')
+        list_a: list[str] | t.CPtr = za.split(',')
+        list_b: list[str] | t.CPtr = zb.split(',')
         zip_idx: int = 0
         for ca, cb in zip(list_a, list_b):
             stdio.printf("zip[%d]: '%s'='%s'\n", zip_idx, ca, cb)
