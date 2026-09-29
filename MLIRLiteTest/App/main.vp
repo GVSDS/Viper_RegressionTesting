@@ -19,8 +19,8 @@ POOL_SIZE: t.CDefine = 4194304
 # 目录必须已存在：fileio.File(MODE.W) 在目录缺失时静默失败（f.closed 保持
 # True，StubMergerCollect.vp 有同类注释记录），故此处对 f.closed 显式告警，
 # 不静默吞掉失败。
-# path 缓冲取自 pool.alloc：MemPool 是无释放的 bump 分配器（memhub.vp 里
-# free 为空操作），缓冲随整个 pool 生命周期统一回收，故此处不调用 free。
+# path 缓冲取自 pool.alloc：缓冲随整个 pool 生命周期统一回收，故此处不调用 free
+# （pool 是 MemBuddy 伙伴分配器，支持 free，但本测试无需逐块回收）。
 # dump 序号：name 传 None 时用于自动命名（auto_NN.mlir），便于在各测试点无参调用。
 _DUMP_SEQ: int = 0
 
@@ -56,7 +56,7 @@ def _dump_is_module(text: str) -> int:
     return 0
 
 
-def dump_mlir(pool: memhub.MemPool | t.CPtr, name: str, buf: str):
+def dump_mlir(pool: memhub.MemBuddy | t.CPtr, name: str, buf: str):
     """把 buf 中的 MLIR 文本落盘到 Test/MLIRLiteTest/output/<name>
 
     name 为 None 时按调用顺序自动命名 auto_NN.mlir。
@@ -65,8 +65,8 @@ def dump_mlir(pool: memhub.MemPool | t.CPtr, name: str, buf: str):
     目录必须已存在：fileio.File(MODE.W) 在目录缺失时静默失败（f.closed 保持
     True，StubMergerCollect.vp 有同类注释记录），故此处对 f.closed 显式告警，
     不静默吞掉失败。
-    path/hdr 缓冲取自 pool.alloc：MemPool 是无释放的 bump 分配器（memhub.vp 里
-    free 为空操作），缓冲随整个 pool 生命周期统一回收，故此处不调用 free。
+    path/hdr 缓冲取自 pool.alloc：缓冲随整个 pool 生命周期统一回收，故此处不调用
+    free（pool 是 MemBuddy 伙伴分配器，支持 free，但本测试无需逐块回收）。
     """
     global _DUMP_SEQ
     _DUMP_SEQ += 1
@@ -113,7 +113,7 @@ def dump_mlir(pool: memhub.MemPool | t.CPtr, name: str, buf: str):
 # ============================================================
 # 测试 1: TypePrint 类型打印（MLIR llvm 方言类型）
 # ============================================================
-def test_type_print(pool: memhub.MemPool | t.CPtr):
+def test_type_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 1: TypePrint (MLIR types)")
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
     buf: t.CChar | t.CPtr = pool.alloc(256)
@@ -205,7 +205,7 @@ def test_type_print(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 2: ValuePrint 值打印（MLIR，仅供诊断）
 # ============================================================
-def test_value_print(pool: memhub.MemPool | t.CPtr):
+def test_value_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 2: ValuePrint (MLIR)")
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
     mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
@@ -238,7 +238,7 @@ def test_value_print(pool: memhub.MemPool | t.CPtr):
 #   llvm.return %0 : i32
 # }
 # ============================================================
-def test_build_add(pool: memhub.MemPool | t.CPtr):
+def test_build_add(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 3: build_add function")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -286,7 +286,7 @@ def test_build_add(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 4: if-else（max）
 # ============================================================
-def test_build_if_else(pool: memhub.MemPool | t.CPtr):
+def test_build_if_else(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 4: build if-then-else (max)")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -340,7 +340,7 @@ def test_build_if_else(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 5: void 函数
 # ============================================================
-def test_build_void(pool: memhub.MemPool | t.CPtr):
+def test_build_void(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 5: void function")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -372,7 +372,7 @@ def test_build_void(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 6: 模块输出（module / declare vs define）
 # ============================================================
-def test_module_print(pool: memhub.MemPool | t.CPtr):
+def test_module_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 6: ModulePrint")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -426,7 +426,7 @@ def test_module_print(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 7: 常量物化（操作数 42 -> llvm.mlir.constant）
 # ============================================================
-def test_const_materialize(pool: memhub.MemPool | t.CPtr):
+def test_const_materialize(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 7: constant materialization")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -478,7 +478,7 @@ def test_const_materialize(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 8: phi -> 块参数
 # ============================================================
-def test_phi_block_args(pool: memhub.MemPool | t.CPtr):
+def test_phi_block_args(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 8: phi -> block arguments")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -536,7 +536,7 @@ def test_phi_block_args(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 9: 内存 / 调用 / 转换
 # ============================================================
-def test_mem_call_cast(pool: memhub.MemPool | t.CPtr):
+def test_mem_call_cast(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 9: memory / call / cast")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -610,7 +610,7 @@ def test_mem_call_cast(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 10: 全局变量（字符串常量 / 整数 / 整型数组）
 # ============================================================
-def test_globals(pool: memhub.MemPool | t.CPtr):
+def test_globals(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 10: Global Variables")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -670,7 +670,7 @@ def test_globals(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 11: SSA 验证（合法函数 0 错误）
 # ============================================================
-def test_verify_valid(pool: memhub.MemPool | t.CPtr):
+def test_verify_valid(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 11: Verify valid function")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -716,7 +716,7 @@ def test_verify_valid(pool: memhub.MemPool | t.CPtr):
 # 实测 22.1.8 报 "expected attribute value"）→ region + llvm.mlir.zero。
 # 断言依赖的形态（含整模块）均已用 mlir-opt 22.1.8 实测通过。
 # ============================================================
-def test_struct_global(pool: memhub.MemPool | t.CPtr):
+def test_struct_global(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 12: struct/vtable global initializer (region)")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -893,7 +893,7 @@ def test_struct_global(pool: memhub.MemPool | t.CPtr):
 #   ③ inline_asm → `llvm.inline_asm has_side_effects [asm_dialect = intel] "…", "…" %x : (i32) -> i32`
 #      （LLVM 的裸 `inteldialect` 与 `"…"(%x)` 词法均实测被拒）
 # ============================================================
-def test_alloca_align_switch_asm(pool: memhub.MemPool | t.CPtr):
+def test_alloca_align_switch_asm(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 13: alloca align / switch / inline_asm")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -1051,7 +1051,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemPool | t.CPtr):
 #   ⑤ 全局属性字典 → `…("ab\00") {section = "data", alignment = 16 : i64} : !llvm.array<3 x i8>`
 #      （字典必须在**类型之前**；`unnamed_addr` 是**关键字**，不能进字典）
 # ============================================================
-def test_vararg_vaarg_cmpxchg(pool: memhub.MemPool | t.CPtr):
+def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 14: vararg / va_arg / cmpxchg / global attrs")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -1225,7 +1225,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemPool | t.CPtr):
 # 降级（--mlir-to-llvmir）可得 MLIR 自动生成的定义行：
 #   %aa11bb22cc33dd44.Cls = type { i32, ptr }
 # ============================================================
-def test_named_struct(pool: memhub.MemPool | t.CPtr):
+def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 15: named struct type")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -1380,7 +1380,7 @@ def test_named_struct(pool: memhub.MemPool | t.CPtr):
 #   %2 = extractvalue { i32, i32 } %1, 0
 #   %3 = extractvalue { i32, i32 } %1, 1
 # ============================================================
-def test_extractvalue_multi_asm(pool: memhub.MemPool | t.CPtr):
+def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 16: extractvalue (multi-result inline asm)")
 
     core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
@@ -1453,9 +1453,9 @@ def main() -> int:
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
         return 1
-    pool: memhub.MemPool | t.CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(pool_mem, POOL_SIZE)
     if pool is None:
-        stdio.printf("FAIL: memhub.MemPool init failed\n")
+        stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
     test_type_print(pool)

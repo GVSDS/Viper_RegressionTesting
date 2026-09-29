@@ -15,7 +15,7 @@ POOL_SIZE: t.CDefine = 524288  # 512KB
 # ============================================================
 # 测试 1: TypePrint 类型打印
 # ============================================================
-def test_type_print(pool: memhub.MemPool | t.CPtr):
+def test_type_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 1: TypePrint")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     buf: t.CChar | t.CPtr = pool.alloc(64)
@@ -56,7 +56,7 @@ def test_type_print(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 2: ValuePrint 值打印
 # ============================================================
-def test_value_print(pool: memhub.MemPool | t.CPtr):
+def test_value_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 2: ValuePrint")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -91,7 +91,7 @@ def test_value_print(pool: memhub.MemPool | t.CPtr):
 #   ret i32 %0
 # }
 # ============================================================
-def test_build_add(pool: memhub.MemPool | t.CPtr):
+def test_build_add(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 3: build_add function")
 
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
@@ -153,7 +153,7 @@ def test_build_add(pool: memhub.MemPool | t.CPtr):
 #   ret i32 %b
 # }
 # ============================================================
-def test_build_if_else(pool: memhub.MemPool | t.CPtr):
+def test_build_if_else(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 4: build if-then-else (max)")
 
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
@@ -210,7 +210,7 @@ def test_build_if_else(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 5: 完整模块 ModulePrint
 # ============================================================
-def test_module_print(pool: memhub.MemPool | t.CPtr):
+def test_module_print(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 5: ModulePrint")
 
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
@@ -269,7 +269,7 @@ def test_module_print(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 6: 数组类型打印
 # ============================================================
-def test_array_type(pool: memhub.MemPool | t.CPtr):
+def test_array_type(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 6: ArrayType")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     buf: t.CChar | t.CPtr = pool.alloc(128)
@@ -297,7 +297,7 @@ def test_array_type(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 7: 结构体类型打印
 # ============================================================
-def test_struct_type(pool: memhub.MemPool | t.CPtr):
+def test_struct_type(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 7: StructType")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     buf: t.CChar | t.CPtr = pool.alloc(128)
@@ -330,7 +330,7 @@ def test_struct_type(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 8: 函数类型打印
 # ============================================================
-def test_func_type(pool: memhub.MemPool | t.CPtr):
+def test_func_type(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 8: FuncType")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     buf: t.CChar | t.CPtr = pool.alloc(128)
@@ -364,7 +364,7 @@ def test_func_type(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 9: 声明系统（declare vs define）
 # ============================================================
-def test_declare(pool: memhub.MemPool | t.CPtr):
+def test_declare(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 9: Declare vs Define")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -407,7 +407,7 @@ def test_declare(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 10: 浮点类型与 ConstFloat
 # ============================================================
-def test_float_types(pool: memhub.MemPool | t.CPtr):
+def test_float_types(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 10: Float Types & ConstFloat")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -461,7 +461,7 @@ def test_float_types(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 11: 浮点二元运算
 # ============================================================
-def test_float_binops(pool: memhub.MemPool | t.CPtr):
+def test_float_binops(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 11: Float Binary Ops")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -496,7 +496,7 @@ def test_float_binops(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 12: 位运算与移位
 # ============================================================
-def test_bitwise_ops(pool: memhub.MemPool | t.CPtr):
+def test_bitwise_ops(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 12: Bitwise & Shift Ops")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -534,7 +534,7 @@ def test_bitwise_ops(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 13: FCMP 比较
 # ============================================================
-def test_fcmp(pool: memhub.MemPool | t.CPtr):
+def test_fcmp(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 13: FCMP")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -567,7 +567,7 @@ def test_fcmp(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 14: 类型转换 (zext, ptrtoint, inttoptr)
 # ============================================================
-def test_casts(pool: memhub.MemPool | t.CPtr):
+def test_casts(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 14: Casts (zext/ptrtoint/inttoptr)")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -607,7 +607,7 @@ def test_casts(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 15: 浮点转换 (fp2si, si2fp)
 # ============================================================
-def test_fp_conversions(pool: memhub.MemPool | t.CPtr):
+def test_fp_conversions(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 15: FP Conversions (fp2si/si2fp)")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -642,7 +642,7 @@ def test_fp_conversions(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 16: Phi 节点
 # ============================================================
-def test_phi(pool: memhub.MemPool | t.CPtr):
+def test_phi(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 16: Phi Node")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -692,7 +692,7 @@ def test_phi(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 17: Switch
 # ============================================================
-def test_switch(pool: memhub.MemPool | t.CPtr):
+def test_switch(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 17: Switch")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -739,7 +739,7 @@ def test_switch(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 18: Select
 # ============================================================
-def test_select(pool: memhub.MemPool | t.CPtr):
+def test_select(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 18: Select")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -770,7 +770,7 @@ def test_select(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 19: 全局变量 (字符串常量 + 整数)
 # ============================================================
-def test_globals(pool: memhub.MemPool | t.CPtr):
+def test_globals(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 19: Global Variables")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -810,7 +810,7 @@ def test_globals(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 20: 函数与参数属性
 # ============================================================
-def test_attributes(pool: memhub.MemPool | t.CPtr):
+def test_attributes(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 20: Function & Param Attributes")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -850,7 +850,7 @@ def test_attributes(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 21: 原子操作 (atomicrmw / cmpxchg)
 # ============================================================
-def test_atomic(pool: memhub.MemPool | t.CPtr):
+def test_atomic(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 21: Atomic Ops")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -883,7 +883,7 @@ def test_atomic(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 22: 内联汇编 + unreachable
 # ============================================================
-def test_inline_asm_unreachable(pool: memhub.MemPool | t.CPtr):
+def test_inline_asm_unreachable(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 22: Inline ASM & Unreachable")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -916,7 +916,7 @@ def test_inline_asm_unreachable(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 23: SSA 验证 - 合法函数通过
 # ============================================================
-def test_verify_valid(pool: memhub.MemPool | t.CPtr):
+def test_verify_valid(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 23: Verify Valid Function")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -947,7 +947,7 @@ def test_verify_valid(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 24: SSA 验证 - 缺少终止指令
 # ============================================================
-def test_verify_no_terminator(pool: memhub.MemPool | t.CPtr):
+def test_verify_no_terminator(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 24: Verify Missing Terminator")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -975,7 +975,7 @@ def test_verify_no_terminator(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 25: SSA 验证 - 重复定义
 # ============================================================
-def test_verify_duplicate_def(pool: memhub.MemPool | t.CPtr):
+def test_verify_duplicate_def(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 25: Verify Duplicate Definition")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -1010,7 +1010,7 @@ def test_verify_duplicate_def(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 26: SSA 验证 - 未定义引用
 # ============================================================
-def test_verify_undef_use(pool: memhub.MemPool | t.CPtr):
+def test_verify_undef_use(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 26: Verify Undefined Use")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -1045,7 +1045,7 @@ def test_verify_undef_use(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 测试 27: SSA 验证 - 模块级验证（含 phi/分支，验证块标签修复）
 # ============================================================
-def test_verify_module(pool: memhub.MemPool | t.CPtr):
+def test_verify_module(pool: memhub.MemBuddy | t.CPtr):
     testcheck.section("Test 27: Verify Module (phi/labels)")
     core: llvmlite.LLVMTypeCore | t.CPtr = llvmlite.LLVMTypeCore(pool)
     mcore: llvmlite.LLVMModuleCore | t.CPtr = llvmlite.LLVMModuleCore(pool)
@@ -1113,9 +1113,9 @@ def main() -> int:
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
         return 1
-    pool: memhub.MemPool | t.CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
+    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(pool_mem, POOL_SIZE)
     if pool is None:
-        stdio.printf("FAIL: memhub.MemPool init failed\n")
+        stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
     test_type_print(pool)
