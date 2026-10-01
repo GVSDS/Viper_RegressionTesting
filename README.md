@@ -1,6 +1,6 @@
 # TPV 测试项目总览
 
-本文档基于 `Test/` 目录下全部 68 个测试项目的源码总结其功能，并**按实现难度升序**排列（简单在前、困难在后），供编译器开发按序推进。
+本文档基于 `Test/` 目录下全部 77 个测试项目（原 68 个 + 2026-10 补录 9 个）的源码总结其功能，并**按实现难度升序**排列（简单在前、困难在后），供编译器开发按序推进。另有 `NegativeTest`（负向测试容器）不计入难度序列。
 
 > 测试框架：几乎所有项目使用 `testcheck` 库（`begin`/`section`/`check`/`ok`/`end`）输出 PASS/FAIL 并汇总。多数项目还依赖 `memhub` 内存分配器与 `t.CInt`/`t.CExport` 等 C 互操作类型。
 
@@ -94,12 +94,28 @@
 | 65 | [ZlibTest](ZlibTest/App/main.vp) | zlib 库约 17 项：压缩往返/级别/增量对象/gzip/raw/zdict/Huffman 树/校验和 | zlib、Huffman、位写入器 |
 | 66 | [CPythonTest](CPythonTest/App/main.vp) | CPython C API 绑定 + 包装类运算符重载：PyLong/Float/Unicode/List/Dict/PyRun/Import | CPython 嵌入、运算符重载、引用计数 |
 
-### 难度：环境依赖（1 个）—— 需真实网络
+### 难度：环境依赖 / 回归（2 个）
 
 | # | 项目 | 功能概述 | 关键特性 |
 |---|------|---------|---------|
 | 67 | [WebTest](WebTest/App/main.vp) | 网络栈：socket OOP、DNS 解析、requests.get HTTP 请求（依赖真实网络） | socket/requests、真实网络 I/O |
 | 68 | [NoVTableCrossMixinTest](NoVTableCrossMixinTest/App/main.vp) | 回归：@t.NoVTable 多继承下跨 Mixin `self.` 方法调用——BaseB 内 `self.helper()` 调兄弟 Mixin BaseA.helper，须按定义类解析 + this 前移 sizeof(定义类) | 跨 Mixin 调用、NoVTable 多继承、this 调整 |
+
+### 难度：补录（9 个，2026-10 补入）—— 新库 / 专项 / 探针
+
+| # | 项目 | 功能概述 | 关键特性 |
+|---|------|---------|---------|
+| 69 | [CharTest](CharTest/App/main.vp) | `char`（= `t.CChar` = `i8`）标量语义：注解、`char()` 截断、函数返回、字符字面量、比较 | char 标量类型、i8 截断 |
+| 70 | [RawArrayTest](RawArrayTest/App/main.vp) | `rawarray[T, N]` 定长数组：模块级全局、局部写读、struct 内嵌字段、数组退化 | rawarray、定长数组布局 |
+| 71 | [DefaultArgTest](DefaultArgTest/App/main.vp) | 默认参数与命名/乱序实参：同模块与跨模块（`remote.vp`）的尾随默认值 | 默认参数、命名实参 |
+| 72 | [CoroTest](CoroTest/App/main.vp) | 协程 `async`/`await`：`try`/`finally` 与异常传播（`coro` 模块） | 协程状态机、异常传播 |
+| 73 | [ThreadingTest](ThreadingTest/App/main.vp) | vthreading 专项：`Thread`/`Lock`/`Event`/`Condition`/`RWLock`/TLS 线程局部存储 | 多线程同步原语 |
+| 74 | [ZlibDbg](ZlibDbg/App/main.vp) | zlib 调试：`pyzlib`/`zdeflate`/`zinflate` 多 seed / size / wbits 往返 | zlib 往返、位宽变体 |
+| 75 | [MLIRLiteTest](MLIRLiteTest/App/main.vp) | `mlirlite` 库：生成 MLIR 文本并落盘 `output/*.mlir`，供 `mlir-opt` 离线验收 | MLIR 文本生成 |
+| 76 | [PtrOpProbe](PtrOpProbe/App/main.vp) | 指针操作符全形态自检：`*p = v` 等赋值形态必须真正落内存（防被静默丢弃） | 指针算子赋值、静默丢弃回归 |
+| 77 | [ProbeGen](ProbeGen/App/main.vp) | 代际不稳定性最小探针：同一份源码由两代编译器各编一次并比对 IR（**勿当普通功能测试改动**） | 自举代际一致性 |
+
+> 另有 [NegativeTest](NegativeTest/App/main.vp)：**负向测试容器**——`App/cases/` 下 9 个故意编译失败的用例（`call_too_few` / `call_too_many` / `call_wrong_type` / `call_float_to_int` / `missing_return` / `undefined_func` / `import_missing_module` / `import_wrong_path` / `import_stale_path`），由 `run_negative_tests.py` 驱动，不计入难度序列。
 
 ---
 
@@ -191,6 +207,18 @@
 67. **WebTest** — socket/requests（依赖真实网络，最后跑）
 68. **NoVTableCrossMixinTest** — @t.NoVTable 跨 Mixin self. 调用（编译器缺陷回归）
 
+### 第 9 层：补录（9 个，2026-10）
+
+69. **CharTest** — `char`（i8）标量语义
+70. **RawArrayTest** — `rawarray[T, N]` 定长数组
+71. **DefaultArgTest** — 默认参数 / 命名实参
+72. **CoroTest** — 协程 `async`/`await` 与异常传播
+73. **ThreadingTest** — vthreading 多线程同步原语
+74. **ZlibDbg** — zlib 多 seed/size/wbits 往返调试
+75. **MLIRLiteTest** — `mlirlite` 生成 MLIR 文本供 `mlir-opt` 验收
+76. **PtrOpProbe** — 指针算子赋值形态（防静默丢弃回归）
+77. **ProbeGen** — 自举代际一致性探针（比对两代编译器 IR）
+
 ---
 
 ## 三、按主题分组（索引）
@@ -229,7 +257,13 @@ AstTest、NewAstTest、LLvmLiteTest、BuddyTest、DictTest、HashTableTest、Jso
 FileIoTest、SysLibTest、WebTest、ZlibTest、NumpyTest、SimdTest、CPythonTest、ArgparseTest、VRandomTest
 
 ### 回归复现（缺陷最小化）
-G7（符号冲突）、ClosureCallTest（闭包指针调用）、Extern2Test（声明去重）、SlotsBugTest（注解崩溃）、SprintfTest（%g 精度/变参）
+G7（符号冲突）、ClosureCallTest（闭包指针调用）、Extern2Test（声明去重）、SlotsBugTest（注解崩溃）、SprintfTest（%g 精度/变参）、PtrOpProbe（指针算子赋值静默丢弃）、NoVTableCrossMixinTest（跨 Mixin self. 调用）
+
+### 补录（2026-10）
+CharTest（char 标量）、RawArrayTest（rawarray）、DefaultArgTest（默认参数）、CoroTest（协程）、ThreadingTest（多线程）、ZlibDbg（zlib 调试）、MLIRLiteTest（MLIR 生成）、PtrOpProbe、ProbeGen（代际一致性）
+
+### 负向测试（不计入难度序列）
+NegativeTest（9 个故意编译失败用例 + `run_negative_tests.py`）
 
 ---
 
