@@ -148,6 +148,93 @@ def test_enumerate_range():
     testcheck.check(last_val == 4, "enumerate range last_val OK (4)", "enumerate range last_val FAILED expect 4")
 
 
+def test_for_else_no_break():
+    testcheck.section("Test 11: for-else (迭代耗尽 → 执行 else)")
+    total: t.CInt = 0
+    for i in range(3):
+        total += i
+    else:
+        total += 100
+    testcheck.check(total == 103, "for-else no-break OK (103)", "for-else no-break FAILED expect 103")
+
+
+def test_for_else_break():
+    testcheck.section("Test 12: for-else (break → 跳过 else)")
+    found: t.CInt = 0
+    for i in range(10):
+        if i == 4:
+            found = 1
+            break
+    else:
+        found = 2
+    testcheck.check(found == 1, "for-else break OK (1)", "for-else break FAILED expect 1")
+
+
+def test_for_else_empty_range():
+    testcheck.section("Test 13: for-else (range(0) 空迭代 → 执行 else)")
+    v: t.CInt = 0
+    for i in range(0):
+        v = 1
+    else:
+        v = 7
+    testcheck.check(v == 7, "for-else empty range OK (7)", "for-else empty range FAILED expect 7")
+
+
+def test_for_else_list():
+    testcheck.section("Test 14: for-else (list[str] 迭代耗尽 → 执行 else)")
+    arena: bytes = stdlib.malloc(65536)
+    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    lst: list[str] = list[str](bd)
+    lst.append("a")
+    lst.append("b")
+    lst.append("c")
+    cnt: t.CInt = 0
+    ran_else: t.CInt = 0
+    for v in lst:
+        cnt += 1
+    else:
+        ran_else = 1
+    testcheck.check(cnt == 3, "for-else list count OK (3)", "for-else list count FAILED expect 3")
+    testcheck.check(ran_else == 1, "for-else list else OK (1)", "for-else list else FAILED expect 1")
+    stdlib.free(arena)
+
+
+def test_while_else_cond_false():
+    testcheck.section("Test 15: while-else (条件变假 → 执行 else)")
+    i: t.CInt = 0
+    acc: t.CInt = 0
+    while i < 3:
+        acc += i
+        i += 1
+    else:
+        acc += 100
+    testcheck.check(acc == 103, "while-else cond-false OK (103)", "while-else cond-false FAILED expect 103")
+
+
+def test_while_else_zero_iter():
+    testcheck.section("Test 16: while-else (一次都不进循环 → 执行 else)")
+    n: t.CInt = 0
+    while n < 0:
+        n = 99
+    else:
+        n = 7
+    testcheck.check(n == 7, "while-else zero-iter OK (7)", "while-else zero-iter FAILED expect 7")
+
+
+def test_while_else_break():
+    testcheck.section("Test 17: while-else (break → 跳过 else)")
+    i: t.CInt = 0
+    flag: t.CInt = 0
+    while i < 10:
+        if i == 2:
+            flag = 1
+            break
+        i += 1
+    else:
+        flag = 2
+    testcheck.check(flag == 1, "while-else break OK (1)", "while-else break FAILED expect 1")
+
+
 def main() -> t.CInt:
     testcheck.begin("ForAndLoopTest: 迭代器与循环测试")
 
@@ -161,5 +248,12 @@ def main() -> t.CInt:
     test_enumerate_list()
     test_enumerate_str()
     test_enumerate_range()
+    test_for_else_no_break()
+    test_for_else_break()
+    test_for_else_empty_range()
+    test_for_else_list()
+    test_while_else_cond_false()
+    test_while_else_zero_iter()
+    test_while_else_break()
 
     return testcheck.end()
