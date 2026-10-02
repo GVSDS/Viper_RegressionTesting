@@ -103,4 +103,24 @@ def main() -> t.CInt:
     logic_test.ForWithCaseNoBreakNested(4)
     testcheck.ok("For With Case NoBreak Nested (4)")
 
+    testcheck.section("Match Case Break = Exit Match (limit=5)")
+    testcheck.check(logic_test.MatchCaseBreakTest(5) == 117,
+                    "match break exits match only (117)", "match break expect 117")
+
+    testcheck.section("Match Case Fallthrough (value=1)")
+    testcheck.check(logic_test.MatchCaseFallthroughTest(1) == 6,
+                    "fallthrough 1 -> 6", "fallthrough 1 expect 6")
+
+    testcheck.section("Match Case Fallthrough (value=2)")
+    testcheck.check(logic_test.MatchCaseFallthroughTest(2) == 5,
+                    "fallthrough 2 -> 5", "fallthrough 2 expect 5")
+
+    testcheck.section("Match Case Fallthrough (value=3)")
+    testcheck.check(logic_test.MatchCaseFallthroughTest(3) == 3,
+                    "fallthrough 3 -> 3", "fallthrough 3 expect 3")
+
+    testcheck.section("Match Case Fallthrough (value=9, default)")
+    testcheck.check(logic_test.MatchCaseFallthroughTest(9) == 77,
+                    "fallthrough default -> 77", "fallthrough default expect 77")
+
     return testcheck.end()
