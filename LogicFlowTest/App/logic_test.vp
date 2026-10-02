@@ -393,12 +393,12 @@ def MatchCaseBreakTest(limit: t.CInt) -> t.CInt:
 
 
 # ============================================================
-# fallthrough：case 体末尾写 `fallthrough` 则不自动 break，落到下一个 case
+# switch（C switch 语义）：默认不穿透；case 体内写 `fallthrough` 才落到下一个 case。
 # 期望 value=1 → 1+2+3=6；value=2 → 2+3=5；value=3 → 3；其它 → 77
 # ============================================================
-def MatchCaseFallthroughTest(value: t.CInt) -> t.CInt:
+def SwitchCaseFallthroughTest(value: t.CInt) -> t.CInt:
     result: t.CInt = 0
-    match value:
+    switch value:
         case 1:
             result += 1
             fallthrough
@@ -407,6 +407,42 @@ def MatchCaseFallthroughTest(value: t.CInt) -> t.CInt:
             fallthrough
         case 3:
             result += 3
-        case _:
+        default:
             result = 77
+    return result
+
+
+# ============================================================
+# switch 内 break = 跳出 switch（不跳出外层循环）
+# 期望 limit=5：i=0 走 default (+0)、i=1 走 case 1 (+100) 后 break 出 switch、
+#              i=2 走 case 2 (+10)、i=3 (+3)、i=4 (+4) ⇒ 117
+# ============================================================
+def SwitchCaseBreakTest(limit: t.CInt) -> t.CInt:
+    i: t.CInt = 0
+    result: t.CInt = 0
+    for i in range(limit):
+        switch i:
+            case 1:
+                result += 100
+                break
+            case 2:
+                result += 10
+            default:
+                result += i
+    return result
+
+
+# ============================================================
+# switch 多值 case：`case 1 | 2:` 命中同一个臂
+# 期望 value=1 → 10；value=2 → 10；value=3 → 30；其它 → 99
+# ============================================================
+def SwitchMultiValueTest(value: t.CInt) -> t.CInt:
+    result: t.CInt = 0
+    switch value:
+        case 1 | 2:
+            result = 10
+        case 3:
+            result = 30
+        default:
+            result = 99
     return result

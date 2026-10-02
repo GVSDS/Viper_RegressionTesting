@@ -107,20 +107,30 @@ def main() -> t.CInt:
     testcheck.check(logic_test.MatchCaseBreakTest(5) == 117,
                     "match break exits match only (117)", "match break expect 117")
 
-    testcheck.section("Match Case Fallthrough (value=1)")
-    testcheck.check(logic_test.MatchCaseFallthroughTest(1) == 6,
+    testcheck.section("Switch Case Fallthrough (value=1)")
+    testcheck.check(logic_test.SwitchCaseFallthroughTest(1) == 6,
                     "fallthrough 1 -> 6", "fallthrough 1 expect 6")
 
-    testcheck.section("Match Case Fallthrough (value=2)")
-    testcheck.check(logic_test.MatchCaseFallthroughTest(2) == 5,
+    testcheck.section("Switch Case Fallthrough (value=2)")
+    testcheck.check(logic_test.SwitchCaseFallthroughTest(2) == 5,
                     "fallthrough 2 -> 5", "fallthrough 2 expect 5")
 
-    testcheck.section("Match Case Fallthrough (value=3)")
-    testcheck.check(logic_test.MatchCaseFallthroughTest(3) == 3,
+    testcheck.section("Switch Case Fallthrough (value=3)")
+    testcheck.check(logic_test.SwitchCaseFallthroughTest(3) == 3,
                     "fallthrough 3 -> 3", "fallthrough 3 expect 3")
 
-    testcheck.section("Match Case Fallthrough (value=9, default)")
-    testcheck.check(logic_test.MatchCaseFallthroughTest(9) == 77,
+    testcheck.section("Switch Case Fallthrough (value=9, default)")
+    testcheck.check(logic_test.SwitchCaseFallthroughTest(9) == 77,
                     "fallthrough default -> 77", "fallthrough default expect 77")
+
+    testcheck.section("Switch Case Break = Exit Switch (limit=5)")
+    testcheck.check(logic_test.SwitchCaseBreakTest(5) == 117,
+                    "switch break exits switch only (117)", "switch break expect 117")
+
+    testcheck.section("Switch Multi-Value Case (1 | 2)")
+    testcheck.check(logic_test.SwitchMultiValueTest(1) == 10, "switch 1 -> 10", "switch 1 expect 10")
+    testcheck.check(logic_test.SwitchMultiValueTest(2) == 10, "switch 2 -> 10", "switch 2 expect 10")
+    testcheck.check(logic_test.SwitchMultiValueTest(3) == 30, "switch 3 -> 30", "switch 3 expect 30")
+    testcheck.check(logic_test.SwitchMultiValueTest(7) == 99, "switch 7 -> 99", "switch 7 expect 99")
 
     return testcheck.end()
