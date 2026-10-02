@@ -208,8 +208,7 @@ def main() -> CInt | CExport:
     inner.set_int("b", 2)
     outer.set_dict("sub", inner)
 
-    sub_p: t.CPtr = outer["sub"]
-    sub: dict = sub_p
+    sub: dict* = outer["sub"]
     sa_p: t.CPtr = sub["a"]
     sb_p: t.CPtr = sub["b"]
     sa: int = c.Deref((int | t.CPtr)(sa_p))
