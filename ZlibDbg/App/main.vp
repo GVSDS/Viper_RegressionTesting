@@ -90,6 +90,19 @@ def count_freqs_probe(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt):
         zdeflate.zdeflate_count_freqs(lit, dist, s, data, size)
         s.destroy()
 
+    # 元素符号性对拍：UINT8PTR 若被当作**有符号 i8**，则字节 ≥128 读成负数
+    # （-56 >= 128 恒假），既导致 count 阶段 lit_freqs[负数] 写到数组之前（漏计），
+    # 也让 encode_symbol(data[pos]) 收到负 symbol 被静默丢弃 ⇒ 码流截断。
+    up: UINT8PTR = UINT8PTR(data)
+    ge8_up: t.CInt = 0
+    ge8_bp: t.CInt = 0
+    i: t.CSizeT
+    for i in range(size):
+        if up[i] >= 128: ge8_up += 1
+        if data[i] >= 128: ge8_bp += 1
+    testcheck.info(f"[countprobe] >=128 计数: UINT8PTR={ge8_up} BYTEPTR={ge8_bp} "
+                   f"(两者应相等且≈一半)")
+
     sum_lit: t.CInt = 0
     active: t.CInt = 0
     k: t.CInt
