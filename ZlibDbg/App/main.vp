@@ -5,7 +5,6 @@ import zlib.zinflate as zinflate
 import zlib.zdef as zdef
 import string
 import stdlib
-import stdio
 import testcheck
 import t, c
 
