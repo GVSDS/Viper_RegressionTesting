@@ -1223,7 +1223,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 15: 具名结构体（%"name" = type {…}）
 #
-# TPV 侧对每个类都调 module_add_named_type 登记具名结构体（llvmlite 由此输出
+# TPV 侧对每个类都调 module_add_named_type 登记具名结构体（mlirlite 由此输出
 # `%"sha1.Cls" = type {…}` 定义行）。MLIR(llvm 方言) **没有**独立类型定义语法，
 # 也**不允许无体前向声明**（实测 mlir-opt 22.1.8：`!llvm.struct<"x">` 报
 # "struct without a body only allowed in a recursive struct"），故：

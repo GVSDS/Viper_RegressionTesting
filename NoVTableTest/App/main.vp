@@ -386,7 +386,7 @@ def test_sprintf_vararg():
 # ============================================================
 # 测试 12：泛型 GSListNode[T] + GSList[T]
 #
-# 验证 4 个技术点（为 llvmlite 简化铺路）：
+# 验证 4 个技术点（为 mlirlite 简化铺路）：
 #   1. 递归泛型 class GNode(GSListNode[GNode]):
 #   2. novirtual class + 泛型组合（GNode 无 vptr，字段展平）
 #   3. 泛型类作字段类型 lst: GSList[GNode]
