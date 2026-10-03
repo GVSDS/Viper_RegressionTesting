@@ -3,6 +3,7 @@ import zlib.pyzlib as pyzlib
 import zlib.zdeflate as zdeflate
 import zlib.zinflate as zinflate
 import zlib.zdef as zdef
+import zlib.zhuff as zhuff
 import string
 import stdlib
 import testcheck
@@ -16,6 +17,53 @@ def fill_data(data: BYTEPTR, size: t.CSizeT, seed: t.CSizeT, repeating: t.CInt):
             data[i] = BYTE(65 + (i % 3))
         else:
             data[i] = BYTE((i * 31 + seed * 17 + (i * i) % 251) % 256)
+
+
+def huffman_probe(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt):
+    """对 roundtrip 的同一份数据直接用 zhuff 复算字面量码表并打印分布。
+
+    背景：随机数据的 comp 远小于其字面量熵下限（250 字节数据熵下限约 221 字节，
+    实测 comp=132），说明码表/码长分配异常。本探针打印：
+    - active：拿到码位（bits>0）的符号数
+    - no_code：有频率却拿不到码位的符号数（编码期会被 encode_symbol 静默丢弃）
+    - sum15：Σ hist[b]*2^(15-b)，合法完整码表必须恰为 32768（=2^15）
+    再逐位宽打印码字数直方图。
+    """
+    data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
+    fill_data(data, size, seed, repeating)
+    freqs: t.CArray[t.CInt, 288]
+    string.memset(freqs, 0, freqs.__sizeof__())
+    i: t.CSizeT
+    for i in range(size):
+        freqs[data[i]] += 1
+    freqs[256] = 1
+
+    tree = zhuff.zhuff_tree()
+    tree.build_codes(freqs, 257, 15)
+
+    hist: t.CArray[t.CInt, 16]
+    string.memset(hist, 0, hist.__sizeof__())
+    active: t.CInt = 0
+    no_code: t.CInt = 0
+    sum15: t.CInt = 0
+    k: t.CInt
+    bits: t.CInt
+    for k in range(257):
+        bits = tree.codes[k].bits
+        if freqs[k] > 0 and bits == 0:
+            no_code += 1
+        if bits > 0 and bits < 16:
+            active += 1
+            hist[bits] += 1
+            sum15 += 1 << (15 - bits)
+
+    testcheck.info(f"[probe seed={seed} size={size} rep={repeating}] "
+                   f"active={active} no_code={no_code} sum15={sum15} (期望 32768)")
+    for k in range(1, 16):
+        if hist[k] > 0:
+            testcheck.info(f"    bits={k} codes={hist[k]}")
+
+    stdlib.free(data)
 
 
 def roundtrip(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt, wbits: t.CInt) -> t.CInt:
@@ -55,6 +103,12 @@ def roundtrip(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt, wbits: t.CInt) 
 
 def main() -> t.CInt:
     testcheck.begin("ZlibDbg: zlib 多 seed/size/wbits 往返")
+
+    # 先跑码表探针：定位 comp 远小于熵下限的根因（码表异常 / 还是别处）
+    testcheck.section("字面量码表探针")
+    huffman_probe(0, 250, 0)
+    huffman_probe(9, 20000, 0)
+    huffman_probe(0, 256, 1)
 
     testcheck.section("随机数据 (wbits=15)")
     sizes: t.CArray[t.CSizeT, None] = [250, 255, 256, 257, 260, 300, 500, 1000, 4096, 20000]
