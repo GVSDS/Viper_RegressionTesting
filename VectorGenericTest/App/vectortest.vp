@@ -12,7 +12,7 @@ def vector_main() -> CInt:
     pool_mem: t.CPtr = stdlib.malloc(POOL_SIZE)
     pool: memhub.MemPool | CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
 
-    vi: vector.Vector | CPtr = vector.Vector(pool, 10, CInt(0))
+    vi: vector.Vector[CInt] | CPtr = vector.Vector(pool, 10, CInt(0))
     vi.push(CInt(10))
     vi.push(CInt(20))
     vi.push(CInt(30))
@@ -29,7 +29,7 @@ def vector_main() -> CInt:
 
     vi.free()
 
-    vd: vector.Vector | CPtr = vector.Vector(pool, 8, CFloat64T(0.0))
+    vd: vector.Vector[CFloat64T] | CPtr = vector.Vector(pool, 8, CFloat64T(0.0))
     vd.push(CFloat64T(1.5))
     vd.push(CFloat64T(2.7))
     vd.push(CFloat64T(3.14))
