@@ -10,14 +10,20 @@ import viperlib
 import mlirlite
 
 
-# 主池大小：只用于给**每个测试切一块子池**（见 main / _sub_pool）。
-POOL_SIZE: t.CDefine = 67108864
-# 每个测试的子池大小。子池存在的意义：测试内的 IR 对象与 MLIR 渲染器每函数
-# **重分配**的 scratch/常量表/别名表（约 35–45KB/函数，见 mlirlite 的
-# _MlirTablesInit）都落在自己的子池里，互不叠加。若所有测试共用一个池，渲染器
-# 这套"按函数重分配、不释放"的开销会跨测试累积（此前 15 个测试共用 4MB，
-# 到第 14 个把池吃干 → "MLIR 渲染: 常量/别名表分配失败"）。
-SUB_POOL_SIZE: t.CDefine = 2097152
+# 主池大小：只用于给**每个测试切一块子池**（见 main / _sub_arena）。
+# 给足：SUB_POOL_SIZE 取 2MB 块时每个测试占用 2MB，16 块 ≈ 32MB；即便伙伴分配器
+# 因 +16 头/canary 向上取整到 4MB 块（16 块 = 64MB）也仍在池内。
+POOL_SIZE: t.CDefine = 83886080
+# 每个测试的子池大小 = 2MB − 16（16 = memhub 的 HEADER 8 + CANARY 8）。
+# 取这个值是为了让 `main_pool.alloc()` 的 `needed = size + 16` 恰好等于 2MB，
+# 伙伴分配器正好给一个 order16(2MB) 块；若直接传 2MB，needed=2MB+16 会向上取到
+# order17(4MB) ⇒ 每块浪费一倍，15+ 个测试就把主池吃干（现场：alloc size=2097152
+# needed=2097168 order=17 失败，used=62914560/池容量=67108576）。
+# 子池存在的意义：测试内的 IR 对象与 MLIR 渲染器每函数**重分配**的
+# scratch/常量表/别名表（约 35–45KB/函数，见 mlirlite 的 _MlirTablesInit）都落在
+# 自己的子池里，互不叠加；若所有测试共用一个池，这套"按函数重分配、不释放"的开销
+# 会跨测试累积，最终 "MLIR 渲染: 常量/别名表分配失败"。
+SUB_POOL_SIZE: t.CDefine = 2097136
 
 
 # 把 buf 中的 MLIR 文本落盘到 Test/MLIRLiteTest/output/<name>，供
@@ -1451,6 +1457,23 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
                     "extractvalue result not referenced")
 
 
+def _sub_arena(main_pool: memhub.MemBuddy | t.CPtr) -> rawptr:
+    """从主池切一块子池 arena（返回**裸指针**，由调用方在自己帧内构造 MemBuddy）
+
+    为什么只返回裸指针、不返回构造好的 MemBuddy*：Viper 中无 __new__ 的类实例是
+    值语义，`MemBuddy(...)` 被降级为栈 alloca；"返回指向本帧局部对象"的指针会
+    悬空（IR 物证：助手函数内 `alloca %MemBuddy` … `ret %MemBuddy*`，随后第一次
+    alloc 读 max_order 即落到复用的栈垃圾 → memhub 报"字段被写穿"）。
+    arena 分配失败必须在这里 fail-fast，否则 `MemBuddy(None, size)` 会在
+    `self.free_lists[i] = 0` 处写空指针（现场 0xC0000005 av_addr=0x0）。
+    """
+    mem: rawptr = main_pool.alloc(SUB_POOL_SIZE)
+    if mem is None:
+        stdio.printf("FAIL: sub pool arena alloc failed (raise POOL_SIZE)\n")
+        stdlib.exit(1)
+    return mem
+
+
 def main() -> int:
     testcheck.begin("MLIRLiteTest: mlirlite 库（MLIR llvm 方言文本生成）")
 
@@ -1464,58 +1487,54 @@ def main() -> int:
         stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
-    # 子池必须在 **main 的帧内** 构造：Viper 中无 __new__ 的类实例是值语义，
-    # `MemBuddy(...)` 被降级为栈 alloca；若把它放进"返回 MemBuddy*"的助手函数，
-    # 返回的就是**指向已销毁栈帧的指针**（IR 物证：_sub_pool 内
-    # `%13 = alloca %MemBuddy` … `ret %MemBuddy* %28`），随后第一次 alloc 读
-    # `max_order` 即落到复用的栈垃圾 → memhub 报
-    # "_split_to_order max_order 非法（字段被写穿）"。故此处在 main 内逐测试构造。
-    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    # 子池必须在 **main 的帧内** 构造：见 _sub_arena 注释（MemBuddy 实例是栈值，
+    # 其指针不能跨函数返回）。每个测试一块，互不叠加。
+    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_type_print(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_value_print(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_build_add(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_build_if_else(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_build_void(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_module_print(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_const_materialize(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_phi_block_args(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_mem_call_cast(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_globals(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_verify_valid(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_struct_global(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_alloca_align_switch_asm(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_vararg_vaarg_cmpxchg(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_named_struct(sub)
 
-    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_extractvalue_multi_asm(sub)
 
     return testcheck.end()
