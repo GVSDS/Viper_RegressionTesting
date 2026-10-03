@@ -107,20 +107,22 @@ def find_executables(output_dir):
 def find_output_dirs(proj_dir, proj_config):
     """收集候选输出目录（兼容 TPC 与 TPV 布局）
 
-    - project.json 显式 output_dir（TPC 常用）
-    - project.json build_dir + '/output'（TPV 布局：.tpv_build/output）
-    - 兜底 ./output
+    - {output_dir}（默认 output，TPC/旧布局）
+    - {build_dir}/{output_dir}（build_dir 默认 .tpv_build）
+    - {build_dir}/output（TPV 布局：.tpv_build/output）
     保序去重返回。
+
+    注意：ZlibDbg 等项目的 project.json 既无 output_dir 也无 build_dir，
+    此时必须仍把 .tpv_build/output 纳入候选，否则 TPV 编译成功的 exe
+    定位不到（报"无可执行二进制文件"）。
     """
-    dirs = []
-    od = proj_config.get('output_dir')
-    if od:
-        dirs.append(os.path.abspath(os.path.join(proj_dir, od)))
-    bd = proj_config.get('build_dir')
-    if bd:
-        dirs.append(os.path.abspath(os.path.join(proj_dir, bd, 'output')))
-    if not dirs:
-        dirs.append(os.path.abspath(os.path.join(proj_dir, './output')))
+    od = proj_config.get('output_dir') or 'output'
+    bd = proj_config.get('build_dir') or '.tpv_build'
+    dirs = [
+        os.path.abspath(os.path.join(proj_dir, od)),
+        os.path.abspath(os.path.join(proj_dir, bd, od)),
+        os.path.abspath(os.path.join(proj_dir, bd, 'output')),
+    ]
     seen = set()
     uniq = []
     for d in dirs:
