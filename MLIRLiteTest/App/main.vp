@@ -1451,28 +1451,10 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
                     "extractvalue result not referenced")
 
 
-def _sub_pool(main_pool: memhub.MemBuddy | t.CPtr) -> memhub.MemBuddy | t.CPtr:
-    """从主池切一块子池给单个测试用（伙伴分配器返回 2 的幂块，可直接作 arena）
-
-    每个测试在自己的子池里分配：测试内的 IR 对象与渲染器每函数重分配的
-    scratch/常量表都落在子池，互不叠加（理由见 SUB_POOL_SIZE 注释）。子池不
-    单独回收——主池按"每个测试一块"给足，测试进程短命。
-    """
-    mem: rawptr = main_pool.alloc(SUB_POOL_SIZE)
-    if mem is None:
-        stdio.printf("FAIL: sub pool alloc failed (raise POOL_SIZE)\n")
-        stdlib.exit(1)
-    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(mem, SUB_POOL_SIZE)
-    if sub is None:
-        stdio.printf("FAIL: sub pool MemBuddy init failed\n")
-        stdlib.exit(1)
-    return sub
-
-
 def main() -> int:
     testcheck.begin("MLIRLiteTest: mlirlite 库（MLIR llvm 方言文本生成）")
 
-    # 初始化主池：仅用于切子池（测试内分配一律走各自的子池）
+    # 初始化主池：仅用于给每个测试切子池（测试内分配一律走各自的子池）
     pool_mem: bytes = stdlib.malloc(POOL_SIZE)
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
@@ -1482,21 +1464,58 @@ def main() -> int:
         stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
-    test_type_print(_sub_pool(pool))
-    test_value_print(_sub_pool(pool))
-    test_build_add(_sub_pool(pool))
-    test_build_if_else(_sub_pool(pool))
-    test_build_void(_sub_pool(pool))
-    test_module_print(_sub_pool(pool))
-    test_const_materialize(_sub_pool(pool))
-    test_phi_block_args(_sub_pool(pool))
-    test_mem_call_cast(_sub_pool(pool))
-    test_globals(_sub_pool(pool))
-    test_verify_valid(_sub_pool(pool))
-    test_struct_global(_sub_pool(pool))
-    test_alloca_align_switch_asm(_sub_pool(pool))
-    test_vararg_vaarg_cmpxchg(_sub_pool(pool))
-    test_named_struct(_sub_pool(pool))
-    test_extractvalue_multi_asm(_sub_pool(pool))
+    # 子池必须在 **main 的帧内** 构造：Viper 中无 __new__ 的类实例是值语义，
+    # `MemBuddy(...)` 被降级为栈 alloca；若把它放进"返回 MemBuddy*"的助手函数，
+    # 返回的就是**指向已销毁栈帧的指针**（IR 物证：_sub_pool 内
+    # `%13 = alloca %MemBuddy` … `ret %MemBuddy* %28`），随后第一次 alloc 读
+    # `max_order` 即落到复用的栈垃圾 → memhub 报
+    # "_split_to_order max_order 非法（字段被写穿）"。故此处在 main 内逐测试构造。
+    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_type_print(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_value_print(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_build_add(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_build_if_else(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_build_void(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_module_print(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_const_materialize(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_phi_block_args(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_mem_call_cast(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_globals(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_verify_valid(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_struct_global(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_alloca_align_switch_asm(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_vararg_vaarg_cmpxchg(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_named_struct(sub)
+
+    sub = memhub.MemBuddy(pool.alloc(SUB_POOL_SIZE), SUB_POOL_SIZE)
+    test_extractvalue_multi_asm(sub)
 
     return testcheck.end()
