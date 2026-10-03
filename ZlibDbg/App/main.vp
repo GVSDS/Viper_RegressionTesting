@@ -66,6 +66,54 @@ def huffman_probe(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt):
     stdlib.free(data)
 
 
+def count_freqs_probe(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt):
+    """调用真实的 zdeflate_count_freqs，与朴素直方图对照。
+
+    上面 huffman_probe 证明码表层正确，则 comp 远小于熵下限只能来自
+    "频率统计与编码遍历不一致"：count 阶段漏计某些位置 ⇒ 那些字节值 freq=0 ⇒
+    码表里 bits=0 ⇒ encode_block_data 仍会写出这些字面量，被 encode_symbol
+    静默丢弃 ⇒ 码流偏短（dec < size）。本探针打印：
+    - sum_lit：Σlit_freqs，正常应恰为 size+1（每个字节一次 + EOB）
+    - active：真实统计下 freq>0 的字面量符号数
+    - hlit / hdist / Σdist_freqs（>0 说明 count 阶段找到了 LZ77 匹配）
+    """
+    data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
+    fill_data(data, size, seed, repeating)
+
+    lit: t.CArray[t.CInt, 288]
+    dist: t.CArray[t.CInt, 32]
+    string.memset(lit, 0, lit.__sizeof__())
+    string.memset(dist, 0, dist.__sizeof__())
+
+    s = zdeflate.zdeflate_create(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, 8, 0)
+    if s:
+        zdeflate.zdeflate_count_freqs(lit, dist, s, data, size)
+        s.destroy()
+
+    sum_lit: t.CInt = 0
+    active: t.CInt = 0
+    k: t.CInt
+    for k in range(288):
+        sum_lit += lit[k]
+        if k < 256 and lit[k] > 0:
+            active += 1
+    sum_dist: t.CInt = 0
+    for k in range(32):
+        sum_dist += dist[k]
+    hlit: t.CInt = 286
+    while hlit > 257 and lit[hlit - 1] == 0:
+        hlit -= 1
+    hdist: t.CInt = 30
+    while hdist > 1 and dist[hdist - 1] == 0:
+        hdist -= 1
+
+    testcheck.info(f"[countprobe seed={seed} size={size} rep={repeating}] "
+                   f"sum_lit={sum_lit} (期望 {size + 1}) active={active} "
+                   f"sum_dist={sum_dist} hlit={hlit} hdist={hdist}")
+
+    stdlib.free(data)
+
+
 def roundtrip(seed: t.CSizeT, size: t.CSizeT, repeating: t.CInt, wbits: t.CInt) -> t.CInt:
     data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
     fill_data(data, size, seed, repeating)
@@ -109,6 +157,12 @@ def main() -> t.CInt:
     huffman_probe(0, 250, 0)
     huffman_probe(9, 20000, 0)
     huffman_probe(0, 256, 1)
+
+    # 真实频率统计 vs 朴素直方图对照
+    testcheck.section("频率统计探针 (zdeflate_count_freqs)")
+    count_freqs_probe(0, 250, 0)
+    count_freqs_probe(9, 20000, 0)
+    count_freqs_probe(0, 256, 1)
 
     testcheck.section("随机数据 (wbits=15)")
     sizes: t.CArray[t.CSizeT, None] = [250, 255, 256, 257, 260, 300, 500, 1000, 4096, 20000]
