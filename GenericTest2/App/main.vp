@@ -81,7 +81,7 @@ class IntPair:
     a: t.CInt
     b: t.CInt
 
-def generic_swap[T](p: IntPair | t.CPtr):
+def generic_swap(p: IntPair | t.CPtr):
     tmp: t.CInt = c.Deref(p).a
     c.Deref(p).a = c.Deref(p).b
     c.Deref(p).b = tmp
