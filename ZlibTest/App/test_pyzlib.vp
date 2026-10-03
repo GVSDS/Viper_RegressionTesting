@@ -761,6 +761,29 @@ def test_huffman_tree():
 
     stdlib.free(w.buf)
 
+    # 全量 257 符号往返：ZlibDbg 随机数据的失败只在"多符号码表"场景出现，
+    # 上面 4 符号抽样覆盖不到——这里把 0..256 全部编码再解码逐一比对，
+    # 与 ZlibDbg 的失败形态（码表把部分符号编成无码位/错码位）直接对齐。
+    w2 = zdef.zbit_writer(None)
+    for i in range(257):
+        of_tree.encode_symbol(i, c.Addr(w2))
+
+    r2 = zdef.zbit_reader()
+    r2.buf = w2.buf
+    r2.length = w2.byte_pos + (1 if (w2.bit_pos > 0) else 0)
+    r2.byte_pos = 0
+    r2.bit_pos = 0
+
+    full_ok: t.CInt = 1
+    for i in range(257):
+        got: t.CInt = dt.decode_symbol(c.Addr(r2))
+        if got != i:
+            full_ok = 0
+            printf("  FULL ROUNDTRIP MISMATCH at %d: got %d\n", i, got)
+            break
+    check("257-symbol full encode/decode roundtrip", full_ok, "full roundtrip failed")
+    stdlib.free(w2.buf)
+
 
     printf("\n  --- Kraft inequality check ---\n")
     kf_freqs: t.CArray[t.CInt, 256]
@@ -851,6 +874,11 @@ def main123456() -> t.CInt:
     printf("  Python zlib - C Implementation Tests\n")
     printf("==============================================\n")
 
+    # Huffman 树/码表构建前置：此前以 "skip: heap corruption from earlier tests"
+    # 跳过——排在其它用例之后时，前面用例造成的堆破坏会让本用例崩溃，从而掩盖
+    # 它自己的结论。前置后可在干净堆上独立复现（ZlibDbg 随机数据 roundtrip 失败
+    # 已定位到"多符号码表构建"这一层，本用例是当前最小复现入口）。
+    test_huffman_tree()
     test_constants()
     test_version()
     test_compress_decompress()
@@ -867,7 +895,7 @@ def main123456() -> t.CInt:
     test_gzip_format()
     test_raw_deflate()
     test_zdict()
-    # test_huffman_tree()  # skip: heap corruption from earlier tests
+    # test_huffman_tree()  # 已前置到 main123456 开头（理由见该处注释）
     test_error_handling()
 
     printf("\n==============================================\n")
