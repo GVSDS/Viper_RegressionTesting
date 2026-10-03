@@ -10,8 +10,14 @@ import viperlib
 import mlirlite
 
 
-# 内存大小（MLIR 渲染期会为每个函数分配 scratch/常量表，故给足 4MB）
-POOL_SIZE: t.CDefine = 4194304
+# 主池大小：只用于给**每个测试切一块子池**（见 main / _sub_pool）。
+POOL_SIZE: t.CDefine = 67108864
+# 每个测试的子池大小。子池存在的意义：测试内的 IR 对象与 MLIR 渲染器每函数
+# **重分配**的 scratch/常量表/别名表（约 35–45KB/函数，见 mlirlite 的
+# _MlirTablesInit）都落在自己的子池里，互不叠加。若所有测试共用一个池，渲染器
+# 这套"按函数重分配、不释放"的开销会跨测试累积（此前 15 个测试共用 4MB，
+# 到第 14 个把池吃干 → "MLIR 渲染: 常量/别名表分配失败"）。
+SUB_POOL_SIZE: t.CDefine = 2097152
 
 
 # 把 buf 中的 MLIR 文本落盘到 Test/MLIRLiteTest/output/<name>，供
@@ -1445,10 +1451,28 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
                     "extractvalue result not referenced")
 
 
+def _sub_pool(main_pool: memhub.MemBuddy | t.CPtr) -> memhub.MemBuddy | t.CPtr:
+    """从主池切一块子池给单个测试用（伙伴分配器返回 2 的幂块，可直接作 arena）
+
+    每个测试在自己的子池里分配：测试内的 IR 对象与渲染器每函数重分配的
+    scratch/常量表都落在子池，互不叠加（理由见 SUB_POOL_SIZE 注释）。子池不
+    单独回收——主池按"每个测试一块"给足，测试进程短命。
+    """
+    mem: rawptr = main_pool.alloc(SUB_POOL_SIZE)
+    if mem is None:
+        stdio.printf("FAIL: sub pool alloc failed (raise POOL_SIZE)\n")
+        stdlib.exit(1)
+    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(mem, SUB_POOL_SIZE)
+    if sub is None:
+        stdio.printf("FAIL: sub pool MemBuddy init failed\n")
+        stdlib.exit(1)
+    return sub
+
+
 def main() -> int:
     testcheck.begin("MLIRLiteTest: mlirlite 库（MLIR llvm 方言文本生成）")
 
-    # 初始化 mpool
+    # 初始化主池：仅用于切子池（测试内分配一律走各自的子池）
     pool_mem: bytes = stdlib.malloc(POOL_SIZE)
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
@@ -1458,21 +1482,21 @@ def main() -> int:
         stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
-    test_type_print(pool)
-    test_value_print(pool)
-    test_build_add(pool)
-    test_build_if_else(pool)
-    test_build_void(pool)
-    test_module_print(pool)
-    test_const_materialize(pool)
-    test_phi_block_args(pool)
-    test_mem_call_cast(pool)
-    test_globals(pool)
-    test_verify_valid(pool)
-    test_struct_global(pool)
-    test_alloca_align_switch_asm(pool)
-    test_vararg_vaarg_cmpxchg(pool)
-    test_named_struct(pool)
-    test_extractvalue_multi_asm(pool)
+    test_type_print(_sub_pool(pool))
+    test_value_print(_sub_pool(pool))
+    test_build_add(_sub_pool(pool))
+    test_build_if_else(_sub_pool(pool))
+    test_build_void(_sub_pool(pool))
+    test_module_print(_sub_pool(pool))
+    test_const_materialize(_sub_pool(pool))
+    test_phi_block_args(_sub_pool(pool))
+    test_mem_call_cast(_sub_pool(pool))
+    test_globals(_sub_pool(pool))
+    test_verify_valid(_sub_pool(pool))
+    test_struct_global(_sub_pool(pool))
+    test_alloca_align_switch_asm(_sub_pool(pool))
+    test_vararg_vaarg_cmpxchg(_sub_pool(pool))
+    test_named_struct(_sub_pool(pool))
+    test_extractvalue_multi_asm(_sub_pool(pool))
 
     return testcheck.end()
