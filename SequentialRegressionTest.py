@@ -110,19 +110,26 @@ def find_output_dirs(proj_dir, proj_config):
     - {output_dir}（默认 output，TPC/旧布局）
     - {build_dir}/{output_dir}（build_dir 默认 .tpv_build）
     - {build_dir}/output（TPV 布局：.tpv_build/output）
+    - 以上各项的 *_mlir 变体（单端 MLIR 布局：OutputDir = {BuildDir}/output_mlir，
+      见 TransPyV/App/lib/Projectrans/Config.vp 的 mlir_dir_suffix()）
     保序去重返回。
 
     注意：ZlibDbg 等项目的 project.json 既无 output_dir 也无 build_dir，
     此时必须仍把 .tpv_build/output 纳入候选，否则 TPV 编译成功的 exe
     定位不到（报"无可执行二进制文件"）。
+    单端 MLIR 后 exe 落在 {BuildDir}/output_mlir（非 output），且旧 LLVM 布局
+    的 output/ 可能残留同名旧 exe，故 *_mlir 变体**优先**探测。
     """
     od = proj_config.get('output_dir') or 'output'
     bd = proj_config.get('build_dir') or '.tpv_build'
-    dirs = [
+    # 单端 MLIR 目录后缀（与 Config.mlir_dir_suffix() 同口径，当前恒为 "_mlir"）
+    mlir_suf = '_mlir'
+    base = [
         os.path.abspath(os.path.join(proj_dir, od)),
         os.path.abspath(os.path.join(proj_dir, bd, od)),
         os.path.abspath(os.path.join(proj_dir, bd, 'output')),
     ]
+    dirs = [d + mlir_suf for d in base] + base
     seen = set()
     uniq = []
     for d in dirs:

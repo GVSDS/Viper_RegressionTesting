@@ -230,9 +230,23 @@ def main():
                 proj_config = json.load(f)
         except Exception:
             continue
-        output_dir = os.path.join(proj_dir, proj_config.get('output_dir', './output'))
-        output_dir = os.path.abspath(output_dir)
-        for exe in find_executables(output_dir):
+        # 候选输出目录：兼容 TPC/旧 LLVM 布局（output）与单端 MLIR 布局
+        # （OutputDir = {BuildDir}/output_mlir，见 Config.mlir_dir_suffix()）。
+        # 旧 output/ 可能残留同名旧 exe，故 *_mlir 变体优先探测。
+        od = proj_config.get('output_dir') or 'output'
+        bd = proj_config.get('build_dir') or '.tpv_build'
+        base_dirs = [
+            os.path.join(proj_dir, od),
+            os.path.join(proj_dir, bd, od),
+            os.path.join(proj_dir, bd, 'output'),
+        ]
+        exes = []
+        for d in [os.path.abspath(x) + '_mlir' for x in base_dirs] \
+                + [os.path.abspath(x) for x in base_dirs]:
+            exes = find_executables(d)
+            if exes:
+                break
+        for exe in exes:
             run_tasks.append((name, exe))
 
     print(f"找到 {len(run_tasks)} 个可执行文件\n")
