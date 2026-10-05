@@ -6,15 +6,13 @@ from g4node import G4Node, new_g4node
 
 
 # ============================================================
-# caller1: 导入 G4Node 并直接访问 Next 字段（不通过访问器）
-#
-# 模拟 TransPyV/HandlesExprCall.py 的情况：
-# 直接访问 n.Next 触发 GEP 指令，若 stub 字段缺失则 GEP 越界
+# caller1: import G4Node and access the Next field directly (no accessor).
+# Direct n.Next access emits a GEP; a missing stub field makes it out of bounds.
 # ============================================================
 
 
 def caller1_make_chain(pool: memhub.MemBuddy*) -> G4Node*:
-    """创建 3 节点链表，直接访问 Next 字段"""
+    """Create a 3-node chain, accessing Next directly."""
     a: G4Node* = new_g4node(pool)
     b: G4Node* = new_g4node(pool)
     c: G4Node* = new_g4node(pool)
@@ -23,19 +21,19 @@ def caller1_make_chain(pool: memhub.MemBuddy*) -> G4Node*:
     a.IntVal = 100
     b.IntVal = 200
     c.IntVal = 300
-    # 直接访问 Next 字段（不通过 g4node_set_next 访问器）
+    # Access Next directly (bypass g4node_set_next).
     a.Next = b
     b.Next = c
     return a
 
 
 def caller1_sum_chain(head: G4Node*) -> int:
-    """遍历链表求和，直接访问 Next 字段"""
+    """Sum the chain by walking Next directly."""
     if head is None:
         return 0
     total: int = head.IntVal
     cur: G4Node* = head
-    # 直接访问 Next 字段（不通过 g4node_get_next 访问器）
+    # Access Next directly (bypass g4node_get_next).
     while cur.Next is not None:
         cur = cur.Next
         total = total + cur.IntVal

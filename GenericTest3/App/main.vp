@@ -2,10 +2,8 @@ import t
 import stdio
 import testcheck
 
-# ============================================================
-# Test 1: 泛型函数手动传类型参数 - 基本调用
-# def xxx[T](x: int) 然后调用 xxx[T](x)
-# ============================================================
+# Test 1: generic function with explicit type arg - basic call
+# def xxx[T](x: int) then call xxx[T](x)
 def double[T](x: int) -> int:
     return x * 2
 
@@ -14,9 +12,7 @@ def test_explicit_type_arg():
     r: int = double[int](21)
     testcheck.check(r == 42, "double[t.CInt](21) = 42", "expect 42")
 
-# ============================================================
-# Test 2: 泛型函数手动传类型参数 - 多次调用不同类型
-# ============================================================
+# Test 2: generic function with explicit type arg - multiple call types
 def identity[T](x: int) -> int:
     return x
 
@@ -26,9 +22,7 @@ def test_identity_explicit():
     r2: int = identity[int](20)
     testcheck.check(r1 == 10 and r2 == 20, "identity[t.CInt](10)=10 (20)=20", "expect 10 20")
 
-# ============================================================
-# Test 3: 泛型函数手动传类型参数 - 用 T 作为参数类型
-# ============================================================
+# Test 3: generic function with explicit type arg - T as parameter type
 def add_one[T](x: T) -> T:
     return x + T(1)
 
@@ -37,14 +31,12 @@ def test_add_one_explicit():
     r: int = add_one[int](41)
     testcheck.check(r == 42, "add_one[t.CInt](41) = 42", "expect 42")
 
-# ============================================================
-# Test 4: 泛型函数手动传类型参数 - 混合自动推导和手动传
-# ============================================================
+# Test 4: generic function with explicit type arg - mixed inference
 def test_mixed_inference_explicit():
     testcheck.section("Test 4: mixed inference and explicit")
-    # 自动推导
+    # Inferred
     r1: int = add_one(99)
-    # 手动传
+    # Explicit
     r2: int = add_one[int](99)
     testcheck.check(r1 == 100 and r2 == 100, "add_one(99)=100 add_one[t.CInt](99)=100", "expect 100 100")
 

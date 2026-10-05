@@ -20,14 +20,8 @@ def fill_data(data: BYTEPTR, size: sizet, seed: sizet, repeating: int):
 
 
 def huffman_probe(seed: sizet, size: sizet, repeating: int):
-    """对 roundtrip 的同一份数据直接用 zhuff 复算字面量码表并打印分布。
-
-    背景：随机数据的 comp 远小于其字面量熵下限（250 字节数据熵下限约 221 字节，
-    实测 comp=132），说明码表/码长分配异常。本探针打印：
-    - active：拿到码位（bits>0）的符号数
-    - no_code：有频率却拿不到码位的符号数（编码期会被 encode_symbol 静默丢弃）
-    - sum15：Σ hist[b]*2^(15-b)，合法完整码表必须恰为 32768（=2^15）
-    再逐位宽打印码字数直方图。
+    """Recompute the literal code table with zhuff for one dataset and print its
+    distribution (active/no_code/sum15 and code-count histogram per bit width).
     """
     data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
     fill_data(data, size, seed, repeating)
@@ -67,15 +61,8 @@ def huffman_probe(seed: sizet, size: sizet, repeating: int):
 
 
 def count_freqs_probe(seed: sizet, size: sizet, repeating: int):
-    """调用真实的 zdeflate_count_freqs，与朴素直方图对照。
-
-    上面 huffman_probe 证明码表层正确，则 comp 远小于熵下限只能来自
-    "频率统计与编码遍历不一致"：count 阶段漏计某些位置 ⇒ 那些字节值 freq=0 ⇒
-    码表里 bits=0 ⇒ encode_block_data 仍会写出这些字面量，被 encode_symbol
-    静默丢弃 ⇒ 码流偏短（dec < size）。本探针打印：
-    - sum_lit：Σlit_freqs，正常应恰为 size+1（每个字节一次 + EOB）
-    - active：真实统计下 freq>0 的字面量符号数
-    - hlit / hdist / Σdist_freqs（>0 说明 count 阶段找到了 LZ77 匹配）
+    """Call the real zdeflate_count_freqs and compare it with a naive histogram
+    (prints sum_lit/active/hlit/hdist; sum_lit should equal size+1).
     """
     data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
     fill_data(data, size, seed, repeating)
@@ -90,9 +77,8 @@ def count_freqs_probe(seed: sizet, size: sizet, repeating: int):
         zdeflate.zdeflate_count_freqs(lit, dist, s, data, size)
         s.destroy()
 
-    # 元素符号性对拍：UINT8PTR 若被当作**有符号 i8**，则字节 ≥128 读成负数
-    # （-56 >= 128 恒假），既导致 count 阶段 lit_freqs[负数] 写到数组之前（漏计），
-    # 也让 encode_symbol(data[pos]) 收到负 symbol 被静默丢弃 ⇒ 码流截断。
+    # Signedness cross-check: if UINT8PTR were treated as signed i8, bytes >=128
+    # would read negative, undercounting freqs and dropping symbols -> truncated stream.
     up: UINT8PTR = UINT8PTR(data)
     ge8_up: int = 0
     ge8_bp: int = 0
@@ -165,13 +151,13 @@ def roundtrip(seed: sizet, size: sizet, repeating: int, wbits: int) -> int:
 def main() -> int:
     testcheck.begin("ZlibDbg: zlib 多 seed/size/wbits 往返")
 
-    # 先跑码表探针：定位 comp 远小于熵下限的根因（码表异常 / 还是别处）
+    # Run the code-table probe first to locate the cause of comp below entropy floor
     testcheck.section("字面量码表探针")
     huffman_probe(0, 250, 0)
     huffman_probe(9, 20000, 0)
     huffman_probe(0, 256, 1)
 
-    # 真实频率统计 vs 朴素直方图对照
+    # Real frequency stats vs naive histogram comparison
     testcheck.section("频率统计探针 (zdeflate_count_freqs)")
     count_freqs_probe(0, 250, 0)
     count_freqs_probe(9, 20000, 0)

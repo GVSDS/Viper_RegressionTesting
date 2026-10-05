@@ -6,7 +6,7 @@ import testcheck
 import inline_test
 
 # ============================================================
-# Test 1: 字符串指针迭代 - 逐字符直到\0
+# Test 1: string pointer iteration, char by char until NUL
 # ============================================================
 def test_string_ptr_iter():
     testcheck.section("Test 1: string pointer iteration")
@@ -19,7 +19,7 @@ def test_string_ptr_iter():
     testcheck.check(count == 5, "ptr iter (count=5)", "ptr iter (count expect 5)")
 
 # ============================================================
-# Test 2: 字符串指针求和ASCII值
+# Test 2: sum ASCII values via string pointer
 # ============================================================
 def test_string_ascii_sum():
     testcheck.section("Test 2: string ASCII sum")
@@ -33,7 +33,7 @@ def test_string_ascii_sum():
     testcheck.check(total == 198, "ASCII sum (total=198)", "ASCII sum (total expect 198)")
 
 # ============================================================
-# Test 3: 手动strcpy - 指针复制
+# Test 3: manual strcpy via pointers
 # ============================================================
 def test_manual_strcpy():
     testcheck.section("Test 3: manual strcpy via pointers")
@@ -49,7 +49,7 @@ def test_manual_strcpy():
     testcheck.check(dst[0] == 84 and dst[1] == 101 and dst[2] == 115 and dst[3] == 116, "manual strcpy (T=84 e=101 s=115 t=116)", "manual strcpy (expect T=84 e=101 s=115 t=116)")
 
 # ============================================================
-# Test 4: 指针比较和偏移
+# Test 4: pointer comparison and offset
 # ============================================================
 def test_ptr_offset_compare():
     testcheck.section("Test 4: pointer offset and compare")
@@ -65,7 +65,7 @@ def test_ptr_offset_compare():
     testcheck.check(total == 100, "ptr offset (total=100)", "ptr offset (total expect 100)")
 
 # ============================================================
-# Test 5: 字符串长度手动计算
+# Test 5: manual string length
 # ============================================================
 def test_manual_strlen():
     testcheck.section("Test 5: manual strlen")
@@ -78,7 +78,7 @@ def test_manual_strlen():
     testcheck.check(length == 12, "manual strlen (len=12)", "manual strlen (len expect 12)")
 
 # ============================================================
-# Test 6: 指针反向遍历字符串
+# Test 6: reverse string via pointer
 # ============================================================
 def test_reverse_string_ptr():
     testcheck.section("Test 6: reverse string via pointer")
@@ -102,7 +102,7 @@ def test_reverse_string_ptr():
     testcheck.check(dst[0] == 100 and dst[1] == 99 and dst[2] == 98 and dst[3] == 97, "reverse string (d=100 c=99 b=98 a=97)", "reverse string (expect d=100 c=99 b=98 a=97)")
 
 # ============================================================
-# Test 7: 多级指针 - 指向指针的指针
+# Test 7: multi-level pointer (pointer to pointer)
 # ============================================================
 def test_double_pointer():
     testcheck.section("Test 7: double pointer")
@@ -114,7 +114,7 @@ def test_double_pointer():
     testcheck.check(val == 42, "double pointer (val=42)", "double pointer (val expect 42)")
 
 # ============================================================
-# Test 8: 指针算术 - 数组元素访问
+# Test 8: pointer arithmetic, array element access
 # ============================================================
 def test_ptr_arithmetic():
     testcheck.section("Test 8: pointer arithmetic")
@@ -128,7 +128,7 @@ def test_ptr_arithmetic():
     testcheck.check(val == 16, "ptr arithmetic (arr[3]=16)", "ptr arithmetic (arr[3] expect 16)")
 
 # ============================================================
-# Test 9: 字符串比较 - 逐字符指针
+# Test 9: manual string compare via char pointers
 # ============================================================
 def test_manual_strcmp():
     testcheck.section("Test 9: manual strcmp via pointers")
@@ -148,7 +148,7 @@ def test_manual_strcmp():
     testcheck.check(equal == 1, "manual strcmp (equal=1)", "manual strcmp (equal expect 1)")
 
 # ============================================================
-# Test 10: 结构体指针访问
+# Test 10: struct pointer access
 # ============================================================
 class Vec2:
     x: int

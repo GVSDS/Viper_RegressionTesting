@@ -361,9 +361,8 @@ def ForWithCaseNoBreakNested(inner_limit: int):
 
 
 # ============================================================
-# match case 内 break = 跳出 match（C switch 语义），**不**跳出外层循环
-# 期望 limit=5：i=0 走 _ (+0)、i=1 走 case 1 (+100) 后 break 出 match（循环继续）、
-#              i=2 走 case 2 (+10)、i=3 (+3)、i=4 (+4) ⇒ 117
+# break inside match exits the match (C switch semantics), not the outer loop.
+# For limit=5 the expected result is 117.
 # ============================================================
 def MatchCaseBreakTest(limit: int) -> int:
     i: int = 0
@@ -381,8 +380,8 @@ def MatchCaseBreakTest(limit: int) -> int:
 
 
 # ============================================================
-# switch（C switch 语义）：默认不穿透；case 体内写 `fallthrough` 才落到下一个 case。
-# 期望 value=1 → 1+2+3=6；value=2 → 2+3=5；value=3 → 3；其它 → 77
+# switch (C semantics): no fallthrough by default; `fallthrough` continues.
+# Expected: value=1 -> 6, value=2 -> 5, value=3 -> 3, else -> 77.
 # ============================================================
 def SwitchCaseFallthroughTest(value: int) -> int:
     result: int = 0
@@ -401,9 +400,8 @@ def SwitchCaseFallthroughTest(value: int) -> int:
 
 
 # ============================================================
-# switch 内 break = 跳出 switch（不跳出外层循环）
-# 期望 limit=5：i=0 走 default (+0)、i=1 走 case 1 (+100) 后 break 出 switch、
-#              i=2 走 case 2 (+10)、i=3 (+3)、i=4 (+4) ⇒ 117
+# break inside switch exits the switch, not the outer loop.
+# For limit=5 the expected result is 117.
 # ============================================================
 def SwitchCaseBreakTest(limit: int) -> int:
     i: int = 0
@@ -421,8 +419,8 @@ def SwitchCaseBreakTest(limit: int) -> int:
 
 
 # ============================================================
-# switch 多值 case：`case 1 | 2:` 命中同一个臂
-# 期望 value=1 → 10；value=2 → 10；value=3 → 30；其它 → 99
+# switch multi-value case: `case 1 | 2:` hits the same arm.
+# Expected: value=1 -> 10, value=2 -> 10, value=3 -> 30, else -> 99.
 # ============================================================
 def SwitchMultiValueTest(value: int) -> int:
     result: int = 0

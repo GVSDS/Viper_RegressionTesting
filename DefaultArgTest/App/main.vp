@@ -5,12 +5,12 @@ import remote
 import random
 
 
-# 同模块：单个尾随默认值
+# Same module: single trailing default
 def local_one(x: int, cap: sizet = 4096) -> sizet:
     return cap
 
 
-# 同模块：多个尾随默认值
+# Same module: multiple trailing defaults
 def local_quad(a: int, b: int = 10, c: int = 20, d: int = 30) -> int:
     return a + b * 100 + c * 10000 + d * 1000000
 
@@ -18,26 +18,26 @@ def local_quad(a: int, b: int = 10, c: int = 20, d: int = 30) -> int:
 def main() -> int:
     testcheck.begin("DefaultArgTest: default / named / out-of-order arguments")
 
-    # ① 同模块默认值
+    # Same-module defaults
     testcheck.section("same-module defaults")
     r1: sizet = local_one(1)
     testcheck.check(r1 == 4096, "local_one(1) cap = 4096", "local_one(1) cap != 4096")
     r2: int = local_quad(1)
     testcheck.check(r2 == 30201001, "local_quad(1) = 30201001", "local_quad(1) != 30201001")
 
-    # ② 跨模块默认值
+    # Cross-module defaults
     testcheck.section("cross-module defaults")
     r3: sizet = remote.one(1)
     testcheck.check(r3 == 4096, "remote.one(1) cap = 4096", "remote.one(1) cap != 4096")
     r4: sizet = remote.write(1, 2, False)
     testcheck.check(r4 == 4096, "remote.write(1,2,False) cap = 4096", "remote.write(1,2,False) cap != 4096")
 
-    # ③ 显式覆盖默认值
+    # Explicit override
     testcheck.section("explicit override")
     r5: sizet = remote.one(1, 8)
     testcheck.check(r5 == 8, "remote.one(1,8) cap = 8", "remote.one(1,8) cap != 8")
 
-    # ④ 命名 / 乱序传参
+    # Named / out-of-order arguments
     testcheck.section("named / out-of-order arguments")
     r6: sizet = remote.one(cap = 8, x = 1)
     testcheck.check(r6 == 8, "remote.one(cap = 8, x = 1) = 8", "remote.one(cap = 8, x = 1) != 8")
@@ -48,7 +48,7 @@ def main() -> int:
     r9: int = remote.many(z = 3, x = 1, y = 2)
     testcheck.check(r9 == 9, "remote.many(z = 3, x = 1, y = 2) = 9", "remote.many(z = 3, x = 1, y = 2) != 9")
 
-    # ⑤ 多个尾随默认值只给前几个
+    # Multiple trailing defaults: pass only the leading ones
     testcheck.section("partial trailing defaults")
     r10: int = local_quad(1, 2)
     testcheck.check(r10 == 30200201, "local_quad(1,2) = 30200201", "local_quad(1,2) != 30200201")
@@ -61,8 +61,8 @@ def main() -> int:
     r14: int = remote.quad(1)
     testcheck.check(r14 == 30201001, "remote.quad(1) = 30201001", "remote.quad(1) != 30201001")
 
-    # ⑥ include 模块（顶层 .vp）默认值：vrandom.randrange(start, stop, step = 1)
-    # stop-start==1 ⇒ width==1 ⇒ 结果恒为 start；step 未填充时会退化为 0/垃圾
+    # Include-module (top-level .vp) defaults: vrandom.randrange(start, stop, step = 1)
+    # stop-start==1 means width==1, so result is always start; unset step degrades to 0/garbage
     testcheck.section("include-module defaults")
     r15: int = random.randrange(5, 6)
     testcheck.check(r15 == 5, "vrandom.randrange(5,6) = 5 (step default)", "vrandom.randrange(5,6) != 5")

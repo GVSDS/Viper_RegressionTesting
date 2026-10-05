@@ -1,13 +1,5 @@
-# ThreadingTest - vthreading 专项测试
-#
-# 覆盖范围：
-#   Thread     : start/join/is_alive/get_exit_code/close、线程传参
-#   Lock       : 多线程持锁互斥自增共享计数器
-#   Event      : 线程等待事件被唤醒
-#   Condition  : 生产者/消费者模式
-#   RWLock     : 多读单写（SRWLock）
-#   local      : TLS 线程局部存储 set/get 自校验
-#   get_current_thread_id / sleep_ms
+# ThreadingTest - vthreading coverage
+# Thread/Lock/Event/Condition/RWLock/local/id/sleep_ms/args
 import t, c
 from stdint import *
 from w32.win32base import NULL, FALSE, TRUE
@@ -16,16 +8,14 @@ import testcheck
 import vthreading
 
 
-# ============================================================
-# 共享状态（模块级全局，跨线程读写）
-# ============================================================
-_shared_count: int = 0      # Lock 并发测试共享计数器
-_evt_done: int = 0          # Event 测试完成标志
-_cond_ready: int = 0        # Condition 测试就绪标志
-_rw_value: int = 0          # RWLock 测试共享值
-_main_tid: uint32 = 0      # 主线程 ID
+# ===== Shared state: module globals read/written across threads =====
+_shared_count: int = 0      # Lock test shared counter
+_evt_done: int = 0          # Event test done flag
+_cond_ready: int = 0        # Condition test ready flag
+_rw_value: int = 0          # RWLock test shared value
+_main_tid: uint32 = 0      # Main thread ID
 
-# 并发规模常量
+# Concurrency scale constants
 THREAD_NUM: int = 4
 LOCK_ITER: int = 1000
 RW_ITER: int = 100
@@ -33,17 +23,15 @@ TLS_NUM: int = 4
 SYS_ITER: int = 10
 
 
-# ============================================================
-# 线程回调（签名: def worker(arg: t.CPtr) -> t.CPtr）
-# ============================================================
+# ===== Thread callbacks (signature: def worker(arg: t.CPtr) -> t.CPtr) =====
 
-# Thread 基础: 短暂睡眠后退出，保证 start 后 is_alive 观测窗口
+# Thread basic: brief sleep then exit, keeps an is_alive window after start
 def _basic_worker(arg: t.CPtr) -> t.CPtr:
     vthreading.sleep_ms(100)
     return NULL
 
 
-# 传参: 通过 arg 指针自增 100 次（c.Deref/c.DerefAs 读写）
+# Arg passing: increment through arg pointer 100 times (c.Deref/c.DerefAs)
 def _increment_worker(arg: t.CPtr) -> t.CPtr:
     ip: int* = (int*)(arg)
     i: int
@@ -52,7 +40,7 @@ def _increment_worker(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# Lock: 持锁自增全局计数器
+# Lock: increment a global counter while holding the lock
 def _lock_worker(arg: t.CPtr) -> t.CPtr:
     lk: vthreading.Lock* = (vthreading.Lock*)(arg)
     global _shared_count
@@ -63,7 +51,7 @@ def _lock_worker(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# Event: 等待事件被唤醒后置位完成标志
+# Event: wait to be woken, then set the done flag
 def _event_worker(arg: t.CPtr) -> t.CPtr:
     ev: vthreading.Event* = (vthreading.Event*)(arg)
     global _evt_done
@@ -73,7 +61,7 @@ def _event_worker(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# Condition 消费者: 循环等待 _cond_ready 就绪（限次防挂起）
+# Condition consumer: wait for _cond_ready, bounded retries to avoid hanging
 def _cond_consumer(arg: t.CPtr) -> t.CPtr:
     cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
@@ -86,7 +74,7 @@ def _cond_consumer(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# Condition 生产者: 延迟后置位 _cond_ready 并 notify
+# Condition producer: delay, set _cond_ready, then notify
 def _cond_producer(arg: t.CPtr) -> t.CPtr:
     cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
@@ -98,7 +86,7 @@ def _cond_producer(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# RWLock 读者: 持读锁反复读共享值
+# RWLock reader: read the shared value repeatedly under the read lock
 def _rw_reader(arg: t.CPtr) -> t.CPtr:
     rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
@@ -110,7 +98,7 @@ def _rw_reader(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# RWLock 写者: 持写锁自增共享值
+# RWLock writer: increment the shared value under the write lock
 def _rw_writer(arg: t.CPtr) -> t.CPtr:
     rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
@@ -122,7 +110,7 @@ def _rw_writer(arg: t.CPtr) -> t.CPtr:
     return NULL
 
 
-# TLS: 每线程 set/get 自校验（存入自身线程 ID 再读回比对）
+# TLS: per-thread set/get self-check (store own thread ID, then read back)
 def _tls_worker(arg: t.CPtr) -> t.CPtr:
     tls: vthreading.local = vthreading.local()
     tls.set(t.CPtr(uint64(vthreading.get_current_thread_id())))
@@ -134,7 +122,7 @@ def _tls_worker(arg: t.CPtr) -> t.CPtr:
     return t.CPtr(uint64(ok))
 
 
-# 线程 ID 隔离: 工作线程 ID 必须与主线程不同
+# Thread ID isolation: worker ID must differ from the main thread ID
 def _tid_worker(arg: t.CPtr) -> t.CPtr:
     global _main_tid
     if vthreading.get_current_thread_id() == _main_tid:
@@ -142,7 +130,7 @@ def _tid_worker(arg: t.CPtr) -> t.CPtr:
     return t.CPtr(uint64(1))
 
 
-# stdlib.system 多线程并发: 每线程循环调 C 运行时 system()，统计失败次数
+# stdlib.system concurrency: each thread calls C system(), count failures
 def _system_worker(arg: t.CPtr) -> t.CPtr:
     i: int
     fails: int = 0
@@ -153,9 +141,7 @@ def _system_worker(arg: t.CPtr) -> t.CPtr:
     return t.CPtr(uint64(fails))
 
 
-# ============================================================
-# main
-# ============================================================
+# ===== main =====
 def main() -> int | t.CExport:
     testcheck.begin("ThreadingTest: vthreading 专项测试")
 
@@ -170,7 +156,7 @@ def main() -> int | t.CExport:
     testcheck.check(th1.get_exit_code() == 0, "退出码 == 0", "退出码 != 0")
     th1.close()
 
-    # ========== Thread: 通过 arg 传参 ==========
+    # ========== Thread: pass arg ==========
     testcheck.section("Thread: arg 传参")
     cnt: int = 0
     th2: vthreading.Thread = vthreading.Thread(_increment_worker, &cnt)
@@ -179,7 +165,7 @@ def main() -> int | t.CExport:
     th2.close()
     testcheck.check(cnt == 100, "worker 经 arg 自增 100 次", "cnt != 100")
 
-    # ========== Lock: 多线程互斥自增 ==========
+    # ========== Lock: mutex increment ==========
     testcheck.section("Lock: 多线程互斥自增")
     lock: vthreading.Lock = vthreading.Lock()
     t0: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
@@ -201,7 +187,7 @@ def main() -> int | t.CExport:
     testcheck.check(j0 != 0 and j1 != 0 and j2 != 0 and j3 != 0, "4 线程全部 join 成功", "有线程 join 超时")
     testcheck.check(_shared_count == THREAD_NUM * LOCK_ITER, "互斥自增计数正确", "计数丢失")
 
-    # ========== Event: 线程等待唤醒 ==========
+    # ========== Event: thread waits for wakeup ==========
     testcheck.section("Event: 线程等待唤醒")
     ev: vthreading.Event = vthreading.Event(FALSE, FALSE)
     th4: vthreading.Thread = vthreading.Thread(_event_worker, t.CPtr(ev))
@@ -215,7 +201,7 @@ def main() -> int | t.CExport:
     ev.close()
     testcheck.check(_evt_done == 1, "worker 收到事件并置位", "worker 未收到事件")
 
-    # ========== Condition: 生产者/消费者 ==========
+    # ========== Condition: producer/consumer ==========
     testcheck.section("Condition: 生产者/消费者")
     cond: vthreading.Condition = vthreading.Condition()
     tc: vthreading.Thread = vthreading.Thread(_cond_consumer, t.CPtr(cond))
@@ -229,7 +215,7 @@ def main() -> int | t.CExport:
     testcheck.check(_cond_ready == 1, "条件变量值已置位", "条件变量值未置位")
     cond.delete()
 
-    # ========== RWLock: 多读单写 ==========
+    # ========== RWLock: multi-reader single-writer ==========
     testcheck.section("RWLock: 多读单写")
     rwl: vthreading.RWLock = vthreading.RWLock()
     r1: vthreading.Thread = vthreading.Thread(_rw_reader, t.CPtr(rwl))
@@ -245,7 +231,7 @@ def main() -> int | t.CExport:
     w1.close()
     testcheck.check(_rw_value == RW_ITER, "写锁自增计数正确", "写锁计数丢失")
 
-    # ========== local: TLS 线程局部存储 ==========
+    # ========== local: TLS thread-local storage ==========
     testcheck.section("local: TLS 线程局部存储")
     i_t: int
     for i_t in range(TLS_NUM):
@@ -255,7 +241,7 @@ def main() -> int | t.CExport:
         testcheck.check(th_t.get_exit_code() == 1, "TLS set/get 自校验通过", "TLS 自校验失败")
         th_t.close()
 
-    # ========== get_current_thread_id: 线程 ID 隔离 ==========
+    # ========== get_current_thread_id: thread ID isolation ==========
     testcheck.section("get_current_thread_id: 线程 ID 隔离")
     global _main_tid
     _main_tid = vthreading.get_current_thread_id()
@@ -271,7 +257,7 @@ def main() -> int | t.CExport:
     vthreading.sleep_ms(20)
     testcheck.ok("sleep_ms(20) 正常返回")
 
-    # ========== stdlib.system 多线程并发 ==========
+    # ========== stdlib.system concurrency ==========
     testcheck.section("stdlib.system 多线程并发")
     s0: vthreading.Thread = vthreading.Thread(_system_worker, NULL)
     s1: vthreading.Thread = vthreading.Thread(_system_worker, NULL)

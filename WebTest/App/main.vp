@@ -7,7 +7,7 @@ import memhub
 import requests
 
 
-# 全局 MBuddy 指针
+# Global MBuddy pointer
 _mbuddy: memhub.MemBuddy*
 
 
@@ -16,7 +16,7 @@ def main() -> int:
     global _mbuddy
     stdio.printf("WebTest: HTTP client library test\n")
 
-    # 初始化内存管理器（16MB arena）
+    # Initialize the memory manager (16MB arena)
     arena: bytes = stdlib.malloc(16 * 1024 * 1024)
     if arena is None:
         stdio.printf("FATAL: malloc arena failed\n")
@@ -25,11 +25,11 @@ def main() -> int:
     _mbuddy = memhub.MemBuddy(arena, 16 * 1024 * 1024)
     requests._mbuddy = _mbuddy
 
-    # 初始化 Socket 库
+    # Initialize the socket library
     result: INT = socket.SocketInit()
     stdio.printf("SocketInit: %d\n", result)
 
-    # 测试 Socket OOP API
+    # Test the Socket OOP API
     sock = socket.Socket(socket.AF_INET, socket.SOCK_STREAM)
     if sock.fd != socket.INVALID_SOCKET:
         stdio.printf("Socket: OK (fd=%d)\n", sock.fd)
@@ -38,7 +38,7 @@ def main() -> int:
     else:
         stdio.printf("Socket: FAIL\n")
 
-    # 测试 DNS 解析 — 通过 Socket.connect 间接测试（内部调用 _MakeAddr）
+    # Test DNS resolution indirectly via Socket.connect (calls _MakeAddr internally)
     stdio.printf("\n--- DNS test ---\n")
     dns_sock = socket.Socket(socket.AF_INET, socket.SOCK_STREAM)
     if dns_sock.fd != socket.INVALID_SOCKET:
@@ -50,7 +50,7 @@ def main() -> int:
             stdio.printf("DNS: cn.bing.com resolved but connect failed (err in _MakeAddr debug above)\n")
         dns_sock.close()
 
-    # 测试 HTTP GET — 使用 DNS 解析 cn.bing.com（example.com 在部分网络下不可达）
+    # Test HTTP GET via cn.bing.com (example.com is unreachable on some networks)
     stdio.printf("\n--- HTTP GET test (cn.bing.com) ---\n")
     resp = requests.get("http://cn.bing.com/")
     if resp is not None:
@@ -74,7 +74,7 @@ def main() -> int:
     else:
         stdio.printf("requests.get: FAIL (network unavailable)\n")
 
-    # 清理
+    # Cleanup
     socket.SocketCleanup()
     stdio.printf("\nSocketCleanup: OK\n")
     stdio.printf("WebTest: ALL PASSED\n")

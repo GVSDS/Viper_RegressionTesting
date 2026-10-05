@@ -10,16 +10,16 @@ import ast
 import w32.win32console
 
 
-# MBuddy arena 大小：1MB
+# MBuddy arena size: 1MB
 define ARENA_SIZE = 1048576
-# mpool 内存大小：512KB
+# mpool memory size: 512KB
 define POOL_SIZE = 524288
-# dump 缓冲区大小：256KB
+# dump buffer size: 256KB
 define DUMP_SIZE = 262144
 
 
 def classify_list(lst: list[ast.AST*]*, depth: int):
-    """递归遍历 list[AST | t.CPtr] 容器，逐元素分类（orelse/args/comparators 等）"""
+    """Recursively walk a list[AST | t.CPtr] container, classify each element."""
     if lst is None:
         return
     n: sizet = lst.__len__()
@@ -28,13 +28,8 @@ def classify_list(lst: list[ast.AST*]*, depth: int):
 
 
 def classify_print(node: ast.AST*, depth: int):
-    """递归遍历 parse 树，用 isinstance 运行时判定每个节点的类别并打印。
-
-    依赖 TPV isinstance 的 vtable 子类集合比较：
-    - isinstance(node, ast.Stmt)     → 语句节点（Assign/If/For/While/...）
-    - isinstance(node, ast.ExprNode) → 表达式节点（Name/Constant/BinOp/...）
-    - 两者皆非                       → 其他（Module/Expression/...）
-    验证运行时（非编译期静态）正确区分 Stmt 与 ExprNode。
+    """Recursively walk the parse tree and print each node's category at runtime
+    via TPV isinstance vtable subclass-set comparison (Stmt vs ExprNode vs other).
     """
     if node is None:
         return
@@ -46,9 +41,8 @@ def classify_print(node: ast.AST*, depth: int):
         printf("EXPR  %s\n", node.type_name())
     else:
         printf("OTHER %s\n", node.type_name())
-    # 按 kind 遍历语句持有的表达式字段（语句 body 块均在 children）。
-    # 属性访问前先 cast 成具体节点类：node 静态类型是 ast.AST，
-    # 直接访问 node.value 会在 AST 基类字段表 fast-fail（按需过滤原则）。
+    # Walk statement expression fields by kind (bodies live in children); cast to
+    # the concrete class first, since ast.AST base-class field access fast-fails.
     k: int = node.kind()
     if k == ast.ASTKind.Assign:
         asg: ast.Assign* = (ast.Assign*)(node)
@@ -92,7 +86,7 @@ def classify_print(node: ast.AST*, depth: int):
         classify_list(call_nd.args, depth + 1)
     else:
         pass
-    # children（语句 body 块）
+    # children (statement bodies)
     if node.children is not None:
         n: sizet = node.children.__len__()
         for i in range(n):
@@ -105,7 +99,7 @@ def main() -> CInt | CExport:
 
     printf("AST Comprehensive Test Start\n")
 
-    # 初始化全局 MBuddy 内存分配器
+    # Initialize the global MBuddy allocator
     arena: bytes = stdlib.malloc(ARENA_SIZE)
     if arena == None:
         printf("FAIL: arena alloc failed\n")
@@ -118,7 +112,7 @@ def main() -> CInt | CExport:
     sys._mbuddy = mbuddy_obj
     ast._mbuddy = mbuddy_obj
 
-    # 为 ast 解析器创建 mpool
+    # Create an mpool for the ast parser
     pool_mem: bytes = stdlib.malloc(POOL_SIZE)
     if pool_mem == None:
         printf("FAIL: malloc for pool failed\n")
@@ -128,14 +122,14 @@ def main() -> CInt | CExport:
         printf("FAIL: memhub.MemPool init failed\n")
         return 1
 
-    # dump 缓冲区（独立分配）
+    # dump buffer (separately allocated)
     dump_mem: bytes = stdlib.malloc(DUMP_SIZE)
     if dump_mem == None:
         printf("FAIL: malloc for dump failed\n")
         return 1
     dump_buf: char* = char(dump_mem, t.CPtr)
 
-    # 综合测试源码：覆盖 CPython 主要语法
+    # Comprehensive test source covering main CPython syntax
     src: str = """x = 1
 y = 2
 z = x + y
@@ -165,7 +159,7 @@ class Point:
 
     printf("Parsing comprehensive source...\n")
 
-    # 解析
+    # Parse
     ast._init_tables(pool)
     lx_dbg: t.CPtr = ast.new_lexer(pool)
     if lx_dbg == None:
@@ -195,19 +189,17 @@ class Point:
     printf("ast.dump returned, now printing buffer...\n")
     printf("=== AST DUMP ===\n%s\n=== END ===\n", dump_buf)
 
-    # ============================================================
-    # Stmt/Expr 运行时区分测试（isinstance vtable 子类集合比较）
-    # ============================================================
+    # ===== Stmt/Expr runtime distinction test (isinstance vtable compare) =====
     printf("=== STMT/EXPR RUNTIME DISTINGUISH TEST ===\n")
     classify_print(tree, 0)
 
-    # 断言 1: Module 既非 Stmt 亦非 ExprNode（顶层容器）
+    # Assert 1: Module is neither Stmt nor ExprNode (top-level container)
     if isinstance(tree, ast.Stmt) != 0 or isinstance(tree, ast.ExprNode) != 0:
         printf("FAIL: Module misclassified as Stmt/ExprNode\n")
     else:
         printf("PASS: Module is neither Stmt nor ExprNode\n")
 
-    # 断言 2: 顶层 body 每条语句均为 Stmt
+    # Assert 2: every top-level body statement is a Stmt
     top_ok: int = 1
     top_n: sizet = tree.children.__len__()
     for i2 in range(top_n):
@@ -218,21 +210,21 @@ class Point:
     if top_ok != 0:
         printf("PASS: all %lld top-level nodes are Stmt\n", top_n)
 
-    # 断言 3: Assign 是 Stmt 且不是 ExprNode
+    # Assert 3: Assign is Stmt, not ExprNode
     first_assign: ast.Assign* = (ast.Assign*)(tree.children.get(0))
     if isinstance(first_assign, ast.Stmt) != 0 and isinstance(first_assign, ast.ExprNode) == 0:
         printf("PASS: Assign is Stmt, not ExprNode\n")
     else:
         printf("FAIL: Assign classification wrong\n")
 
-    # 断言 4: Assign.value（表达式）是 ExprNode 且不是 Stmt
+    # Assert 4: Assign.value (an expression) is ExprNode, not Stmt
     if isinstance(first_assign.value, ast.ExprNode) != 0 \
             and isinstance(first_assign.value, ast.Stmt) == 0:
         printf("PASS: Assign.value is ExprNode (%s)\n", first_assign.value.type_name())
     else:
         printf("FAIL: Assign.value not ExprNode\n")
 
-    # 断言 5: 表达式语句 Expr（如 print(x)）属于 Stmt（Statement 语义）
+    # Assert 5: expression statement Expr (e.g. print(x)) is a Stmt
     if top_n >= 15:
         if_node: ast.If* = (ast.If*)(tree.children.get(14))
         if if_node.children is not None and if_node.children.__len__() > 0:

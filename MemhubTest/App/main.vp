@@ -6,7 +6,7 @@ import testcheck
 import memhub
 
 
-# 多态测试: 通过 MemManager 基类指针调用, 验证 vtable 分派到正确子类
+# Polymorphism test: call through a MemManager base pointer, verify vtable dispatch
 def test_polymorphic(mgr: memhub.MemManager*, size: sizet) -> int:
     p: t.CPtr = mgr.alloc(size)
     if p is None:
@@ -15,12 +15,12 @@ def test_polymorphic(mgr: memhub.MemManager*, size: sizet) -> int:
     return 1
 
 
-# 测试 calloc 多态: calloc 是 MemManager 具体方法, 内部调 self.alloc (虚函数)
+# Test calloc polymorphism: calloc is concrete but calls the virtual self.alloc
 def test_calloc_polymorphic(mgr: memhub.MemManager*) -> int:
     p: t.CPtr = mgr.calloc(4, 8)
     if p is None:
         return 0
-    # 验证清零: 读第一个字节应为 0
+    # Verify zero-fill: the first byte should be 0
     first_byte: uint8 = uint8(*uint64(p, t.CPtr))
     if first_byte != 0:
         return 0
@@ -72,11 +72,11 @@ def main() -> int:
     buddy.free(b1)
     b3: t.CPtr = buddy.alloc(100)
     testcheck.check(b3 is not None, "MemBuddy alloc after free", "FAIL")
-    # realloc 增长
+    # Grow via realloc
     b4: t.CPtr = buddy.realloc(b2, 400)
     testcheck.check(b4 is not None, "MemBuddy realloc 200->400", "FAIL")
 
-    # ========== 多态分派 (核心测试) ==========
+    # ========== Polymorphic dispatch (core test) ==========
     testcheck.section("polymorphic dispatch")
     r1: int = test_polymorphic(pool, 50)
     testcheck.check(r1 == 1, "vtable: MemPool.alloc/free via MemManager", "FAIL")
@@ -85,7 +85,7 @@ def main() -> int:
     r3: int = test_polymorphic(buddy, 50)
     testcheck.check(r3 == 1, "vtable: MemBuddy.alloc/free via MemManager", "FAIL")
 
-    # calloc 多态 (具体方法调虚函数)
+    # calloc polymorphism (concrete method calls a virtual one)
     rc1: int = test_calloc_polymorphic(pool)
     testcheck.check(rc1 == 1, "vtable: calloc dispatches MemPool.alloc", "FAIL")
     rc2: int = test_calloc_polymorphic(buddy)

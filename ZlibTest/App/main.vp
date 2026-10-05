@@ -12,7 +12,7 @@ def main() -> int:
     tpz.main123456()
     testcheck.ok("zlib test_pyzlib completed")
 
-    # 标准 zlib 库（includes/zlib）
+    # Standard zlib library (includes/zlib)
     testcheck.section("标准 zlib 库 (zlib.pyzlib)")
     print(stdzp.runtime_version())
     testcheck.ok("zlib runtime version printed")

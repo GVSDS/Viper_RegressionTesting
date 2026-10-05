@@ -5,14 +5,8 @@ import testcheck
 
 
 # ============================================================
-# 复现：NoVTable 多继承下跨 Mixin self. 方法调用
-#
-# 缺陷：BaseB.caller 内 `self.helper()`（helper 定义在兄弟 Mixin BaseA，
-# 经 Combined 多继承组合）被 mangle 成 `<sha1>.BaseB.helper`
-# （用调用者自身/直接父类做前缀），而定义符号是 `<sha1>.BaseA.helper`
-# → ld.lld undefined symbol（TPV 侧 StmtGenMixin.translate_stmt 调
-# self.translate_return 同根因，符号成 StmtGenDeclMixin.translate_return）。
-# 期望：按实际定义类（BaseA）做前缀，或按最终组合类（Combined）。
+# NoVTable multiple inheritance: a sibling-mixin self.helper() call (BaseB
+# calling helper defined in BaseA) must resolve the symbol to BaseA/Combined.
 # ============================================================
 novirtual class BaseA:
     a: int
@@ -43,13 +37,8 @@ def test_cross_mixin_call():
 
 
 # ============================================================
-# 扩展 Test 2：多级 Mixin 链（父类继承 + 兄弟）+ 字段写
-#
-# 覆盖 Handles 去壳核心要求：
-#   MixinB2 继承 MixinA2（1 级父类）；Combined2(MixinB2, MixinC2) 多继承。
-#   MixinC2.outer2 调兄弟 MixinB2.mid2（this_adjust 到 MixinB2 字段区），
-#   MixinB2.mid2 调父类 MixinA2.inner2（this_adjust 到 MixinA2 字段区），
-#   inner2 内写 self.a2（this_adjust 精确到组合类中 a2 字段）。
+# Test 2: multilevel mixin chain (parent inheritance + sibling) with field
+# writes, exercising this_adjust across sibling and parent field regions.
 # ============================================================
 novirtual class MixinA2:
     a2: int
@@ -83,18 +72,15 @@ def test_multilevel_chain():
     c.a2 = 1
     c.b2 = 2
     c.c2 = 3
-    # outer2 -> mid2 -> inner2：inner2 写 a2(1->11)，mid2=11+2=13，outer2=13+3=16
+    # outer2 -> mid2 -> inner2: inner2 writes a2 (1->11), mid2=13, outer2=16
     testcheck.check(c.outer2() == 16,
                     "outer2()==16 (C->B->A chain + field write)",
                     "multilevel chain fail")
 
 
 # ============================================================
-# 扩展 Test 3：第二父类字段区偏移（this_adjust 非 0）+ 指针字段
-#
-# Combined3(PtrMixin, DataMixin)：PtrMixin 第一父类（字段区偏移 0），
-# DataMixin 第二父类（字段区偏移 = sizeof(PtrMixin)，非 0）。
-# DataMixin.get_val 内 self.val 需 this_adjust 到第二父类字段区。
+# Test 3: second-parent field offset (nonzero this_adjust) plus a pointer
+# field; self.val must adjust into DataMixin's field region.
 # ============================================================
 novirtual class PtrMixin:
     name: char*

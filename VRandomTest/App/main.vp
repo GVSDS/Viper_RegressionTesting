@@ -6,7 +6,7 @@ import testcheck
 
 
 # ============================================================
-# VRandomTest - 硬件随机数生成 + 标准分布函数测试
+# VRandomTest: hardware RNG and standard distribution functions.
 # ============================================================
 
 def main() -> int:

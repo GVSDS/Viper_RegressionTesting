@@ -1,5 +1,5 @@
 import t, c
-# f8bca62 移动前的旧路径（文件在 lib/Stub/StubMerger/ 下）
+# Stale pre-move path; the import is expected to fail.
 import lib.Stub.StubMergerStore as StubMergerStore
 
 def main() -> int:

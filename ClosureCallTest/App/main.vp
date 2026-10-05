@@ -3,20 +3,15 @@ import stdio
 import testcheck
 
 
-# ============================================================
-# ClosureCallTest - t.CPtr 函数指针调用最小化复现
-#
-# closure_test.py 中 f: t.CPtr = make_counter() 后调用 f() 报错：
-#   Undefined function: 'f'
-# 根因：f 是 t.CPtr(i8*)，line 322 检查 pointee 是 FunctionType 失败
-# ============================================================
+# ClosureCallTest - minimal repro: call through a t.CPtr function pointer
+# f is t.CPtr (i8*); the compiler must treat its pointee as callable.
 
 
-# nonlocal 关键字测试：嵌套函数修改外层局部变量
+# nonlocal test: a nested function mutates an outer local
 def make_counter() -> t.CPtr:
     count: int = 0
 
-    # 内部函数（闭包）捕获 count
+    # Inner closure captures count
     def counter() -> int:
         nonlocal count
         count = count + 1
@@ -26,7 +21,7 @@ def make_counter() -> t.CPtr:
 
 
 def test_closure_call():
-    """验证 t.CPtr 函数指针调用"""
+    """Verify calling a t.CPtr function pointer."""
     testcheck.section("Closure call via t.CPtr")
     f: t.CPtr = make_counter()
     v: int = f()

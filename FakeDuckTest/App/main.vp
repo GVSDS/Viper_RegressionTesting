@@ -15,10 +15,10 @@ def main() -> CInt | CExport:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 
-    # FakeDuck 测试: str 类型调用扩展方法 b()
+    # FakeDuck: str calls extension method b()
     a: str = "Hello"
 
-    # Type 通用基类测试: str 变量调用 Type 的方法 type_id()
+    # Type base class: str calls Type.type_id()
     tid: CInt = a.type_id()
 
     if tid == 99:
@@ -26,57 +26,57 @@ def main() -> CInt | CExport:
     else:
         stdio.printf("Type FAIL: a.type_id() = %d\n", tid)
 
-    # 直接字段访问测试: 读取 a.__data__ (应等于 a 本身)
+    # Direct field read: a.__data__ (equals a itself)
     data_ptr: str = a.__data__
     stdio.printf("a.__data__ = %s\n", data_ptr)
 
-    # upper() 测试: 通过 mbuddy 分配内存，返回大写字符串
+    # upper(): allocates via mbuddy, returns uppercased string
     arena: bytes = stdlib.malloc(65536)
     bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
-    # 直接字段赋值: a.__mbuddy__ = bd (语法糖, 等价于 a.set_mbuddy(bd))
+    # Direct field write: a.__mbuddy__ = bd (sugar for a.set_mbuddy(bd))
     a.__mbuddy__ = bd
     upper_str: str = a.upper()
     stdio.printf("upper('Hello') = %s\n", upper_str)
 
-    # 验证 per-instance 不污染: b 没有设置 __mbuddy__ (初始为 NULL)
+    # Verify per-instance isolation: b has no __mbuddy__ (NULL)
     b: str = "World"
 
-    # 直接字段读取: b.__mbuddy__ (应返回 NULL)
+    # Direct field read: b.__mbuddy__ (returns NULL)
     b_buddy: memhub.MemBuddy* = b.__mbuddy__
     if int(b_buddy) == 0:
         stdio.printf("mbuddy OK: b.__mbuddy__ is NULL (no pollution)\n")
     else:
         stdio.printf("mbuddy FAIL: b.__mbuddy__ polluted!\n")
 
-    # b 也设置 mbuddy 并 upper
+    # Set mbuddy on b and run upper()
     b.__mbuddy__ = bd
     upper_b: str = b.upper()
     stdio.printf("upper('World') = %s\n", upper_b)
 
-    # lower() 测试
+    # lower()
     lower_str: str = a.lower()
     stdio.printf("lower('Hello') = %s\n", lower_str)
 
-    # capitalize() 测试
+    # capitalize()
     cap_str: str = a.capitalize()
     stdio.printf("capitalize('Hello') = %s\n", cap_str)
 
-    # swapcase() 测试
+    # swapcase()
     swap_str: str = a.swapcase()
     stdio.printf("swapcase('Hello') = %s\n", swap_str)
 
-    # casefold() 测试
+    # casefold()
     cf_str: str = a.casefold()
     stdio.printf("casefold('Hello') = %s\n", cf_str)
 
-    # title() 测试
+    # title()
     t_str: str = "hello world"
     t_str.__mbuddy__ = bd
     title_result: str = t_str.title()
     stdio.printf("title('hello world') = %s\n", title_result)
 
-    # 布尔判断函数测试 (不需要 __mbuddy__)
+    # Predicate methods (no __mbuddy__ needed)
     u: str = "HELLO"
     lo: str = "hello"
     dig: str = "12345"
@@ -101,10 +101,10 @@ def main() -> CInt | CExport:
     stdio.printf("istitle('Hello World') = %d\n", title_s.istitle())
     stdio.printf("istitle('hello world') = %d\n", t_str.istitle())
 
-    # === split() 测试 ===
+    # --- split() ---
     testcheck.begin("FakeDuck split() 测试")
 
-    # Test 1: 基本分割
+    # Test 1: basic split
     testcheck.section("Test 1: 基本分割 'a,b,c'")
     s1: str = "a,b,c"
     s1.__mbuddy__ = bd
@@ -120,7 +120,7 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(p1, "b") == 0, "split[1]=='b' OK", "split[1] FAILED")
     testcheck.check(string.strcmp(p2, "c") == 0, "split[2]=='c' OK", "split[2] FAILED")
 
-    # Test 2: 空字符串分割
+    # Test 2: no delimiter
     testcheck.section("Test 2: 无分隔符 'hello'")
     s2: str = "hello"
     s2.__mbuddy__ = bd
@@ -131,7 +131,7 @@ def main() -> CInt | CExport:
     h0: str = parts2.get(0)
     testcheck.check(string.strcmp(h0, "hello") == 0, "no-delim[0]=='hello' OK", "no-delim[0] FAILED")
 
-    # Test 3: 连续分隔符
+    # Test 3: consecutive delimiters
     testcheck.section("Test 3: 连续分隔符 'a,,b'")
     s3: str = "a,,b"
     s3.__mbuddy__ = bd
@@ -147,7 +147,7 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(e1, "") == 0, "consec[1]=='' OK", "consec[1] FAILED")
     testcheck.check(string.strcmp(e2, "b") == 0, "consec[2]=='b' OK", "consec[2] FAILED")
 
-    # Test 4: 空字符串
+    # Test 4: empty string
     testcheck.section("Test 4: 空字符串 ''")
     s4: str = ""
     s4.__mbuddy__ = bd
@@ -156,7 +156,7 @@ def main() -> CInt | CExport:
     stdio.printf("split('', ',') len=%lu\n", n4)
     testcheck.check(n4 == 1, "empty len OK (1)", "empty len FAILED expect 1")
 
-    # Test 5: 空格分割句子
+    # Test 5: split on space
     testcheck.section("Test 5: 空格分割 'hello world foo'")
     s5: str = "hello world foo"
     s5.__mbuddy__ = bd
@@ -172,7 +172,7 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(w1, "world") == 0, "space[1]=='world' OK", "space[1] FAILED")
     testcheck.check(string.strcmp(w2, "foo") == 0, "space[2]=='foo' OK", "space[2] FAILED")
 
-    # Test 6: 多字符分隔符 '::'
+    # Test 6: multi-char delimiter '::'
     testcheck.section("Test 6: 多字符分隔符 '::' on 'a::b::c'")
     s6: str = "a::b::c"
     s6.__mbuddy__ = bd
@@ -188,7 +188,7 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(m1, "b") == 0, "multi-colon[1]=='b' OK", "multi-colon[1] FAILED")
     testcheck.check(string.strcmp(m2, "c") == 0, "multi-colon[2]=='c' OK", "multi-colon[2] FAILED")
 
-    # Test 7: 多字符分隔符 ', ' (逗号+空格)
+    # Test 7: multi-char delimiter ', '
     testcheck.section("Test 7: 多字符分隔符 ', ' on 'hello, world, foo'")
     s7: str = "hello, world, foo"
     s7.__mbuddy__ = bd
@@ -204,7 +204,7 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(cs1, "world") == 0, "comma-space[1]=='world' OK", "comma-space[1] FAILED")
     testcheck.check(string.strcmp(cs2, "foo") == 0, "comma-space[2]=='foo' OK", "comma-space[2] FAILED")
 
-    # Test 8: 多字符分隔符在首尾
+    # Test 8: delimiter at edges
     testcheck.section("Test 8: 多字符分隔符首尾 '::a::b::'")
     s8: str = "::a::b::"
     s8.__mbuddy__ = bd
@@ -222,43 +222,43 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(ed2, "b") == 0, "edge[2]=='b' OK", "edge[2] FAILED")
     testcheck.check(string.strcmp(ed3, "") == 0, "edge[3]=='' OK", "edge[3] FAILED")
 
-    # === with 上下文自动注入测试 ===
+    # --- with-context auto injection ---
     testcheck.section("Test 9: with 上下文自动注入 __mbuddy__")
 
     arena2: bytes = stdlib.malloc(65536)
     with memhub.MemBuddy(arena2, 65536) as bd2:
-        # str 变量在 with 上下文内创建，__mbuddy__ 应自动注入（无需手动赋值）
+        # str created in with-block gets __mbuddy__ injected automatically
         w_str: str = "WithTest"
 
-        # 验证 __mbuddy__ 已自动注入（非 NULL）
+        # Verify __mbuddy__ is injected (non-NULL)
         w_buddy: memhub.MemBuddy* = w_str.__mbuddy__
         testcheck.check(int(w_buddy) != 0, "with inject OK: __mbuddy__ auto-injected", "with inject FAIL: __mbuddy__ is NULL")
 
-        # upper() 不需要手动设置 __mbuddy__
+        # upper() needs no manual __mbuddy__
         w_upper: str = w_str.upper()
         stdio.printf("with upper('WithTest') = %s\n", w_upper)
         testcheck.check(string.strcmp(w_upper, "WITHTEST") == 0, "with upper OK", "with upper FAILED")
 
-        # lower() 不需要手动设置 __mbuddy__
+        # lower() needs no manual __mbuddy__
         w_lower: str = w_str.lower()
         stdio.printf("with lower('WithTest') = %s\n", w_lower)
         testcheck.check(string.strcmp(w_lower, "withtest") == 0, "with lower OK", "with lower FAILED")
 
-        # split() 不需要手动设置 __mbuddy__
+        # split() needs no manual __mbuddy__
         w_split_str: str = "x,y,z"
         w_parts = w_split_str.split(',')
         w_n: sizet = len(w_parts)
         stdio.printf("with split('x,y,z') len=%lu\n", w_n)
         testcheck.check(w_n == 3, "with split len OK (3)", "with split len FAILED")
 
-        # 验证多个 str 变量都获得注入
+        # Verify multiple str vars all get injection
         w_str2: str = "Multiple"
         w_buddy2: memhub.MemBuddy* = w_str2.__mbuddy__
         testcheck.check(int(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
 
         test_s: str = "www.gvsds.com"
         list_s: list[str]* = test_s.split('.')
-        # 迭代器测试: for idx, i in zip(range(len(list_s)), list_s)
+        # Iterator test: zip over range and list
         iter_count: int = 0
         for iter_idx, i in zip(range(len(list_s)), list_s):
             stdio.printf("list_s[%d]='%s'\n", iter_idx, i)
@@ -267,7 +267,7 @@ def main() -> CInt | CExport:
         #for i in range(3):
         #    stdio.printf("list_s[%d]='%s'\n", i, list_s[i])
 
-        # === zip() 内置测试 ===
+        # --- zip() builtin ---
         testcheck.section("Test 10: zip(list, list) 元组解包")
         za: str = "a,b,c"
         zb: str = "1,2,3"

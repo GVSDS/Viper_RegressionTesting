@@ -7,12 +7,12 @@ import viperlib
 import w32.win32console
 
 # ============================================================
-# VariadicTest - 测试 snprintf/printf variadic 参数传递
+# VariadicTest - check snprintf/printf variadic argument passing
 # ============================================================
 
-# --- Test 1: %u 格式化小整数 (CUInt8T -> CUnsignedInt) ---
+# --- Test 1: %u formats small int (CUInt8T -> CUnsignedInt) ---
 def test_snprintf_u8():
-    """测试 CUInt8T 值通过 t.CUnsignedInt() 传递给 %u"""
+    """Check a CUInt8T value passed to %u via t.CUnsignedInt()."""
     testcheck.section("Test 1: %u 格式化小整数 (CUInt8T -> CUnsignedInt)")
     hr: uint8 = 14
     mn: uint8 = 30
@@ -24,9 +24,9 @@ def test_snprintf_u8():
     testcheck.ok("CUInt8T -> %u (expect 14:30:59)")
 
 
-# --- Test 2: %u 格式化 CUInt16T ---
+# --- Test 2: %u formats CUInt16T ---
 def test_snprintf_u16():
-    """测试 CUInt16T 值通过 t.CUnsignedInt() 传递给 %u"""
+    """Check a CUInt16T value passed to %u via t.CUnsignedInt()."""
     testcheck.section("Test 2: %u 格式化 CUInt16T")
     yr: uint16 = 2026
     buf: t.CArray[char, 64]
@@ -36,9 +36,9 @@ def test_snprintf_u16():
     testcheck.ok("CUInt16T -> %u (expect 2026)")
 
 
-# --- Test 3: %lu 格式化 CUInt64T ---
+# --- Test 3: %lu formats CUInt64T ---
 def test_snprintf_u64():
-    """测试 CUInt64T 值传递给 %lu"""
+    """Check a CUInt64T value passed to %lu."""
     testcheck.section("Test 3: %lu 格式化 CUInt64T")
     val: uint64 = 1234567890123
     buf: t.CArray[char, 64]
@@ -48,9 +48,9 @@ def test_snprintf_u64():
     testcheck.ok("CUInt64T -> %lu (expect 1234567890123)")
 
 
-# --- Test 4: %d 格式化负数 ---
+# --- Test 4: %d formats negative int ---
 def test_snprintf_d_neg():
-    """测试 %d 格式化负整数"""
+    """Check %d formatting of a negative int."""
     testcheck.section("Test 4: %d 格式化负数")
     val: int = -42
     buf: t.CArray[char, 64]
@@ -60,7 +60,7 @@ def test_snprintf_d_neg():
     testcheck.ok("CInt -> %d neg (expect -42)")
 
 
-# --- Test 5: %d 格式化正数 ---
+# --- Test 5: %d formats positive int ---
 def test_snprintf_d_pos():
     testcheck.section("Test 5: %d 格式化正数")
     val: int = 42
@@ -71,7 +71,7 @@ def test_snprintf_d_pos():
     testcheck.ok("CInt -> %d pos (expect 42)")
 
 
-# --- Test 6: %x 格式化十六进制 ---
+# --- Test 6: %x formats hex ---
 def test_snprintf_x():
     testcheck.section("Test 6: %x 格式化十六进制")
     val: uint32 = 0xDEADBEEF
@@ -82,9 +82,9 @@ def test_snprintf_x():
     testcheck.ok("%x hex (expect 0xdeadbeef)")
 
 
-# --- Test 7: 混合格式化 (模拟 desktop.py 时间格式) ---
+# --- Test 7: mixed formatting (desktop.py time format) ---
 def test_snprintf_mixed():
-    """模拟 desktop.py 的时间格式化"""
+    """Mimic desktop.py time formatting."""
     testcheck.section("Test 7: 混合格式化 (模拟 desktop.py 时间格式)")
     hr: uint8 = 14
     mn: uint8 = 5
@@ -101,18 +101,18 @@ def test_snprintf_mixed():
     testcheck.ok("time format (expect 2026-06-14 14:05:09)")
 
 
-# --- Test 8: printf 直接输出 variadic ---
+# --- Test 8: printf direct variadic output ---
 def test_printf_variadic():
-    """测试 printf 直接输出 variadic 参数"""
+    """Check printf direct variadic output."""
     testcheck.section("Test 8: printf 直接输出 variadic")
     stdio.printf("Test8 (printf direct): %u %d %lu 0x%x (expect 100 -50 999999999 0xcafe)\n",
         uint(100), -50, uint64(999999999), 0xCAFE)
     testcheck.ok("printf direct variadic (expect 100 -50 999999999 0xcafe)")
 
 
-# --- Test 9: 多个 %lu 连续 ---
+# --- Test 9: several consecutive %lu ---
 def test_snprintf_multi_lu():
-    """测试多个 %lu 连续（模拟 perf 日志格式）"""
+    """Check several consecutive %lu (mimics perf log format)."""
     testcheck.section("Test 9: 多个 %lu 连续")
     v1: uint64 = 16
     v2: uint64 = 2
@@ -124,7 +124,7 @@ def test_snprintf_multi_lu():
     testcheck.ok("multi %lu (expect wall=16 work=2 render=11)")
 
 
-# --- Test 10: %u 格式化 0 ---
+# --- Test 10: %u formats zero ---
 def test_snprintf_zero():
     testcheck.section("Test 10: %u 格式化 0")
     val: uint32 = 0
@@ -135,7 +135,7 @@ def test_snprintf_zero():
     testcheck.ok("%u zero (expect 0)")
 
 
-# --- Test 11: %u 格式化大值 ---
+# --- Test 11: %u formats a large value ---
 def test_snprintf_large():
     testcheck.section("Test 11: %u 格式化大值")
     val: uint32 = 4294967295  # 0xFFFFFFFF
@@ -148,7 +148,7 @@ def test_snprintf_large():
 
 # --- Test 12: CUnsignedInt cast from CUInt8T edge values ---
 def test_snprintf_u8_edge():
-    """测试 CUInt8T 边界值"""
+    """Check CUInt8T edge values."""
     testcheck.section("Test 12: CUnsignedInt cast from CUInt8T edge values")
     v0: uint8 = 0
     v127: uint8 = 127

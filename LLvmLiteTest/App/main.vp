@@ -6,16 +6,11 @@ import testcheck
 import mlirlite
 
 
-# 内存大小
-# 单端 MLIR 后 mlirlite 渲染单次 PrintModule 需约 1 MiB 缩进缓冲 + 类型/初值
-# 草稿，且本测试 27 个用例共享**同一个**池（不像 MLIRLiteTest 每用例切子池）
-# ⇒ 512 KB 远不够（池耗尽）。与 MLIRLiteTest 主池同口径放大到 80 MiB。
+# Pool size: PrintModule needs ~1 MiB scratch and all 27 cases share one pool, so use 80 MiB.
 define POOL_SIZE = 83886080  # 80MB
 
 
-# ============================================================
-# 测试 1: TypePrint 类型打印
-# ============================================================
+# --- Test 1: TypePrint ---
 def test_type_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 1: TypePrint")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -29,7 +24,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     "Int32 -> i32",
                     "Int32 fail")
 
-    # 不透明指针: Ptr(Int32) -> !llvm.ptr
+    # opaque pointer: Ptr(Int32) -> !llvm.ptr
     ty_ptr: mlirlite.LLVMType* = core.Ptr(ty_i32)
     buf[0] = 0
     core.PrintType(buf, 64, ty_ptr)
@@ -54,9 +49,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     "Int64 fail")
 
 
-# ============================================================
-# 测试 2: ValuePrint 值打印
-# ============================================================
+# --- Test 2: ValuePrint ---
 def test_value_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 2: ValuePrint")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -65,7 +58,7 @@ def test_value_print(pool: memhub.MemBuddy*):
 
     ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    # 常量 42 -> "42 : i32"（MLIR attribute 文本形态）
+    # const 42 -> "42 : i32" (MLIR attribute text form)
     val42: mlirlite.Value* = mcore.ConstInt32(42)
     buf[0] = 0
     mcore.PrintValue(buf, 64, val42)
@@ -73,7 +66,7 @@ def test_value_print(pool: memhub.MemBuddy*):
                     "ConstInt(42) -> '42 : i32'",
                     "ConstInt fail")
 
-    # SSA 值 %0 -> "%0"（MLIR 操作数不带类型）
+    # SSA value %0 -> "%0" (MLIR operands carry no type)
     name_ssa: str = pool.alloc(16)
     string.strcpy(name_ssa, "%0")
     val_ssa: mlirlite.Value* = mcore.SSAValue(ty_i32, name_ssa)
@@ -84,13 +77,7 @@ def test_value_print(pool: memhub.MemBuddy*):
                     "SSAValue fail")
 
 
-# ============================================================
-# 测试 3: 构建 add 函数
-# llvm.func @add(%a: i32, %b: i32) -> i32 {
-#   %0 = llvm.add %a, %b : i32
-#   llvm.return %0 : i32
-# }
-# ============================================================
+# --- Test 3: build add function ---
 def test_build_add(pool: memhub.MemBuddy*):
     testcheck.section("Test 3: build_add function")
 
@@ -98,22 +85,22 @@ def test_build_add(pool: memhub.MemBuddy*):
     mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
     ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    # 创建模块 + 函数
+    # create module + function
     mod: mlirlite.Module* = mcore.NewModule("test_add")
     func: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
 
-    # 添加参数
+    # add parameters
     mcore.AddParam(func, ty_i32, "%a")
     mcore.AddParam(func, ty_i32, "%b")
 
-    # 创建 entry 块
+    # create entry block
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
-    # 创建 builder
+    # create builder
     builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
 
-    # 为参数创建 Value 包装
+    # wrap parameters as Values
     v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
     v_b: mlirlite.Value* = mcore.SSAValue(ty_i32, "%b")
 
@@ -123,13 +110,13 @@ def test_build_add(pool: memhub.MemBuddy*):
     # ret i32 %0
     mlirlite.build_ret(builder, v_c)
 
-    # 打印函数
+    # print function
     buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     testcheck.info(buf)
 
-    # 验证关键内容
+    # verify key content
     testcheck.check(string.strstr(buf, "llvm.add %a, %b : i32") is not None,
                     "contains 'llvm.add %a, %b : i32'",
                     "missing 'llvm.add'")
@@ -141,17 +128,7 @@ def test_build_add(pool: memhub.MemBuddy*):
                     "missing function definition")
 
 
-# ============================================================
-# 测试 4: 构建 if-then-else 函数（max）
-# llvm.func @max(%a: i32, %b: i32) -> i32 {
-#   %0 = llvm.icmp "sgt" %a, %b : i32
-#   llvm.cond_br %0, ^then, ^else
-# ^then:
-#   llvm.return %a : i32
-# ^else:
-#   llvm.return %b : i32
-# }
-# ============================================================
+# --- Test 4: build if-then-else (max) ---
 def test_build_if_else(pool: memhub.MemBuddy*):
     testcheck.section("Test 4: build if-then-else (max)")
 
@@ -185,13 +162,13 @@ def test_build_if_else(pool: memhub.MemBuddy*):
     mlirlite.position_at_end(builder, else_blk)
     mlirlite.build_ret(builder, v_b)
 
-    # 打印函数
+    # print function
     buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     testcheck.info(buf)
 
-    # 验证关键内容
+    # verify key content
     testcheck.check(string.strstr(buf, "llvm.icmp \"sgt\"") is not None,
                     "contains 'llvm.icmp \"sgt\"'",
                     "missing 'llvm.icmp \"sgt\"'")
@@ -206,9 +183,7 @@ def test_build_if_else(pool: memhub.MemBuddy*):
                     "missing block label '^else:'")
 
 
-# ============================================================
-# 测试 5: 完整模块 ModulePrint
-# ============================================================
+# --- Test 5: ModulePrint ---
 def test_module_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 5: ModulePrint")
 
@@ -217,12 +192,12 @@ def test_module_print(pool: memhub.MemBuddy*):
     ty_i32: mlirlite.LLVMType* = core.Int32()
     ty_void: mlirlite.LLVMType* = core.Void()
 
-    # 创建模块
+    # create module
     mod: mlirlite.Module* = mcore.NewModule("test_module")
     mlirlite.module_set_target(mod, "x86_64-pc-windows-gnu")
     mlirlite.module_set_datalayout(mod, "e-m:w-p270:32:32")
 
-    # 函数 1: add
+    # function 1: add
     func_add: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
     mcore.AddParam(func_add, ty_i32, "%a")
     mcore.AddParam(func_add, ty_i32, "%b")
@@ -234,20 +209,20 @@ def test_module_print(pool: memhub.MemBuddy*):
     v_sum: mlirlite.Value* = mlirlite.build_add(builder1, v_a1, v_b1)
     mlirlite.build_ret(builder1, v_sum)
 
-    # 函数 2: void 函数
+    # function 2: void function
     func_void: mlirlite.Function* = mcore.CreateFunction(mod, "noop", ty_void)
     entry2: mlirlite.BasicBlock* = mcore.CreateBlock(func_void, "entry")
     builder2: mlirlite.IRBuilder* = mcore.NewBuilder(func_void)
     mlirlite.position_at_end(builder2, entry2)
     mlirlite.build_ret_void(builder2)
 
-    # 打印模块
+    # print module
     buf: str = pool.alloc(8192)
     buf[0] = 0
     mcore.PrintModule(buf, 8192, mod)
     testcheck.info(buf)
 
-    # 验证关键内容
+    # verify key content
     testcheck.check(string.strstr(buf, "module {") is not None,
                     "contains 'module {'",
                     "missing 'module {'")
@@ -265,9 +240,7 @@ def test_module_print(pool: memhub.MemBuddy*):
                     "missing 'llvm.return'")
 
 
-# ============================================================
-# 测试 6: 数组类型打印
-# ============================================================
+# --- Test 6: ArrayType ---
 def test_array_type(pool: memhub.MemBuddy*):
     testcheck.section("Test 6: ArrayType")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -293,9 +266,7 @@ def test_array_type(pool: memhub.MemBuddy*):
                     "nested array fail")
 
 
-# ============================================================
-# 测试 7: 结构体类型打印
-# ============================================================
+# --- Test 7: StructType ---
 def test_struct_type(pool: memhub.MemBuddy*):
     testcheck.section("Test 7: StructType")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -317,7 +288,7 @@ def test_struct_type(pool: memhub.MemBuddy*):
                     "struct {i32, i8*} -> !llvm.struct<(i32, !llvm.ptr)>",
                     "struct fail")
 
-    # 空结构体 -> !llvm.struct<()>
+    # empty struct -> !llvm.struct<()>
     ty_empty: mlirlite.LLVMType* = core.Struct(None, 0)
     buf[0] = 0
     core.PrintType(buf, 128, ty_empty)
@@ -326,9 +297,7 @@ def test_struct_type(pool: memhub.MemBuddy*):
                     "empty struct fail")
 
 
-# ============================================================
-# 测试 8: 函数类型打印
-# ============================================================
+# --- Test 8: FuncType ---
 def test_func_type(pool: memhub.MemBuddy*):
     testcheck.section("Test 8: FuncType")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -350,7 +319,7 @@ def test_func_type(pool: memhub.MemBuddy*):
                     "func type -> !llvm.func<i32 (i32, !llvm.ptr)>",
                     "func type fail")
 
-    # void () -> !llvm.func<none ()> — 无参数 void 函数类型
+    # void () -> !llvm.func<none ()>: no-arg void function type
     ty_void: mlirlite.LLVMType* = core.Void()
     ty_func_void: mlirlite.LLVMType* = core.Func(ty_void, None, 0)
     buf[0] = 0
@@ -360,9 +329,7 @@ def test_func_type(pool: memhub.MemBuddy*):
                     "void func fail")
 
 
-# ============================================================
-# 测试 9: 声明系统（declare vs define）
-# ============================================================
+# --- Test 9: Declare vs Define ---
 def test_declare(pool: memhub.MemBuddy*):
     testcheck.section("Test 9: Declare vs Define")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -403,9 +370,7 @@ def test_declare(pool: memhub.MemBuddy*):
                     "define missing body")
 
 
-# ============================================================
-# 测试 10: 浮点类型与 ConstFloat
-# ============================================================
+# --- Test 10: Float Types & ConstFloat ---
 def test_float_types(pool: memhub.MemBuddy*):
     testcheck.section("Test 10: Float Types & ConstFloat")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -444,8 +409,7 @@ def test_float_types(pool: memhub.MemBuddy*):
                     "FP128 -> f128",
                     "FP128 fail")
 
-    # ConstFloat(3.14) -> "0x40091EB851EB851F : f64"
-    # （位模式无精度损失；类型注解为 MLIR 形态 f64）
+    # ConstFloat(3.14) -> "0x40091EB851EB851F : f64" (bit pattern, lossless; MLIR type f64)
     val_pi: mlirlite.Value* = mcore.ConstFloat(ty_double, 3.14)
     buf[0] = 0
     mcore.PrintValue(buf, 128, val_pi)
@@ -457,9 +421,7 @@ def test_float_types(pool: memhub.MemBuddy*):
                     "ConstFloat missing hex pattern")
 
 
-# ============================================================
-# 测试 11: 浮点二元运算
-# ============================================================
+# --- Test 11: Float Binary Ops ---
 def test_float_binops(pool: memhub.MemBuddy*):
     testcheck.section("Test 11: Float Binary Ops")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -492,9 +454,7 @@ def test_float_binops(pool: memhub.MemBuddy*):
                     "missing 'llvm.return'")
 
 
-# ============================================================
-# 测试 12: 位运算与移位
-# ============================================================
+# --- Test 12: Bitwise & Shift Ops ---
 def test_bitwise_ops(pool: memhub.MemBuddy*):
     testcheck.section("Test 12: Bitwise & Shift Ops")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -530,9 +490,7 @@ def test_bitwise_ops(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.shl %2, %b : i32") is not None, "has 'llvm.shl %2, %b : i32'", "missing 'llvm.shl'")
 
 
-# ============================================================
-# 测试 13: FCMP 比较
-# ============================================================
+# --- Test 13: FCMP ---
 def test_fcmp(pool: memhub.MemBuddy*):
     testcheck.section("Test 13: FCMP")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -563,9 +521,7 @@ def test_fcmp(pool: memhub.MemBuddy*):
                     "missing 'llvm.fcmp \"oeq\"'")
 
 
-# ============================================================
-# 测试 14: 类型转换 (zext, ptrtoint, inttoptr)
-# ============================================================
+# --- Test 14: Casts (zext/ptrtoint/inttoptr) ---
 def test_casts(pool: memhub.MemBuddy*):
     testcheck.section("Test 14: Casts (zext/ptrtoint/inttoptr)")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -603,9 +559,7 @@ def test_casts(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.inttoptr %1 : i64 to !llvm.ptr") is not None, "has 'llvm.inttoptr %1 : i64 to !llvm.ptr'", "missing 'llvm.inttoptr'")
 
 
-# ============================================================
-# 测试 15: 浮点转换 (fp2si, si2fp)
-# ============================================================
+# --- Test 15: FP Conversions (fp2si/si2fp) ---
 def test_fp_conversions(pool: memhub.MemBuddy*):
     testcheck.section("Test 15: FP Conversions (fp2si/si2fp)")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -638,9 +592,7 @@ def test_fp_conversions(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.fptosi %0 : f64 to i32") is not None, "has 'llvm.fptosi %0 : f64 to i32'", "missing 'llvm.fptosi'")
 
 
-# ============================================================
-# 测试 16: Phi 节点
-# ============================================================
+# --- Test 16: Phi Node ---
 def test_phi(pool: memhub.MemBuddy*):
     testcheck.section("Test 16: Phi Node")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -682,7 +634,7 @@ def test_phi(pool: memhub.MemBuddy*):
     mcore.PrintFunction(buf, 4096, func)
     testcheck.info(buf)
 
-    # phi 已转为块参数：不再输出 phi 行，改为 ^merge(%…) + llvm.br ^merge(%…)
+    # phi lowered to block args: no phi line, emits ^merge(%...) + llvm.br ^merge(%...)
     testcheck.check(string.strstr(buf, "llvm.br ^merge(%c0 : i32)") is not None, "has 'llvm.br ^merge(%c0 : i32)'", "missing branch block operands")
     testcheck.check(string.strstr(buf, "^merge(%0: i32):") is not None, "has '^merge(%0: i32):'", "missing block arguments")
     testcheck.check(string.strstr(buf, "^then:") is not None, "has '^then:'", "missing '^then:'")
@@ -690,9 +642,7 @@ def test_phi(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, " = phi ") is None, "phi 行不再输出", "phi line should not be emitted")
 
 
-# ============================================================
-# 测试 17: Switch
-# ============================================================
+# --- Test 17: Switch ---
 def test_switch(pool: memhub.MemBuddy*):
     testcheck.section("Test 17: Switch")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -737,9 +687,7 @@ def test_switch(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "^case0:") is not None, "has '^case0:'", "missing '^case0:'")
 
 
-# ============================================================
-# 测试 18: Select
-# ============================================================
+# --- Test 18: Select ---
 def test_select(pool: memhub.MemBuddy*):
     testcheck.section("Test 18: Select")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -768,9 +716,7 @@ def test_select(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.select %0, %a, %b : i1, i32") is not None, "has 'llvm.select %0, %a, %b : i1, i32'", "missing 'llvm.select'")
 
 
-# ============================================================
-# 测试 19: 全局变量 (字符串常量 + 整数)
-# ============================================================
+# --- Test 19: Global Variables ---
 def test_globals(pool: memhub.MemBuddy*):
     testcheck.section("Test 19: Global Variables")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -781,13 +727,13 @@ def test_globals(pool: memhub.MemBuddy*):
     mod: mlirlite.Module* = mcore.NewModule("test_globals")
     mlirlite.module_set_target(mod, "x86_64-pc-windows-gnu")
 
-    # 字符串常量: @.str = private unnamed_addr constant [6 x i8] c"hello\00"
+    # string constant: @.str = private unnamed_addr constant [6 x i8] c"hello\00"
     mcore.CreateGlobalString(mod, ".str", "hello")
 
-    # 整数全局变量: @counter = global i32 0
+    # integer global: @counter = global i32 0
     mcore.CreateGlobalInt(mod, "counter", 32, 0)
 
-    # 添加一个简单函数使模块非空
+    # add a simple function to make the module non-empty
     func: mlirlite.Function* = mcore.CreateFunction(mod, "use_global", ty_void)
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
     builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
@@ -809,9 +755,7 @@ def test_globals(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.mlir.global @counter") is not None, "has 'llvm.mlir.global @counter'", "missing integer global")
 
 
-# ============================================================
-# 测试 20: 函数与参数属性
-# ============================================================
+# --- Test 20: Function & Param Attributes ---
 def test_attributes(pool: memhub.MemBuddy*):
     testcheck.section("Test 20: Function & Param Attributes")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -822,15 +766,15 @@ def test_attributes(pool: memhub.MemBuddy*):
     mod: mlirlite.Module* = mcore.NewModule("test_attrs")
     func: mlirlite.Function* = mcore.CreateFunction(mod, "attr_test", ty_i32)
 
-    # 参数 0: i32 noundef %x
+    # param 0: i32 noundef %x
     p0: mlirlite.Param* = mcore.AddParam(func, ty_i32, "%x")
     mcore.ParamSetAttrs(p0, "noundef")
 
-    # 参数 1: i8* nocapture %p
+    # param 1: i8* nocapture %p
     p1: mlirlite.Param* = mcore.AddParam(func, ty_i8ptr, "%p")
     mcore.ParamSetAttrs(p1, "nocapture")
 
-    # 函数属性: nounwind
+    # function attribute: nounwind
     mcore.FunctionSetAttrs(func, "nounwind")
 
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
@@ -844,8 +788,8 @@ def test_attributes(pool: memhub.MemBuddy*):
     mcore.PrintFunction(buf, 4096, func)
     testcheck.info(buf)
 
-    # MLIR v1: 函数/参数属性（Attrs）记录但不渲染（见 includes/mlirlite/README.md §3.3）。
-    # 故断言签名本身正确、且属性文本不出现（模型字段仍保留）。
+    # MLIR v1 records func/param attrs but does not render them (see mlirlite README 3.3),
+    # so assert the signature is correct and attr text is absent; model fields remain.
     testcheck.check(string.strstr(buf, "llvm.func @attr_test(%x: i32, %p: !llvm.ptr) -> i32") is not None,
                     "has 'llvm.func @attr_test(%x: i32, %p: !llvm.ptr) -> i32'",
                     "missing attribute-test function signature")
@@ -860,9 +804,7 @@ def test_attributes(pool: memhub.MemBuddy*):
                     "func attr 'nounwind' should not be rendered")
 
 
-# ============================================================
-# 测试 21: 原子操作 (atomicrmw / cmpxchg)
-# ============================================================
+# --- Test 21: Atomic Ops ---
 def test_atomic(pool: memhub.MemBuddy*):
     testcheck.section("Test 21: Atomic Ops")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -893,9 +835,7 @@ def test_atomic(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "monotonic") is not None, "has 'monotonic'", "missing 'monotonic'")
 
 
-# ============================================================
-# 测试 22: 内联汇编 + unreachable
-# ============================================================
+# --- Test 22: Inline ASM & Unreachable ---
 def test_inline_asm_unreachable(pool: memhub.MemBuddy*):
     testcheck.section("Test 22: Inline ASM & Unreachable")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -927,9 +867,7 @@ def test_inline_asm_unreachable(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "llvm.unreachable") is not None, "has 'llvm.unreachable'", "missing 'llvm.unreachable'")
 
 
-# ============================================================
-# 测试 23: SSA 验证 - 合法函数通过
-# ============================================================
+# --- Test 23: Verify Valid Function ---
 def test_verify_valid(pool: memhub.MemBuddy*):
     testcheck.section("Test 23: Verify Valid Function")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -958,9 +896,7 @@ def test_verify_valid(pool: memhub.MemBuddy*):
                     "wrong error code for valid function")
 
 
-# ============================================================
-# 测试 24: SSA 验证 - 缺少终止指令
-# ============================================================
+# --- Test 24: Verify Missing Terminator ---
 def test_verify_no_terminator(pool: memhub.MemBuddy*):
     testcheck.section("Test 24: Verify Missing Terminator")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -974,7 +910,7 @@ def test_verify_no_terminator(pool: memhub.MemBuddy*):
     builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
     v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
-    mlirlite.build_add(builder, v_a, v_a)  # 无 ret
+    mlirlite.build_add(builder, v_a, v_a)  # no ret
 
     result: mlirlite.VerifyResult* = mcore.NewVerifyResult(4096)
     err_count: int = mcore.VerifyFunction(func, result)
@@ -986,9 +922,7 @@ def test_verify_no_terminator(pool: memhub.MemBuddy*):
                     "wrong error code for missing terminator")
 
 
-# ============================================================
-# 测试 25: SSA 验证 - 重复定义
-# ============================================================
+# --- Test 25: Verify Duplicate Definition ---
 def test_verify_duplicate_def(pool: memhub.MemBuddy*):
     testcheck.section("Test 25: Verify Duplicate Definition")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -1004,7 +938,7 @@ def test_verify_duplicate_def(pool: memhub.MemBuddy*):
     v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
     v_c: mlirlite.Value* = mlirlite.build_add(builder, v_a, v_a)
 
-    # 手动追加重复定义行 "%0 = add i32 %a, %a"
+    # manually append a duplicate definition line "%0 = add i32 %a, %a"
     dup_text: str = pool.alloc(64)
     string.strcpy(dup_text, "%0 = add i32 %a, %a")
     mlirlite.block_append_text(pool, entry, dup_text)
@@ -1021,9 +955,7 @@ def test_verify_duplicate_def(pool: memhub.MemBuddy*):
                     "wrong error code for duplicate def")
 
 
-# ============================================================
-# 测试 26: SSA 验证 - 未定义引用
-# ============================================================
+# --- Test 26: Verify Undefined Use ---
 def test_verify_undef_use(pool: memhub.MemBuddy*):
     testcheck.section("Test 26: Verify Undefined Use")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -1035,12 +967,12 @@ def test_verify_undef_use(pool: memhub.MemBuddy*):
     mcore.AddParam(func, ty_i32, "%a")
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
-    # 手动追加含未定义引用的行 "%0 = add i32 %ghost, %a"
+    # manually append a line with an undefined reference "%0 = add i32 %ghost, %a"
     line1: str = pool.alloc(64)
     string.strcpy(line1, "%0 = add i32 %ghost, %a")
     mlirlite.block_append_text(pool, entry, line1)
 
-    # 手动追加终止指令
+    # manually append terminator
     line2: str = pool.alloc(64)
     string.strcpy(line2, "ret i32 %0")
     mlirlite.block_append_text(pool, entry, line2)
@@ -1056,9 +988,7 @@ def test_verify_undef_use(pool: memhub.MemBuddy*):
                     "wrong error code for undefined use")
 
 
-# ============================================================
-# 测试 27: SSA 验证 - 模块级验证（含 phi/分支，验证块标签修复）
-# ============================================================
+# --- Test 27: Verify Module (phi/labels) ---
 def test_verify_module(pool: memhub.MemBuddy*):
     testcheck.section("Test 27: Verify Module (phi/labels)")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -1067,7 +997,7 @@ def test_verify_module(pool: memhub.MemBuddy*):
 
     mod: mlirlite.Module* = mcore.NewModule("verify_module")
 
-    # 函数 1: 简单 add（合法）
+    # function 1: simple add (valid)
     func1: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
     mcore.AddParam(func1, ty_i32, "%a")
     mcore.AddParam(func1, ty_i32, "%b")
@@ -1079,7 +1009,7 @@ def test_verify_module(pool: memhub.MemBuddy*):
     v_c: mlirlite.Value* = mlirlite.build_add(builder1, v_a, v_b)
     mlirlite.build_ret(builder1, v_c)
 
-    # 函数 2: 含 phi 与分支（合法，验证块标签不被误报为未定义）
+    # function 2: phi + branches (valid; block labels must not be flagged undefined)
     func2: mlirlite.Function* = mcore.CreateFunction(mod, "phi_test", ty_i32)
     f2_entry: mlirlite.BasicBlock* = mcore.CreateBlock(func2, "entry")
     then_blk: mlirlite.BasicBlock* = mcore.CreateBlock(func2, "then")
@@ -1122,7 +1052,7 @@ def test_verify_module(pool: memhub.MemBuddy*):
 def main() -> int:
     testcheck.begin("LLvmLiteTest: mlirlite 库（LLVM IR 生成）")
 
-    # 初始化 mpool
+    # init pool
     pool_mem: bytes = stdlib.malloc(POOL_SIZE)
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")

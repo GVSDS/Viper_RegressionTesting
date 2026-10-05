@@ -6,14 +6,13 @@ from g4node import G4Node, new_g4node
 
 
 # ============================================================
-# caller3: 第三个导入 G4Node 的模块
-#
-# 进一步增加跨模块引用，模拟 TransPyV 30+ 模块环境
+# caller3: a third module importing G4Node.
+# Adds more cross-module references (many-module environment).
 # ============================================================
 
 
 def caller3_find_tail(head: G4Node*) -> G4Node*:
-    """找到链表尾部节点，直接访问 Next"""
+    """Find the chain tail, accessing Next directly."""
     if head is None:
         return None
     cur: G4Node* = head
@@ -23,7 +22,7 @@ def caller3_find_tail(head: G4Node*) -> G4Node*:
 
 
 def caller3_append(head: G4Node*, new_node: G4Node*) -> G4Node*:
-    """在链表末尾追加节点"""
+    """Append a node at the chain tail."""
     if head is None:
         return new_node
     tail: G4Node* = caller3_find_tail(head)

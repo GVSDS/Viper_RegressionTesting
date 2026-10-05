@@ -3,10 +3,8 @@ from t import CInt
 
 
 # ============================================================
-# 跨模块 isinstance 测试库
-#
-# 供 main.vp import 使用：验证 isinstance 对"定义在其他模块
-# 的类"也能正确比较（对象 vtable 指针跨 obj 链接解析）。
+# Cross-module isinstance test library: classes defined here are imported by
+# main.vp to verify vtable comparison resolves across object files.
 # ============================================================
 
 

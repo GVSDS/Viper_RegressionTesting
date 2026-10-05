@@ -74,9 +74,7 @@ def dump_mlir(pool: memhub.MemBuddy*, name: str, buf: str):
     stdio.printf("  [mlir] wrote %s (%d bytes)\n", path, int(string.strlen(buf)))
 
 
-# ============================================================
-# 测试 1: TypePrint 类型打印（MLIR llvm 方言类型）
-# ============================================================
+# Test 1: TypePrint - MLIR LLVM dialect type printing
 def test_type_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 1: TypePrint (MLIR types)")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -90,7 +88,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     "Int32 -> i32",
                     "Int32 fail")
 
-    # 不透明指针: Ptr(Int32) -> !llvm.ptr
+    # Opaque pointer: Ptr(Int32) -> !llvm.ptr
     ty_ptr: mlirlite.LLVMType* = core.Ptr(ty_i32)
     buf[0] = 0
     core.PrintType(buf, 256, ty_ptr)
@@ -137,7 +135,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     "struct {i32, i8*} -> !llvm.struct<(i32, !llvm.ptr)>",
                     "struct fail")
 
-    # 空结构体 -> !llvm.struct<()>
+    # Empty struct -> !llvm.struct<()>
     ty_empty: mlirlite.LLVMType* = core.Struct(None, 0)
     buf[0] = 0
     core.PrintType(buf, 256, ty_empty)
@@ -145,7 +143,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     "empty struct -> !llvm.struct<()>",
                     "empty struct fail")
 
-    # 函数类型 i32 (i32, i8*) -> !llvm.func<i32 (i32, !llvm.ptr)>
+    # Function type -> !llvm.func<i32 (i32, !llvm.ptr)>
     fn1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
     fn2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     fhead: mlirlite.ParamNode* = core.ParamListAppend(None, None, fn1)
@@ -154,8 +152,8 @@ def test_type_print(pool: memhub.MemBuddy*):
     buf[0] = 0
     core.PrintType(buf, 256, ty_func)
     dump_mlir(pool, "T01_types.mlir", buf)
-    # 把实际值写进失败报文：断言失败时 FAIL 行本身就能看到真实形态
-    # （避免"只看到 fail、看不到实际值"导致来回猜）
+    # Embed the actual value in the failure message so the FAIL line shows the
+    # real form directly, avoiding guesswork from a bare "fail"
     ft_msg: str = pool.alloc(512)
     if ft_msg is not None:
         viperlib.snprintf(ft_msg, 512,
@@ -166,9 +164,7 @@ def test_type_print(pool: memhub.MemBuddy*):
                     ft_msg)
 
 
-# ============================================================
-# 测试 2: ValuePrint 值打印（MLIR，仅供诊断）
-# ============================================================
+# Test 2: ValuePrint - value printing (diagnostics only)
 def test_value_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 2: ValuePrint (MLIR)")
     core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
@@ -177,7 +173,7 @@ def test_value_print(pool: memhub.MemBuddy*):
 
     ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    # 常量 42 -> "42 : i32"
+    # Constant 42 -> "42 : i32"
     val42: mlirlite.Value* = mcore.ConstInt32(42)
     buf[0] = 0
     mcore.PrintValue(buf, 128, val42)
@@ -185,7 +181,7 @@ def test_value_print(pool: memhub.MemBuddy*):
                     "ConstInt(42) -> '42 : i32'",
                     "ConstInt fail")
 
-    # SSA 值 -> "%0"（MLIR 操作数不带类型）
+    # SSA value -> "%0" (MLIR operands carry no type)
     val_ssa: mlirlite.Value* = mcore.SSAValue(ty_i32, "%0")
     buf[0] = 0
     mcore.PrintValue(buf, 128, val_ssa)
@@ -195,13 +191,7 @@ def test_value_print(pool: memhub.MemBuddy*):
                     "SSAValue fail")
 
 
-# ============================================================
-# 测试 3: 构建 add 函数
-# llvm.func @add(%a: i32, %b: i32) -> i32 {
-#   %0 = llvm.add %a, %b : i32
-#   llvm.return %0 : i32
-# }
-# ============================================================
+# Test 3: build add function (llvm.func @add + llvm.add + llvm.return)
 def test_build_add(pool: memhub.MemBuddy*):
     testcheck.section("Test 3: build_add function")
 
@@ -247,9 +237,7 @@ def test_build_add(pool: memhub.MemBuddy*):
                     "entry block should not be labelled")
 
 
-# ============================================================
-# 测试 4: if-else（max）
-# ============================================================
+# Test 4: build if-then-else (max)
 def test_build_if_else(pool: memhub.MemBuddy*):
     testcheck.section("Test 4: build if-then-else (max)")
 
@@ -301,9 +289,7 @@ def test_build_if_else(pool: memhub.MemBuddy*):
                     "missing block label '^else:'")
 
 
-# ============================================================
-# 测试 5: void 函数
-# ============================================================
+# Test 5: void function
 def test_build_void(pool: memhub.MemBuddy*):
     testcheck.section("Test 5: void function")
 
@@ -333,9 +319,7 @@ def test_build_void(pool: memhub.MemBuddy*):
                     "missing 'llvm.return'")
 
 
-# ============================================================
-# 测试 6: 模块输出（module / declare vs define）
-# ============================================================
+# Test 6: module printing (module / declare vs define)
 def test_module_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 6: ModulePrint")
 
@@ -347,7 +331,7 @@ def test_module_print(pool: memhub.MemBuddy*):
     mlirlite.module_set_target(mod, "x86_64-pc-windows-gnu")
     mlirlite.module_set_datalayout(mod, "e-m:w-p270:32:32")
 
-    # declare: llvm.func @extern_func(%x: i32) -> i32（无体）
+    # declare: llvm.func @extern_func(%x: i32) -> i32 (no body)
     func_decl: mlirlite.Function* = mcore.CreateDeclare(mod, "extern_func", ty_i32)
     mcore.AddParam(func_decl, ty_i32, "%x")
 
@@ -387,9 +371,7 @@ def test_module_print(pool: memhub.MemBuddy*):
                     "missing define body")
 
 
-# ============================================================
-# 测试 7: 常量物化（操作数 42 -> llvm.mlir.constant）
-# ============================================================
+# Test 7: constant materialization (operand 42 -> llvm.mlir.constant)
 def test_const_materialize(pool: memhub.MemBuddy*):
     testcheck.section("Test 7: constant materialization")
 
@@ -423,7 +405,7 @@ def test_const_materialize(pool: memhub.MemBuddy*):
                     "add 行引用物化后的 SSA 名 '%c0'",
                     "add line does not reference materialized constant")
 
-    # 同 (类型,文本) 常量只物化一次：add 的两个操作数都是 42
+    # Same (type, text) constant materializes once: both add operands are 42
     func2: mlirlite.Function* = mcore.CreateFunction(mod, "const_twice", ty_i32)
     entry2: mlirlite.BasicBlock* = mcore.CreateBlock(func2, "entry")
     builder2: mlirlite.IRBuilder* = mcore.NewBuilder(func2)
@@ -439,9 +421,7 @@ def test_const_materialize(pool: memhub.MemBuddy*):
                     "constant dedup failed")
 
 
-# ============================================================
-# 测试 8: phi -> 块参数
-# ============================================================
+# Test 8: phi -> block arguments
 def test_phi_block_args(pool: memhub.MemBuddy*):
     testcheck.section("Test 8: phi -> block arguments")
 
@@ -497,9 +477,7 @@ def test_phi_block_args(pool: memhub.MemBuddy*):
                     "phi line should not be emitted")
 
 
-# ============================================================
-# 测试 9: 内存 / 调用 / 转换
-# ============================================================
+# Test 9: memory / call / cast
 def test_mem_call_cast(pool: memhub.MemBuddy*):
     testcheck.section("Test 9: memory / call / cast")
 
@@ -544,9 +522,8 @@ def test_mem_call_cast(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T09_mem_call_cast.mlir", buf)
 
-    # 整模块另存：mlir-opt 要求被调符号在模块作用域内**有声明**；
-    # 单函数文本不含 declare，会报
-    #   'llvm.call' op 'callee' does not reference a symbol in the current scope
+    # Save the whole module: mlir-opt requires callees declared at module scope,
+    # otherwise single-function text without declare fails symbol resolution
     decl: mlirlite.Function* = mcore.CreateDeclare(mod, "callee", ty_i32)
     mcore.AddParam(decl, ty_i32, "%x")
     mbuf: str = pool.alloc(65536)
@@ -571,9 +548,7 @@ def test_mem_call_cast(pool: memhub.MemBuddy*):
                     "contains 'llvm.ptrtoint'", "missing 'llvm.ptrtoint'")
 
 
-# ============================================================
-# 测试 10: 全局变量（字符串常量 / 整数 / 整型数组）
-# ============================================================
+# Test 10: global variables (string constant / int / int array)
 def test_globals(pool: memhub.MemBuddy*):
     testcheck.section("Test 10: Global Variables")
 
@@ -591,8 +566,8 @@ def test_globals(pool: memhub.MemBuddy*):
     # @counter = global i32 0
     mcore.CreateGlobalInt(mod, "counter", 32, 0)
 
-    # @arr = [i8 1, i8 2] -> [1 : i8, 2 : i8]（元素带类型注解；dense<...> 对
-    # !llvm.array 非法——dense 只接受 builtin shaped 类型，实测 mlir-opt 22.1.8）
+    # @arr = [i8 1, i8 2] -> [1 : i8, 2 : i8] (elements carry type annotations);
+    # dense<...> is illegal for !llvm.array (it only accepts builtin shaped types)
     ty_arr2: mlirlite.LLVMType* = core.Array(ty_i8, 2)
     gv_arr: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "arr", ty_arr2)
     init_arr: str = pool.alloc(32)
@@ -614,26 +589,24 @@ def test_globals(pool: memhub.MemBuddy*):
 
     testcheck.check(string.strstr(buf, "llvm.mlir.global") is not None,
                     "contains 'llvm.mlir.global'", "missing 'llvm.mlir.global'")
-    # 符号名以 '.' 开头必须加引号（MLIR 裸名须字母/下划线开头）
-    # 实际形态：llvm.mlir.global … constant @".str"("hello\00") : !llvm.array<6 x i8>
+    # A '.'-prefixed symbol name must be quoted (MLIR bare names start with a letter or _)
+    # Actual form: llvm.mlir.global ... constant @".str"("hello\00") : !llvm.array<6 x i8>
     testcheck.check(string.strstr(buf, "@\".str\"(") is not None,
                     "字符串全局名引号形态 '@\".str\"('", "missing quoted string global name")
-    # 字符串属性长度必须等于 i8 数组长度 ⇒ 尾随 NUL 必须保留在属性里
-    # （剥掉 \00 会被 mlir-opt 拒绝；改为剥类型里的 NUL 则会丢 C 串终止符、破坏 ABI）
+    # The string attribute length must equal the i8 array length, so the trailing
+    # NUL must stay: mlir-opt rejects stripping \00, and dropping it breaks the ABI
     testcheck.check(string.strstr(buf, "hello\\00") is not None,
                     "字符串初值保留 NUL 'hello\\00'", "missing string initializer")
     testcheck.check(string.strstr(buf, "!llvm.array<6 x i8>") is not None,
                     "contains '!llvm.array<6 x i8>'", "missing string global type")
     testcheck.check(string.strstr(buf, "@counter(0 : i32) : i32") is not None,
                     "整数全局 '@counter(0 : i32) : i32'", "missing integer global")
-    # 数组属性：元素带类型注解（dense<...> 对 !llvm.array 非法，只接受 builtin shaped 类型）
+    # Array attribute: elements carry type annotations (dense<...> invalid for !llvm.array)
     testcheck.check(string.strstr(buf, "[1 : i8, 2 : i8]") is not None,
                     "整型数组初值 '[1 : i8, 2 : i8]'", "missing array initializer")
 
 
-# ============================================================
-# 测试 11: SSA 验证（合法函数 0 错误）
-# ============================================================
+# Test 11: SSA verification (valid function, 0 errors)
 def test_verify_valid(pool: memhub.MemBuddy*):
     testcheck.section("Test 11: Verify valid function")
 
@@ -656,7 +629,7 @@ def test_verify_valid(pool: memhub.MemBuddy*):
     result: mlirlite.VerifyResult* = mcore.NewVerifyResult(4096)
     err_count: int = mcore.VerifyFunction(func, result)
 
-    # 本测试原本没有渲染步骤；为落盘验收补一次 PrintFunction（不涉及断言）
+    # Render once via PrintFunction for on-disk acceptance (no assertion involved)
     buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
@@ -670,16 +643,8 @@ def test_verify_valid(pool: memhub.MemBuddy*):
                     "wrong error code for valid function")
 
 
-# ============================================================
-# 测试 12: 结构体/vtable 全局初值 → initializer region
-#
-# 覆盖: ① vtable 结构体（null + bitcast 符号引用）；② 指针数组 + GEP 常量表达式
-# （GEP 整体视为 addressof）；③ 符号名引号口径（LLVM 口径 @"m0" 剥引号后按 MLIR
-# 口径重加：m0 可裸写 → @m0；数字开头的 9m 需引号 → @"9m"）；④ 根级裸
-# null / zeroinitializer（属性形态 `(zeroinitializer)` 被 mlir-opt 拒绝，
-# 实测 22.1.8 报 "expected attribute value"）→ region + llvm.mlir.zero。
-# 断言依赖的形态（含整模块）均已用 mlir-opt 22.1.8 实测通过。
-# ============================================================
+# Test 12: struct/vtable globals lower to initializer regions
+# Covers vtable bitcast refs, GEP addressof, quoted names, bare null/zeroinitializer
 def test_struct_global(pool: memhub.MemBuddy*):
     testcheck.section("Test 12: struct/vtable global initializer (region)")
 
@@ -690,8 +655,8 @@ def test_struct_global(pool: memhub.MemBuddy*):
 
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_struct_global")
 
-    # ---- ① vtable 结构体 { i8*, i8*, i8* } ----
-    # Initializer 是 TPV 生成的 LLVM 语法聚合串：null + bitcast 符号引用
+    # ---- (1) vtable struct { i8*, i8*, i8* } ----
+    # Initializer is a TPV-generated LLVM syntax aggregate: null + bitcast symbol refs
     vt1: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     vt2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     vt3: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
@@ -705,15 +670,15 @@ def test_struct_global(pool: memhub.MemBuddy*):
     string.strcpy(init_vt,
                   "{ i8* null, i8* bitcast (i8* (i8*)* @\"m0\" to i8*), i8* bitcast (i8* (i8*)* @m1 to i8*) }")
     gv_vt.Initializer = init_vt
-    # IsConstant=1 + linkage 默认 external ⇒ 初值非空时**不输出** external 关键字
+    # IsConstant=1 with default external linkage: a non-empty initializer omits the keyword
     mcore.GlobalSetConstant(gv_vt, 1)
-    # 声明被引用的方法符号，使模块自洽（mlir-opt 要求 addressof 目标可解析）
+    # Declare referenced method symbols so the module is self-consistent for mlir-opt
     d_m0: mlirlite.Function* = mcore.CreateDeclare(mod, "m0", ty_i8ptr)
     mcore.AddParam(d_m0, ty_i8ptr, "%self")
     d_m1: mlirlite.Function* = mcore.CreateDeclare(mod, "m1", ty_i8ptr)
     mcore.AddParam(d_m1, ty_i8ptr, "%self")
 
-    # ---- ③ 引号重加分支: LLVM 裸名 @9m（数字开头）→ MLIR 需 @"9m" ----
+    # ---- (3) re-quoting branch: LLVM bare name @9m (digit start) -> MLIR @"9m" ----
     vq1: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     ty_vtq: mlirlite.LLVMType* = core.Struct(vq1, 1)
     gv_vtq: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "vtq", ty_vtq)
@@ -725,8 +690,8 @@ def test_struct_global(pool: memhub.MemBuddy*):
     d_9m: mlirlite.Function* = mcore.CreateDeclare(mod, "9m", ty_i8ptr)
     mcore.AddParam(d_9m, ty_i8ptr, "%self")
 
-    # ---- ② 指针数组 + GEP 常量表达式 ----
-    # @s0 = [3 x i8]（供 GEP 常量表达式指向）
+    # ---- (2) pointer array + GEP constant expression ----
+    # @s0 = [3 x i8], the target of the GEP constant expression
     mcore.CreateGlobalString(mod, "s0", "ab")
     ty_arr2: mlirlite.LLVMType* = core.Array(ty_i8ptr, 2)
     gv_arr: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "arr", ty_arr2)
@@ -736,26 +701,22 @@ def test_struct_global(pool: memhub.MemBuddy*):
     gv_arr.Initializer = init_arr
     mcore.GlobalSetLinkage(gv_arr, "internal")
 
-    # ---- ②' 根级裸 GEP（TPV `_build_string_ptr_initializer` 的指针全局形态） ----
-    # 初值无类型前缀，直接是 getelementptr 常量表达式
+    # ---- (2') root bare GEP (TPV pointer-global form) ----
+    # Initializer has no type prefix; it is a bare getelementptr constant expression
     gv_sp: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "sp", ty_i8ptr)
     init_sp: str = pool.alloc(192)
     string.strcpy(init_sp,
                   "getelementptr inbounds ([3 x i8], [3 x i8]* @s0, i32 0, i32 0)")
     gv_sp.Initializer = init_sp
 
-    # ---- ④ 根级裸 null / zeroinitializer 全局 ----
-    # 这两类初值原先走属性路径产出 `(zeroinitializer)`，被 mlir-opt 22.1.8 拒绝
-    # （实测报 "expected attribute value"）；现改走 region：
-    # `@名() : <顶层类型> { <llvm.mlir.zero>; llvm.return }`。
-    # TPV 侧真实存在这类写法（FuncGenMixin / CallGenVt / TranslatorGenMixin /
-    # ExprGenConst 均设 Initializer = "null" 或 "zeroinitializer"）。
+    # ---- (4) root bare null / zeroinitializer globals ----
+    # Lowered to a region with llvm.mlir.zero (mlir-opt rejects the (zeroinitializer) attr form)
     gv_pn: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "pnull", ty_i8ptr)
     init_pn: str = pool.alloc(16)
     string.strcpy(init_pn, "null")
     gv_pn.Initializer = init_pn
 
-    # 整型数组 + 裸 zeroinitializer：顶层类型取自 gv.Ty（此处 !llvm.array<2 x i32>）
+    # Int array + bare zeroinitializer: top-level type comes from gv.Ty (!llvm.array<2 x i32>)
     ty_i32: mlirlite.LLVMType* = core.Int32()
     ty_arr_i32: mlirlite.LLVMType* = core.Array(ty_i32, 2)
     gv_za: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "zarr", ty_arr_i32)
@@ -769,14 +730,14 @@ def test_struct_global(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T12_struct_global.mlir", buf)
 
-    # ① vtable 型: region 形态 + 顶层聚合类型；元素类型注解来自全局类型树
+    # (1) vtable: region form + top-level aggregate type; element annotations from type tree
     testcheck.check(string.strstr(buf, "@vt() : !llvm.struct<(!llvm.ptr, !llvm.ptr, !llvm.ptr)>") is not None,
                     "vtable 全局 region 形态 '@vt() : !llvm.struct<(…, …, …)>'",
                     "missing vtable global region header")
     testcheck.check(string.strstr(buf, "llvm.mlir.undef : !llvm.struct<(!llvm.ptr, !llvm.ptr, !llvm.ptr)>") is not None,
                     "含 'llvm.mlir.undef'（insertvalue 链起点）",
                     "missing llvm.mlir.undef")
-    # LLVM 口径 @"m0" 剥引号后按 MLIR 口径裸写 @m0（m0 是合法 MLIR 裸名）
+    # LLVM @"m0" is unquoted to bare @m0 (a valid MLIR bare name)
     testcheck.check(string.strstr(buf, "llvm.mlir.addressof @m0 : !llvm.ptr") is not None,
                     "bitcast 中的 @\"m0\" → 'llvm.mlir.addressof @m0 : !llvm.ptr'",
                     "missing addressof for m0")
@@ -795,12 +756,12 @@ def test_struct_global(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "external") is None,
                     "external + 有初值 ⇒ 不输出 linkage 关键字",
                     "unexpected 'external' keyword")
-    # ③ 数字开头的符号名需引号（_ll_name_needs_quote 判据）
+    # (3) digit-leading symbol names need quotes (per _ll_name_needs_quote)
     testcheck.check(string.strstr(buf, "llvm.mlir.addressof @\"9m\" : !llvm.ptr") is not None,
                     "数字开头符号名重加引号 'llvm.mlir.addressof @\"9m\" : !llvm.ptr'",
                     "missing quoted addressof for 9m")
 
-    # ② 指针数组 + GEP: GEP 常量表达式 → addressof；数组全局类型 + 下标路径
+    # (2) pointer array + GEP: GEP constant -> addressof; array global type + index path
     testcheck.check(string.strstr(buf, "@arr() : !llvm.array<2 x !llvm.ptr>") is not None,
                     "数组全局 region 形态 '@arr() : !llvm.array<2 x !llvm.ptr>'",
                     "missing array global region header")
@@ -814,12 +775,12 @@ def test_struct_global(pool: memhub.MemBuddy*):
                     "下标 1 形态 '[1] : !llvm.array<2 x !llvm.ptr>'",
                     "missing index [1] insertvalue")
 
-    # ②' 根级裸 GEP（无类型前缀）: 顶层叶子 region，无 undef/insertvalue
+    # (2') root bare GEP: top-level leaf region, no undef/insertvalue
     testcheck.check(string.strstr(buf, "@sp() : !llvm.ptr") is not None,
                     "根级裸 GEP → '@sp() : !llvm.ptr'（顶层叶子 region）",
                     "missing root bare-GEP global")
 
-    # ④ 根级裸 null（指针全局）: region 形态，属性括号为空，顶层类型取自 gv.Ty
+    # (4) root bare null pointer global: region form, empty parens, type from gv.Ty
     testcheck.check(string.strstr(buf, "@pnull() : !llvm.ptr") is not None,
                     "根级裸 null → '@pnull() : !llvm.ptr'（region 形态）",
                     "missing bare-null pointer global region header")
@@ -830,7 +791,7 @@ def test_struct_global(pool: memhub.MemBuddy*):
                     "region 内含 'llvm.return'",
                     "missing llvm.return in region")
 
-    # ④' 裸 zeroinitializer（整型数组）: region 形态，zero 的类型即顶层类型
+    # (4') bare zeroinitializer int array: region form, zero type is the top-level type
     testcheck.check(string.strstr(buf, "@zarr() : !llvm.array<2 x i32>") is not None,
                     "裸 zeroinitializer → '@zarr() : !llvm.array<2 x i32>'（region 形态）",
                     "missing zeroinitializer array global region header")
@@ -838,25 +799,14 @@ def test_struct_global(pool: memhub.MemBuddy*):
                     "裸 zeroinitializer → 'llvm.mlir.zero : !llvm.array<2 x i32>'",
                     "missing llvm.mlir.zero for zeroinitializer array global")
 
-    # 两类都不得再落到属性形态（mlir-opt 22.1.8 报 "expected attribute value"）
+    # Both must never fall back to the attribute form (mlir-opt rejects it)
     testcheck.check(string.strstr(buf, "(zeroinitializer)") is None,
                     "属性形态 '(zeroinitializer)' 不再出现",
                     "rejected attribute form '(zeroinitializer)' leaked")
 
 
-# ============================================================
-# 测试 13: alloca 对齐 / switch / inline_asm（v1 三项缺口的补齐）
-#
-# 三项的 MLIR 形态均由 mlir-opt 22.1.8 实测确定（候选与 exit 码见
-# includes/mlirlite/__function.vp 中 _MlirAlloca / _MlirSwitch / _MlirAsm 的注释）：
-#   ① alloca 对齐 → `{alignment = 16 : i64}`
-#      （`align(16)`、`, align 16`、`{alignment = 16 : i32}` 均实测被拒）
-#   ② switch → `llvm.switch %v : i32, ^default [0: ^case0, …]`
-#      （设计规范里的 `llvm.switch %v, ^default […] : i32` 实测被拒：expected ':'）
-#      目标块带 phi 时追加块实参（与 br/cond_br 同一设施）
-#   ③ inline_asm → `llvm.inline_asm has_side_effects [asm_dialect = intel] "…", "…" %x : (i32) -> i32`
-#      （LLVM 的裸 `inteldialect` 与 `"…"(%x)` 词法均实测被拒）
-# ============================================================
+# Test 13: alloca alignment / switch / inline_asm MLIR forms
+# Forms verified against mlir-opt 22.1.8; switch phi targets carry block operands
 def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     testcheck.section("Test 13: alloca align / switch / inline_asm")
 
@@ -867,7 +817,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
 
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_align_switch_asm")
 
-    # ---- ① alloca 对齐 + ③ inline_asm（builder 形态 + TPV 注入形态）----
+    # ---- (1) alloca alignment + (3) inline_asm (builder + TPV-injected forms) ----
     f1: mlirlite.Function* = mcore.CreateFunction(mod, "align_asm", ty_i32)
     mcore.AddParam(f1, ty_i32, "%x")
     e1: mlirlite.BasicBlock* = mcore.CreateBlock(f1, "entry")
@@ -877,22 +827,22 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     # %0 = alloca i32, align 16
     v_slot: mlirlite.Value* = mlirlite.build_alloca_aligned(b1, ty_i32, 16)
 
-    # call none asm sideeffect "nop", ""()（无返回值形态）
+    # call none asm sideeffect "nop", ""() (void form)
     mlirlite.build_inline_asm(b1, ty_void, "nop", "", 1)
 
-    # %1 = call i32 asm sideeffect "mov $0, $1", "=r,r"()（有返回值形态）
+    # %1 = call i32 asm sideeffect "mov $0, $1", "=r,r"() (returning form)
     v_asm: mlirlite.Value* = mlirlite.build_inline_asm(b1, ty_i32, "mov $0, $1", "=r,r", 1)
 
     v_x: mlirlite.Value* = mcore.SSAValue(ty_i32, "%x")
     mlirlite.build_store(b1, v_x, v_slot, 0)
 
-    # TPV CallGenCBuiltin 的注入形态（inteldialect + 带类型的输入操作数）
+    # TPV CallGenCBuiltin injected form (inteldialect + typed input operands)
     mlirlite.block_append_text(pool, e1,
         "%7 = call i32 asm sideeffect inteldialect \"mov $0, $1\", \"=r,r\"(i32 %x)")
 
     mlirlite.build_ret(b1, v_asm)
 
-    # ---- ② switch：3 case + default（不带 phi）----
+    # ---- (2) switch: 3 cases + default (no phi) ----
     f2: mlirlite.Function* = mcore.CreateFunction(mod, "sw", ty_i32)
     mcore.AddParam(f2, ty_i32, "%v")
     e2: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "entry")
@@ -920,7 +870,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     mlirlite.position_at_end(b2, dflt)
     mlirlite.build_ret(b2, v_v)
 
-    # ---- ②' switch：case 与 default 目标块带 phi ⇒ 块实参 ----
+    # ---- (2') switch: case and default targets carry phi -> block operands ----
     f3: mlirlite.Function* = mcore.CreateFunction(mod, "sw_phi", ty_i32)
     mcore.AddParam(f3, ty_i32, "%v")
     e3: mlirlite.BasicBlock* = mcore.CreateBlock(f3, "entry")
@@ -951,7 +901,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T13_align_switch_asm.mlir", buf)
 
-    # ① alloca 对齐：实测形态 `{alignment = 16 : i64}`（LLVM 词法的 `, align 16` 不再出现）
+    # (1) alloca alignment: form is {alignment = 16 : i64} (LLVM ', align 16' is gone)
     testcheck.check(string.strstr(buf, "llvm.alloca %c0 x i32 {alignment = 16 : i64} : (i32) -> !llvm.ptr") is not None,
                     "alloca 对齐 'llvm.alloca %c0 x i32 {alignment = 16 : i64} : (i32) -> !llvm.ptr'",
                     "missing alloca alignment attribute")
@@ -959,7 +909,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
                     "LLVM 词法 ', align 16' 不再出现（已转写为属性）",
                     "raw LLVM alloca align leaked")
 
-    # ② switch：值类型紧随值（`%v : i32,`）+ 各 case/default 标签
+    # (2) switch: value type follows the value (%v : i32,) plus case/default labels
     testcheck.check(string.strstr(buf, "llvm.switch %v : i32, ^default [0: ^case0, 1: ^case1, 2: ^case2]") is not None,
                     "switch 实测形态 'llvm.switch %v : i32, ^default [0: ^case0, 1: ^case1, 2: ^case2]'",
                     "missing llvm.switch")
@@ -970,12 +920,12 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "^case2") is not None,
                     "contains '^case2'", "missing '^case2'")
 
-    # ②' switch 目标块带 phi ⇒ 块实参（default 与 case 各自携带）
+    # (2') switch phi targets -> block operands (carried by default and case)
     testcheck.check(string.strstr(buf, "llvm.switch %v : i32, ^sdef(%c1 : i32) [0: ^scase(%c0 : i32)]") is not None,
                     "switch 块实参 'llvm.switch %v : i32, ^sdef(%c1 : i32) [0: ^scase(%c0 : i32)]'",
                     "missing switch block operands")
-    # 块参数的具体 SSA 名由 SSA 重编号决定（本用例实际是 %0/%1），
-    # 故只断言"目标块标签带参数"的形状，不绑定具体编号，避免脆断言。
+    # Block-argument SSA names depend on renumbering, so assert only the shape
+    # "target label carries arguments", not specific names, avoiding brittle asserts
     testcheck.check(string.strstr(buf, "^scase(%") is not None,
                     "case 目标块带参数 '^scase(%…: i32):'",
                     "missing block argument for switch case target")
@@ -983,7 +933,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
                     "default 目标块带参数 '^sdef(%…: i32):'",
                     "missing block argument for switch default target")
 
-    # ③ inline_asm：无返回值 / 有返回值 / inteldialect → asm_dialect = intel
+    # (3) inline_asm: void / returning / inteldialect -> asm_dialect = intel
     testcheck.check(string.strstr(buf, "llvm.inline_asm has_side_effects \"nop\", \"\" : () -> ()") is not None,
                     "无返回值形态 'llvm.inline_asm has_side_effects \"nop\", \"\" : () -> ()'",
                     "missing void inline_asm")
@@ -1001,20 +951,8 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
                     "raw LLVM inteldialect keyword leaked")
 
 
-# ============================================================
-# 测试 14: 变参函数 / 变参调用 / va_arg / cmpxchg / 全局属性字典（P0 缺口补齐）
-#
-# 五项 MLIR 形态均由 mlir-opt 22.1.8 实测 exit 0 确立（候选与 exit 码见
-# includes/mlirlite/__function.vp 的 _MlirFuncSig / _MlirCall / _MlirVaArg /
-# _MlirCmpXchg 与 __module.vp 的 _MlirGlobalLine 注释）：
-#   ① 变参函数声明 → `llvm.func @printf(%p: !llvm.ptr, ...) -> i32`
-#   ② 变参调用     → `… vararg(!llvm.func<i32 (!llvm.ptr, i32, ...)>) : (!llvm.ptr, i32) -> i32`
-#      （vararg 内是**被调函数的完整 MLIR 函数类型**，含 `...`）
-#   ③ va_arg       → `%N = "llvm.va_arg"(%ap) : (!llvm.ptr) -> i32`（generic 形态，刻意选择）
-#   ④ cmpxchg      → 单结果 `llvm.cmpxchg` + 两条 `llvm.extractvalue`（[0]=旧值、[1]=i1 成功位）
-#   ⑤ 全局属性字典 → `…("ab\00") {section = "data", alignment = 16 : i64} : !llvm.array<3 x i8>`
-#      （字典必须在**类型之前**；`unnamed_addr` 是**关键字**，不能进字典）
-# ============================================================
+# Test 14: vararg function/call, va_arg, cmpxchg, global attribute dict
+# Five MLIR forms verified with mlir-opt 22.1.8; the attr dict precedes the type
 def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     testcheck.section("Test 14: vararg / va_arg / cmpxchg / global attrs")
 
@@ -1026,7 +964,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
 
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_vararg_vaarg_cmpxchg")
 
-    # ---- ① 变参函数声明: llvm.func @printf(%p: !llvm.ptr, ...) -> i32 ----
+    # ---- (1) vararg declaration: llvm.func @printf(%p: !llvm.ptr, ...) -> i32 ----
     f_printf: mlirlite.Function* = mcore.CreateDeclare(mod, "printf", ty_i32)
     mcore.AddParam(f_printf, ty_i32ptr, "%p")
     f_printf.IsVarArg = 1
@@ -1041,7 +979,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     v_arg: mlirlite.Value* = mlirlite.build_va_arg(b_va, v_ap, ty_i32)
     mlirlite.build_ret(b_va, v_arg)
 
-    # ---- ② 变参调用 + ④ cmpxchg（builder 的**单结果**形态）----
+    # ---- (2) vararg call + (4) cmpxchg (builder single-result form) ----
     f_cc: mlirlite.Function* = mcore.CreateFunction(mod, "vcall_cmpx", ty_i32)
     mcore.AddParam(f_cc, ty_i32ptr, "%p")
     mcore.AddParam(f_cc, ty_i32, "%n")
@@ -1052,30 +990,29 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     v_n: mlirlite.Value* = mcore.SSAValue(ty_i32, "%n")
 
     # %0 = cmpxchg !llvm.ptr %p, i32 %n, i32 %n acq_rel monotonic
-    #   → %0 = llvm.cmpxchg … + 两条 extractvalue；`%0` 绑定到 [0]（旧值）
+    #   -> llvm.cmpxchg + two extractvalue; %0 binds to [0] (old value)
     v_old: mlirlite.Value* = mlirlite.build_cmpxchg(b_cc, v_p, v_n, v_n,
                                                            mlirlite.ATOMIC_ORDER_ACQ_REL,
                                                            mlirlite.ATOMIC_ORDER_MONOTONIC)
     # %1 = call i32 (i8*, i32, ...) @printf(i8* %p, i32 %n)
-    #   → %1 = llvm.call @printf(%p, %n) vararg(!llvm.func<i32 (!llvm.ptr, i32, ...)>)
-    #          : (!llvm.ptr, i32) -> i32
+    #   -> %1 = llvm.call @printf(%p, %n) vararg(!llvm.func<i32 (!llvm.ptr, i32, ...)>)
     mlirlite.value_set_next(v_p, v_n)
     v_call: mlirlite.Value* = mlirlite.build_call(b_cc, "printf", v_p, 2, ty_i32, 1)
-    # ret 用 cmpxchg 结果 ⇒ 断言别名绑定生效（文本里应是 %_0_v = extractvalue[0]）
+    # ret uses the cmpxchg result to assert alias binding (text: %_0_v = extractvalue[0])
     mlirlite.build_ret(b_cc, v_old)
 
-    # ---- ④' cmpxchg 双结果前缀 `%a, %b = cmpxchg …`（两名字各绑一条 extractvalue）----
+    # ---- (4') cmpxchg dual-result prefix (both names bind one extractvalue each) ----
     f_cc2: mlirlite.Function* = mcore.CreateFunction(mod, "cmpx2", ty_i32)
     mcore.AddParam(f_cc2, ty_i32ptr, "%p")
     mcore.AddParam(f_cc2, ty_i32, "%n")
     e_cc2: mlirlite.BasicBlock* = mcore.CreateBlock(f_cc2, "entry")
     mlirlite.block_append_text(pool, e_cc2,
         "%a, %b = cmpxchg !llvm.ptr %p, i32 %n, i32 %n acq_rel monotonic")
-    # %b = 成功位 [1]；%a = 旧值 [0]
+    # %b = success bit [1]; %a = old value [0]
     mlirlite.block_append_text(pool, e_cc2, "%r = zext i1 %b to i32")
     mlirlite.block_append_text(pool, e_cc2, "ret i32 %a")
 
-    # ---- ⑤ 全局属性字典：section/alignment 在**类型之前**；unnamed_addr 作关键字 ----
+    # ---- (5) global attr dict: section/alignment precede the type; unnamed_addr is a keyword ----
     ty_arr3: mlirlite.LLVMType* = core.Array(ty_i8, 3)
     init_s: str = pool.alloc(32)
     string.strcpy(init_s, "c\"ab\\00\"")
@@ -1099,7 +1036,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T14_vararg_vaarg_cmpxchg.mlir", buf)
 
-    # ① 变参函数声明：参数表尾 `...`
+    # (1) vararg declaration: parameter list ends with ...
     testcheck.check(string.strstr(buf, "llvm.func @printf(%p: !llvm.ptr, ...) -> i32") is not None,
                     "变参声明 'llvm.func @printf(%p: !llvm.ptr, ...) -> i32'",
                     "missing vararg function declaration")
@@ -1107,7 +1044,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
                     "参数表尾 '..., ...)' 形态（', ...)'）",
                     "missing vararg ellipsis in declaration")
 
-    # ② 变参调用：vararg(完整 MLIR 函数类型)
+    # (2) vararg call: vararg(full MLIR function type)
     testcheck.check(string.strstr(buf, "vararg(!llvm.func<") is not None,
                     "变参调用 'vararg(!llvm.func<'", "missing vararg(...) attribute")
     testcheck.check(string.strstr(buf,
@@ -1115,13 +1052,13 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
                     "vararg 完整函数类型 'vararg(!llvm.func<i32 (!llvm.ptr, i32, ...)>) : (!llvm.ptr, i32) -> i32'",
                     "missing vararg function type")
 
-    # ③ va_arg：generic 形态（刻意选择，不透明指针下自定义汇编无法表达）
+    # (3) va_arg: generic form (deliberate; custom asm cannot express opaque pointers)
     testcheck.check(string.strstr(buf, "\"llvm.va_arg\"(") is not None,
                     "va_arg generic 形态 '\"llvm.va_arg\"('", "missing generic llvm.va_arg")
     testcheck.check(string.strstr(buf, ") : (!llvm.ptr) -> i32") is not None,
                     "va_arg 类型串 ') : (!llvm.ptr) -> i32'", "missing va_arg type list")
 
-    # ④ cmpxchg：单结果 + 两条 extractvalue（[0]=旧值、[1]=i1 成功位）
+    # (4) cmpxchg: single result + two extractvalue ([0]=old value, [1]=i1 success bit)
     testcheck.check(string.strstr(buf, "llvm.cmpxchg") is not None,
                     "contains 'llvm.cmpxchg'", "missing llvm.cmpxchg")
     testcheck.check(string.strstr(buf, "llvm.extractvalue ") is not None,
@@ -1130,9 +1067,8 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
                     "旧值抽取 '[0] : !llvm.struct<(i32, i1)>'", "missing extractvalue [0]")
     testcheck.check(string.strstr(buf, "[1] : !llvm.struct<(i32, i1)>") is not None,
                     "成功位抽取 '[1] : !llvm.struct<(i32, i1)>'", "missing extractvalue [1]")
-    # extractvalue 结果名由 struct 结果名**确定性派生**（不再用计数器 ⇒ 两遍必然同名）
-    #   `%0` → `%_0_v`（旧值 [0]）/ `%_0_ok`（成功位 [1]）；`%a` → `%_a_v`/`%_a_ok`
-    # （`_` 前缀是必需的：MLIR 裸 SSA 名首字符须为字母或 `_`，`%0_v` 被 mlir-opt 拒绝）
+    # extractvalue result names derive deterministically from the struct result name
+    # (%0 -> %_0_v/%_0_ok, %a -> %_a_v/%_a_ok; MLIR requires the _ name prefix)
     testcheck.check(string.strstr(buf, "%_0_v = llvm.extractvalue %0[0] : !llvm.struct<(i32, i1)>") is not None,
                     "旧值定义 '%_0_v = llvm.extractvalue %0[0] …'",
                     "cmpxchg single result not deterministically named")
@@ -1145,7 +1081,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "%_a_ok = llvm.extractvalue %a[1] : !llvm.struct<(i32, i1)>") is not None,
                     "双结果次名定义 '%_a_ok = llvm.extractvalue %a[1] …'",
                     "cmpxchg double-result ok bit not deterministically named")
-    # 引用侧：别名把 %0 / %a / %b 改写成上述确定性新名（定义与引用同名 ⇒ 不悬空）
+    # Reference side: aliases rewrite %0/%a/%b to those names (def and use match)
     testcheck.check(string.strstr(buf, "llvm.return %_0_v : i32") is not None,
                     "单结果引用改写 'llvm.return %_0_v : i32'",
                     "cmpxchg result not bound to old value")
@@ -1156,7 +1092,7 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
                     "双结果首名引用改写 'llvm.return %_a_v : i32'",
                     "cmpxchg first name not bound to old value")
 
-    # ⑤ 属性字典在**类型之前**（整串断言）；unnamed_addr 作关键字、不进字典
+    # (5) attr dict precedes the type (whole-string assert); unnamed_addr is not in the dict
     testcheck.check(string.strstr(buf,
             "(\"ab\\00\") {section = \"data\", alignment = 16 : i64} : !llvm.array<3 x i8>") is not None,
                     "属性字典在类型之前 '(\"ab\\00\") {section = \"data\", alignment = 16 : i64} : !llvm.array<3 x i8>'",
@@ -1172,23 +1108,8 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
                     "unnamed_addr leaked into attribute dict")
 
 
-# ============================================================
-# 测试 15: 具名结构体（%"name" = type {…}）
-#
-# TPV 侧对每个类都调 module_add_named_type 登记具名结构体（mlirlite 由此输出
-# `%"sha1.Cls" = type {…}` 定义行）。MLIR(llvm 方言) **没有**独立类型定义语法，
-# 也**不允许无体前向声明**（实测 mlir-opt 22.1.8：`!llvm.struct<"x">` 报
-# "struct without a body only allowed in a recursive struct"），故：
-#   ① 定义行**整体丢弃**（NamedTypeHead 只作模型保留 + 打印期查表）；
-#   ② 按值使用处内联为 !llvm.struct<"名字", (字段…)>（名字直接作字符串字面量，
-#      含数字/`.`/`[`/`]` 均不额外转义）；嵌套具名同理递归；
-#   ③ 指向具名结构体的指针仍是 !llvm.ptr（不透明指针，既有路径不变）；
-#   ④ 中间文本里"只有名字"的形态 `%"name"` 由打印期登记表回查完整定义后展开
-#      为 ②（查不到 / 仍是 opaque ⇒ 响亮报错，绝不静默输出空体错误布局）。
-# 本用例的期望整模块已用 mlir-opt / mlir-translate 22.1.8 实测 exit 0，
-# 降级（--mlir-to-llvmir）可得 MLIR 自动生成的定义行：
-#   %aa11bb22cc33dd44.Cls = type { i32, ptr }
-# ============================================================
+# Test 15: named struct types (LLVM %"name" = type) in MLIR
+# MLIR has no type defs: drop def lines, inline by value, keep pointers opaque !llvm.ptr
 def test_named_struct(pool: memhub.MemBuddy*):
     testcheck.section("Test 15: named struct type")
 
@@ -1198,7 +1119,7 @@ def test_named_struct(pool: memhub.MemBuddy*):
     ty_i8: mlirlite.LLVMType* = core.Int8()
     ty_i8ptr: mlirlite.LLVMType* = core.Ptr(ty_i8)
 
-    # 具名结构体 %"aa11bb22cc33dd44.Cls" = type { i32, i8* }（sha1 风格前缀 + '.'）
+    # Named struct %"aa11bb22cc33dd44.Cls" = type { i32, i8* } (sha1-style prefix with '.')
     ns1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
     ns2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     ns_head: mlirlite.ParamNode* = core.ParamListAppend(None, None, ns1)
@@ -1206,23 +1127,22 @@ def test_named_struct(pool: memhub.MemBuddy*):
     ty_named: mlirlite.LLVMType* = core.Struct(ns_head, 2, "aa11bb22cc33dd44.Cls")
     ty_named_ptr: mlirlite.LLVMType* = core.Ptr(ty_named)
 
-    # packed 具名结构体 %"aa11bb22cc33dd44.Packed" = type <{ i32, i8 }>
-    # MLIR 侧（实测 mlir-opt / mlir-translate 22.1.8）:
-    #   !llvm.struct<"aa11bb22cc33dd44.Packed", packed (i32, i8)> → 降级 type <{ i32, i8 }>
+    # Packed named struct %"aa11bb22cc33dd44.Packed" = type <{ i32, i8 }>
+    # MLIR: !llvm.struct<"aa11bb22cc33dd44.Packed", packed (i32, i8)>
     pk1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
     pk2: mlirlite.ParamNode* = core.NewParamNode(ty_i8)
     pk_head: mlirlite.ParamNode* = core.ParamListAppend(None, None, pk1)
     core.ParamListAppend(pk_head, pk1, pk2)
     ty_packed: mlirlite.LLVMType* = core.Struct(pk_head, 2, "aa11bb22cc33dd44.Packed")
 
-    # ---- 类型文本：按值 = 内联具名形态；指针 = 不透明 !llvm.ptr ----
+    # ---- type text: by value = inline named form; pointer = opaque !llvm.ptr ----
     tbuf: str = pool.alloc(256)
     tbuf[0] = 0
     core.PrintType(tbuf, 256, ty_named)
     testcheck.check(string.strstr(tbuf, "!llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>") is not None,
                     "具名结构体按值形态 '!llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>'",
                     "named struct by-value form missing")
-    # 名字里的 '.' / 数字开头不需要额外转义或引号（实测 mlir-opt 22.1.8）
+    # A '.' / digit-leading name needs no extra escaping or quotes (verified)
     testcheck.check(string.strstr(tbuf, "<\"aa11bb22cc33dd44.Cls\",") is not None,
                     "名字直接作字符串字面量（不额外转义）",
                     "named struct name literal form missing")
@@ -1233,19 +1153,19 @@ def test_named_struct(pool: memhub.MemBuddy*):
                     "named struct pointer must stay opaque !llvm.ptr")
 
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_named_struct")
-    # 真实流程：具名结构体经 module_add_named_type 登记（打印期查表用）
+    # Real flow: register named structs via module_add_named_type for the print-time table
     mlirlite.module_add_named_type(mod, pool, ty_named)
-    # packed 标记唯一设置点（须在 add_named_type 之后设；打印期由登记表携带）
+    # Only place the packed flag is set (after add_named_type; carried by the table)
     mlirlite.module_add_named_type(mod, pool, ty_packed)
     mlirlite.module_set_named_type_packed(mod, pool, ty_packed, 1)
 
-    # ---- ① 按值全局（类型使用处内联具名体）+ ② 指向它的指针全局 ----
+    # ---- (1) by-value global (inlines the named body) + (2) pointer global to it ----
     gv_v: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_cls", ty_named)
     gv_p: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_cls_p", ty_named_ptr)
-    # ③ packed 按值全局
+    # (3) packed by-value global
     gv_pk: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_packed", ty_packed)
 
-    # ---- ① 按值形参 + ② 指针形参 ----
+    # ---- (1) by-value parameter + (2) pointer parameter ----
     fn: mlirlite.Function* = mcore.CreateFunction(mod, "use_named", ty_i32)
     mcore.AddParam(fn, ty_named, "%v")
     mcore.AddParam(fn, ty_named_ptr, "%p")
@@ -1253,16 +1173,16 @@ def test_named_struct(pool: memhub.MemBuddy*):
     b: mlirlite.IRBuilder* = mcore.NewBuilder(fn)
     mlirlite.position_at_end(b, entry)
 
-    # ---- ④ 中间文本里的"只有名字"形态（手工 / TPV 注入）----
-    # 打印期由登记表回查完整定义展开；指针形态 %"name"* 仍走 !llvm.ptr
+    # ---- (4) bare-name form in mid text (hand-written / TPV-injected) ----
+    # Print time expands it via the table; pointer form %"name"* stays !llvm.ptr
     mlirlite.block_append_text(pool, entry, "%0 = alloca %\"aa11bb22cc33dd44.Cls\"")
     mlirlite.block_append_text(pool, entry, "%1 = load i32, %\"aa11bb22cc33dd44.Cls\"* %0")
-    # ⑤ packed 具名结构体的文本形态（同一登记表槽位带 packed 标记）
+    # (5) packed named struct text form (same table slot carries the packed flag)
     mlirlite.block_append_text(pool, entry, "%2 = alloca %\"aa11bb22cc33dd44.Packed\"")
     v_1: mlirlite.Value* = mcore.SSAValue(ty_i32, "%1")
     mlirlite.build_ret(b, v_1)
 
-    # ---- ⑥ 按值 packed 形参：独立声明函数，不改动 use_named 的既有断言 ----
+    # ---- (6) by-value packed parameter: separate declare, keeping use_named asserts ----
     fn_pk: mlirlite.Function* = mcore.CreateDeclare(mod, "use_packed", ty_i32)
     mcore.AddParam(fn_pk, ty_packed, "%pk")
 
@@ -1272,14 +1192,14 @@ def test_named_struct(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T15_named_struct.mlir", buf)
 
-    # ① 按值形参 / 全局：使用处内联具名体
+    # (1) by-value parameter / global: inline the named body at the use site
     testcheck.check(string.strstr(buf, "llvm.func @use_named(%v: !llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>, %p: !llvm.ptr) -> i32") is not None,
                     "按值形参 'llvm.func @use_named(%v: !llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>, %p: !llvm.ptr) -> i32'",
                     "missing inline named struct parameter")
     testcheck.check(string.strstr(buf, "@g_cls() : !llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>") is not None,
                     "按值全局 '@g_cls() : !llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>'",
                     "missing inline named struct global")
-    # ② 指针：仍是不透明 !llvm.ptr
+    # (2) pointer: remains opaque !llvm.ptr
     testcheck.check(string.strstr(buf, "@g_cls_p() : !llvm.ptr") is not None,
                     "指针全局 '@g_cls_p() : !llvm.ptr'",
                     "named struct pointer global must be !llvm.ptr")
@@ -1287,7 +1207,7 @@ def test_named_struct(pool: memhub.MemBuddy*):
                     "不得出现指向具名结构体的指针类型（MLIR 不透明指针）",
                     "pointer-to-named-struct type leaked")
 
-    # ④ 文本形态 %"name" 展开（alloca 元素类型 / load 的指针类型）；定义行不输出
+    # (4) %"name" text expands (alloca element / load pointer type); no def line emitted
     testcheck.check(string.strstr(buf, "%0 = llvm.alloca %c0 x !llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)> : (i32) -> !llvm.ptr") is not None,
                     "文本 %\"name\" 展开为内联具名体（alloca 元素类型）",
                     "named struct type text not expanded in alloca")
@@ -1297,12 +1217,12 @@ def test_named_struct(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "%\"aa11bb22cc33dd44.Cls\"") is None,
                     "LLVM 口径的 %\"name\" 形态不再出现（已全部转写）",
                     "raw LLVM named type text leaked")
-    # ③ 定义行整体丢弃：MLIR 无独立类型定义语法（由 mlir-translate 在使用处自动生成）
+    # (3) def lines dropped: MLIR has no type-def syntax (mlir-translate emits at use)
     testcheck.check(string.strstr(buf, "\"aa11bb22cc33dd44.Cls\" = type") is None,
                     "模块不输出 '\"name\" = type {…}' 定义行",
                     "named type definition line should be dropped")
 
-    # ⑦ packed 具名结构体：登记表携带 NamedTypeNode.IsPacked，按值形态加 'packed ' 关键字
+    # (7) packed named struct: the table carries IsPacked and adds the 'packed ' keyword
     testcheck.check(string.strstr(buf, "@g_packed() : !llvm.struct<\"aa11bb22cc33dd44.Packed\", packed (i32, i8)>") is not None,
                     "packed 按值全局 '@g_packed() : !llvm.struct<\"aa11bb22cc33dd44.Packed\", packed (i32, i8)>'",
                     "missing packed inline named struct global")
@@ -1312,38 +1232,18 @@ def test_named_struct(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, "x !llvm.struct<\"aa11bb22cc33dd44.Packed\", packed (i32, i8)> : (i32) -> !llvm.ptr") is not None,
                     "文本 %\"name\" 展开为 packed 内联具名体（alloca 元素类型）",
                     "packed named struct type text not expanded with packed")
-    # 负向：非 packed 的具名结构体类型串里不得出现 packed
+    # Negative: a non-packed named struct type string must not contain 'packed'
     testcheck.check(string.strstr(buf, "!llvm.struct<\"aa11bb22cc33dd44.Cls\", packed") is None,
                     "非 packed 具名结构体类型串不含 'packed'",
                     "packed keyword leaked into non-packed named struct")
-    # 负向：packed 具名结构体不得漏掉 packed 关键字（按值渲染为无 packed 形态）
+    # Negative: a packed named struct must not render without the packed keyword
     testcheck.check(string.strstr(buf, "!llvm.struct<\"aa11bb22cc33dd44.Packed\", (i32, i8)>") is None,
                     "packed 具名结构体不得渲染为无 packed 的形态",
                     "packed named struct rendered without packed keyword")
 
 
-# ============================================================
-# 测试 16: extractvalue（多结果内联汇编的结果抽取）
-#
-# 依据真实语料（Test/DefaultArgTest/output/*.ll 等 4163 份 TPV 产物）：
-#   %asm_result = call {i32, i32} asm  inteldialect "rdrand $1", "=r,=r,~{cc}"()
-#   %asm_out_0 = extractvalue {i32, i32} %asm_result, 0
-#   %asm_out_1 = extractvalue {i32, i32} %asm_result, 1
-# 即"多结果内联汇编"是 extractvalue 的唯一来源（另有 {i64, i64} /
-# {i32, i32, i32, i32} / {i64, i32, i64, i32} 等多字段结构体结果）。
-#
-# MLIR 形态（mlir-opt / mlir-translate 22.1.8 实测 exit 0）：
-#   ① 多结果内联汇编 = **单结果 + 结构体类型**：
-#      %0 = llvm.inline_asm has_side_effects "…", "=r,r" : () -> !llvm.struct<(i32, i32)>
-#   ② extractvalue 的索引列表写在 `[]` 内、逗号分隔（LLVM 词法的 `<聚合>, i0, i1`
-#      被拒绝）：
-#      %a = llvm.extractvalue %0[0] : !llvm.struct<(i32, i32)>
-#   ③ 多级索引合法（`%v[1, 0]` 于嵌套结构体，实测 exit 0）
-# 降级（--mlir-to-llvmir）可得：
-#   %1 = call { i32, i32 } asm sideeffect "…", "=r,r"()
-#   %2 = extractvalue { i32, i32 } %1, 0
-#   %3 = extractvalue { i32, i32 } %1, 1
-# ============================================================
+# Test 16: extractvalue for multi-result inline asm
+# MLIR uses a single struct-typed result plus extractvalue with [idx] index lists
 def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     testcheck.section("Test 16: extractvalue (multi-result inline asm)")
 
@@ -1355,19 +1255,19 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     func: mlirlite.Function* = mcore.CreateFunction(mod, "multi_asm", ty_i32)
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
-    # ① TPV 真实形态：多结果内联汇编 + 两条 extractvalue（单索引）
+    # (1) TPV real form: multi-result inline asm + two extractvalue (single index)
     mlirlite.block_append_text(pool, entry,
         "%2 = call {i32, i32} asm sideeffect \"mov $0, $1; mov $1, $1\", \"=r,r\"()")
     mlirlite.block_append_text(pool, entry,
         "%a = extractvalue {i32, i32} %2, 0")
     mlirlite.block_append_text(pool, entry,
         "%b = extractvalue {i32, i32} %2, 1")
-    # ② 多级索引（嵌套结构体结果的 [1, 0]，mlir-opt 22.1.8 实测合法）
+    # (2) multi-level index [1, 0] into a nested struct result (verified legal)
     mlirlite.block_append_text(pool, entry,
         "%3 = call {i32, {i32, i32}} asm sideeffect \"mov $0, $1\", \"=r,r\"()")
     mlirlite.block_append_text(pool, entry,
         "%d = extractvalue {i32, {i32, i32}} %3, 1, 0")
-    # 引用 %a（保证 extractvalue 结果被真实使用）
+    # Reference %a so the extractvalue result is actually used
     mlirlite.block_append_text(pool, entry, "ret i32 %a")
 
     buf: str = pool.alloc(65536)
@@ -1376,14 +1276,14 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T16_extractvalue.mlir", buf)
 
-    # ① 多结果内联汇编 → 单结果结构体类型
+    # (1) multi-result inline asm -> single struct-typed result
     testcheck.check(string.strstr(buf, ": () -> !llvm.struct<(i32, i32)>") is not None,
                     "多结果内联汇编 '… : () -> !llvm.struct<(i32, i32)>'",
                     "multi-result inline_asm struct result missing")
     testcheck.check(string.strstr(buf, "llvm.inline_asm has_side_effects") is not None,
                     "contains 'llvm.inline_asm has_side_effects'",
                     "missing llvm.inline_asm")
-    # ② extractvalue：索引在 `[]` 内、聚合类型为 MLIR 形态
+    # (2) extractvalue: index inside [], aggregate type in MLIR form
     testcheck.check(string.strstr(buf, "llvm.extractvalue ") is not None,
                     "contains 'llvm.extractvalue '", "missing llvm.extractvalue")
     testcheck.check(string.strstr(buf, "[0] : !llvm.struct<(i32, i32)>") is not None,
@@ -1395,29 +1295,24 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     testcheck.check(string.strstr(buf, ": !llvm.struct<(i32, i32)>") is not None,
                     "聚合类型为 MLIR 结构体 ': !llvm.struct<(i32, i32)>'",
                     "aggregate type not rendered as MLIR struct")
-    # ③ 多级索引：`[1, 0]`（MLIR 内逗号分隔，实测合法）
+    # (3) multi-level index [1, 0] (comma-separated in MLIR, verified legal)
     testcheck.check(string.strstr(buf, "[1, 0] : !llvm.struct<(i32, !llvm.struct<(i32, i32)>)>") is not None,
                     "多级索引 '[1, 0] : !llvm.struct<(i32, !llvm.struct<(i32, i32)>)>'",
                     "multi-level extractvalue index missing")
-    # 负向：LLVM 词法的 `<聚合类型> <值>, <索引>` 不再出现（类型文本必须已转写）
+    # Negative: LLVM <agg type> <value>, <index> must not appear (type text rewritten)
     testcheck.check(string.strstr(buf, "{i32, i32} %") is None,
                     "LLVM 词法聚合类型文本不再出现（'{i32, i32} %' 不出现）",
                     "raw LLVM aggregate type text leaked")
-    # 引用侧：extractvalue 结果名原样被 return 引用
+    # Reference side: the extractvalue result name is returned as-is
     testcheck.check(string.strstr(buf, "llvm.return %a : i32") is not None,
                     "extractvalue 结果被引用 'llvm.return %a : i32'",
                     "extractvalue result not referenced")
 
 
 def _sub_arena(main_pool: memhub.MemBuddy*) -> rawptr:
-    """从主池切一块子池 arena（返回**裸指针**，由调用方在自己帧内构造 MemBuddy）
+    """Carve a sub-pool arena from the main pool and return its raw pointer.
 
-    为什么只返回裸指针、不返回构造好的 MemBuddy*：Viper 中无 __new__ 的类实例是
-    值语义，`MemBuddy(...)` 被降级为栈 alloca；"返回指向本帧局部对象"的指针会
-    悬空（IR 物证：助手函数内 `alloca %MemBuddy` … `ret %MemBuddy*`，随后第一次
-    alloc 读 max_order 即落到复用的栈垃圾 → memhub 报"字段被写穿"）。
-    arena 分配失败必须在这里 fail-fast，否则 `MemBuddy(None, size)` 会在
-    `self.free_lists[i] = 0` 处写空指针（现场 0xC0000005 av_addr=0x0）。
+    MemBuddy is a stack value here, so returning one would dangle; fail fast if alloc fails.
     """
     mem: rawptr = main_pool.alloc(SUB_POOL_SIZE)
     if mem is None:
@@ -1429,7 +1324,7 @@ def _sub_arena(main_pool: memhub.MemBuddy*) -> rawptr:
 def main() -> int:
     testcheck.begin("MLIRLiteTest: mlirlite 库（MLIR llvm 方言文本生成）")
 
-    # 初始化主池：仅用于给每个测试切子池（测试内分配一律走各自的子池）
+    # Init main pool: used only to carve a sub-pool per test (allocs use their sub-pool)
     pool_mem: bytes = stdlib.malloc(POOL_SIZE)
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
@@ -1439,8 +1334,8 @@ def main() -> int:
         stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
-    # 子池必须在 **main 的帧内** 构造：见 _sub_arena 注释（MemBuddy 实例是栈值，
-    # 其指针不能跨函数返回）。每个测试一块，互不叠加。
+    # Sub-pools must be built in main's frame (see _sub_arena): MemBuddy is a stack
+    # value, so its pointer cannot cross functions. One per test, not overlapping.
     sub: memhub.MemBuddy* = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_type_print(sub)
 

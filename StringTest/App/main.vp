@@ -28,7 +28,7 @@ def test_strcat():
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
-    # 手动拼接: 先拷贝 "Hello"，再拷贝 " World"
+    # Manual concat: copy "Hello" then " World".
     hello: char* = "Hello"
     world: char* = " World"
     string.memcpy(buf, hello, 5)

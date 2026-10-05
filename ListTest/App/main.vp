@@ -14,11 +14,11 @@ def main() -> CInt | CExport:
 
     testcheck.begin("ListTest: list[T] 堆容器测试")
 
-    # 创建 mbuddy arena
+    # Create the mbuddy arena.
     arena: bytes = stdlib.malloc(65536)
     bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
-    # === Test 1: 创建和 append ===
+    # === Test 1: create and append ===
     testcheck.section("Test 1: 创建和 append")
     nums = list[int](bd)
     nums.append(10)
@@ -58,7 +58,7 @@ def main() -> CInt | CExport:
     n3: sizet = nums.__len__()
     testcheck.check(n3 == 0, "clear OK (0)", "clear FAILED expect 0")
 
-    # === Test 6: 容量增长 (append 超过初始容量 8) ===
+    # === Test 6: capacity growth (append past initial capacity 8) ===
     testcheck.section("Test 6: 容量增长")
     nums2 = list[int](bd)
     i: CInt
@@ -76,7 +76,7 @@ def main() -> CInt | CExport:
             break
     testcheck.check(ok == 1, "grow data OK", "grow data FAILED")
 
-    # === Test 7: 重新 append 后验证 ===
+    # === Test 7: verify after re-append ===
     testcheck.section("Test 7: 重新 append")
     nums2.clear()
     nums2.append(100)

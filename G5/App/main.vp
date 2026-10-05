@@ -8,14 +8,12 @@ from linkedlist import GSListNode, GSList
 
 
 # ============================================================
-# G5: 验证 GSList[T] 被降级为 opaque 的问题
-#
-# 版本 2: 不使用 malloc/MemBuddy，直接用构造函数（像 G3 那样）
-# 这样能隔离 GSList opaque 问题
+# G5: verify GSList[T] is not degraded to an opaque type; uses direct
+# construction (no malloc/MemBuddy) to isolate the issue.
 # ============================================================
 
 
-# G5Node: 继承 GSListNode[G5Node]（Phase2 路径，正确特化）
+# G5Node: inherits GSListNode[G5Node] (Phase2 path, correct specialization)
 @t.NoVTable
 class G5Node(GSListNode[G5Node]):
     Value: int
@@ -25,9 +23,8 @@ class G5Node(GSListNode[G5Node]):
         self.Value = 0
 
 
-# G5ListWrapper: 包装 GSList[G5Node]，测试 GSList 字段访问
-# 注意：GSList[G5Node] 走 Phase2 特化路径
-# 用 pool 工厂函数分配 GSList，避免栈分配悬垂指针
+# G5ListWrapper: wraps GSList[G5Node] (Phase2 specialization path) to test
+# field access; a pool factory allocates it, avoiding dangling stack pointers.
 define GSLIST_SIZE = 24  # Head(8) + Tail(8) + Count(8)
 
 @t.NoVTable
@@ -44,7 +41,7 @@ class G5ListWrapper:
 
 
 # ============================================================
-# Test 1: G5Node 字段访问（基准测试，应通过）
+# Test 1: G5Node field access (baseline, should pass)
 # ============================================================
 
 def test_g5node_create():
@@ -71,7 +68,7 @@ def test_g5node_next():
 
 
 # ============================================================
-# Test 3: GSList 字段访问 — 核心测试
+# Test 3: GSList field access (core test)
 # ============================================================
 
 def test_gslist_create():
@@ -80,7 +77,7 @@ def test_gslist_create():
     if lst is None:
         testcheck.check(False, "GSList[G5Node]() is None", "FAIL")
         return
-    # 检查初始状态
+    # check initial state
     head: G5Node* = lst.Head
     tail: G5Node* = lst.Tail
     count: sizet = lst.Count
@@ -106,25 +103,25 @@ def test_gslist_append():
     lst.append(b)
     lst.append(c)
 
-    # 验证 Count
+    # verify Count
     count: sizet = lst.Count
     testcheck.check(count == 3, "Count = 3 after 3 appends", "expect 3")
 
-    # 验证 Head
+    # verify Head
     head: G5Node* = lst.Head
     if head is None:
         testcheck.check(False, "Head is None", "FAIL")
         return
     testcheck.check(head.Value == 1, "Head.Value = 1", "expect 1")
 
-    # 验证 Tail
+    # verify Tail
     tail: G5Node* = lst.Tail
     if tail is None:
         testcheck.check(False, "Tail is None", "FAIL")
         return
     testcheck.check(tail.Value == 3, "Tail.Value = 3", "expect 3")
 
-    # 遍历链表验证顺序
+    # walk the chain to verify order
     sum: int = 0
     cur: G5Node* = lst.Head
     while cur is not None:
@@ -134,7 +131,7 @@ def test_gslist_append():
 
 
 # ============================================================
-# Test 5: G5ListWrapper.List 字段访问（嵌套 GSList 测试）
+# Test 5: G5ListWrapper.List field access (nested GSList, pool alloc)
 # ============================================================
 
 def test_wrapper_list_field():
@@ -156,7 +153,7 @@ def test_wrapper_list_field():
     n.Value = 999
     wrapper.List.append(n)
 
-    # 通过 wrapper.List 访问 GSList 字段
+    # access GSList fields through wrapper.List
     head: G5Node* = wrapper.List.Head
     if head is None:
         testcheck.check(False, "wrapper.List.Head is None", "FAIL")

@@ -7,7 +7,7 @@ import stdlib
 import testcheck
 
 
-# === 1. 多继承字段合并 ===
+# === 1. multiple inheritance field merging ===
 
 class A:
     a: CInt
@@ -29,7 +29,7 @@ class B:
         return self.b
 
 
-# 多继承：C(A, B)，字段展平 a+b+c，布局 [a, b, c]
+# Multiple inheritance C(A, B): fields flatten to layout [a, b, c].
 class C(A, B):
     c: CInt
 
@@ -42,7 +42,7 @@ class C(A, B):
         return self.c
 
 
-# === 2. 菱形去重 + 最左优先 ===
+# === 2. diamond dedup + leftmost priority ===
 
 class Base:
     shared: CInt
@@ -64,14 +64,14 @@ class Right(Base):
         return 3
 
 
-# 菱形：Diamond(Left, Right)，Left/Right 共享 Base，
-# Base.shared 字段只展平一次，who() 用 Left（先声明优先）
+# Diamond(Left, Right) shares Base: Base.shared flattens once,
+# and who() resolves to Left (leftmost priority).
 class Diamond(Left, Right):
     def __init__(self, s: CInt):
         self.shared = s
 
 
-# === 3. 虚方法多继承 vtable ===
+# === 3. virtual method multiple-inheritance vtable ===
 
 @t.CVTable
 class ShapeM:
@@ -102,7 +102,7 @@ class ColoredCircle(ShapeM, ColorM):
         return 3.14159265 * self.r * self.r
 
 
-# === 4. 运算符重载 + 方法继承链（MRO） ===
+# === 4. operator overloading + method inheritance chain (MRO) ===
 
 class Vec2M:
     x: CFloat64T
@@ -120,14 +120,14 @@ class Vec2M:
 
 
 class Vec2Extra:
-    # 注意：方法体字段访问基于"定义类字段"（TPV 模型），
-    # 不引用 Vec2M 的 x/y（跨父类字段引用是更深层语义，暂不验证）。
+    # Field access uses the defining class's fields (TPV model); does not
+    # reference Vec2M's x/y (cross-parent field access is out of scope here).
     def extra_val(self) -> CInt:
         return 7
 
 
-# 多继承：__add__ 继承自 Vec2M（运算符重载 MRO 链），
-# extra_val 继承自 Vec2Extra（方法查找 MRO 链）
+# Multiple inheritance: __add__ comes from Vec2M (operator-overload MRO),
+# extra_val from Vec2Extra (method lookup MRO).
 class Vec2Both(Vec2M, Vec2Extra):
     def __new__() -> 'Vec2Both' | CPtr:
         return stdlib.malloc(16)
@@ -145,7 +145,7 @@ def main() -> CInt | CExport:
 
     buf: CChar | CPtr = CPtr(stdlib.malloc(256))
 
-    # === 1. 字段合并 + 属性访问 + 方法调用 ===
+    # === 1. field merge + attribute access + method calls ===
     testcheck.section("多继承字段合并")
     obj_c = C(1, 2, 3)
     viperlib.snprintf(buf, 256, "C: a=%d b=%d c=%d", obj_c.a, obj_c.b, obj_c.c)
@@ -158,7 +158,7 @@ def main() -> CInt | CExport:
     testcheck.check(obj_c.get_c() == 3, "C.get_c 自身 OK", "C.get_c 自身 FAILED")
     testcheck.ok("字段合并测试完成")
 
-    # === 2. 菱形去重 + 最左优先 ===
+    # === 2. diamond dedup + leftmost priority ===
     testcheck.section("菱形去重 + 最左优先")
     dm = Diamond(5)
     viperlib.snprintf(buf, 256, "Diamond: shared=%d who=%d base=%d", dm.shared, dm.who(), dm.base_method())
@@ -168,7 +168,7 @@ def main() -> CInt | CExport:
     testcheck.check(dm.base_method() == 100, "Base 方法继承 OK", "Base 方法继承 FAILED")
     testcheck.ok("菱形去重测试完成")
 
-    # === 3. 虚方法多继承 vtable ===
+    # === 3. virtual method multiple-inheritance vtable ===
     testcheck.section("虚方法多继承 vtable")
     cc = ColoredCircle(3.0, 7)
     area: CFloat64T = cc.area()
@@ -180,7 +180,7 @@ def main() -> CInt | CExport:
     testcheck.check(area > 28.0 and area < 28.5, "area 虚方法覆盖 OK", "area 虚方法覆盖 FAILED")
     testcheck.ok("虚方法多继承测试完成")
 
-    # === 4. 运算符重载 + 方法继承链 ===
+    # === 4. operator overloading + method inheritance chain ===
     testcheck.section("运算符重载 + 方法继承链")
     v1 = Vec2Both(3.0, 4.0)
     v2 = Vec2Both(1.0, 2.0)

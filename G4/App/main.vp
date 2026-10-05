@@ -9,12 +9,9 @@ import caller2
 import caller3
 
 # ============================================================
-# G4: 验证 includes 中继承 GSListNode[X] 的类是否会出现
-# Next 字段缺失或类型降级的问题
-#
-# G4Node 类在 includes/g4node.py 中（走 Phase1 路径）
-# G4Node 有 5 个自有字段 + 1 个继承字段(Next) = 6 字段
-# caller1/caller2/caller3 模拟 TransPyV 多模块环境
+# G4: verify a class inheriting GSListNode[X] from includes keeps its
+# inherited Next field (no missing field / type downgrade).
+# caller1/caller2/caller3 reproduce a multi-module environment.
 # ============================================================
 
 
@@ -84,7 +81,7 @@ def test_g4node_chain():
 
 
 def test_caller1_direct_access():
-    """caller1: 直接访问 Next 字段（不通过访问器）"""
+    """caller1: access Next directly (no accessor)."""
     testcheck.section("Test 4: caller1 direct Next access")
     arena: bytes = stdlib.malloc(8192)
     if arena is None:
@@ -101,7 +98,7 @@ def test_caller1_direct_access():
 
 
 def test_caller2_reverse():
-    """caller2: 反转链表直接访问 Next"""
+    """caller2: reverse the chain, accessing Next directly."""
     testcheck.section("Test 5: caller2 reverse chain")
     arena: bytes = stdlib.malloc(8192)
     if arena is None:
@@ -121,7 +118,7 @@ def test_caller2_reverse():
 
 
 def test_caller3_append():
-    """caller3: 追加节点直接访问 Next"""
+    """caller3: append a node, accessing Next directly."""
     testcheck.section("Test 6: caller3 append node")
     arena: bytes = stdlib.malloc(8192)
     if arena is None:

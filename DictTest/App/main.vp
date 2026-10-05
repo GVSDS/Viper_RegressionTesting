@@ -15,11 +15,11 @@ def main() -> CInt | CExport:
 
     testcheck.begin("DictTest: 万能 dict (Variant 存储) 测试")
 
-    # 分配内存竞技场
+    # allocate memory arena
     arena: bytes = stdlib.malloc(65536)
     bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
-    # === Test 1: dict set_int / c.Deref 基本操作 ===
+    # === Test 1: dict set_int / c.Deref basic ops ===
     testcheck.section("Test 1: dict set_int / c.Deref 基本操作")
     d: dict = dict(bd)
     d.set_int("alpha", 10)
@@ -29,9 +29,8 @@ def main() -> CInt | CExport:
     stdio.printf("len=%lu\n", n)
     testcheck.check(n == 3, "dict len OK (3)", "dict len FAILED")
 
-    # dict 的 int 值按 int（i32）写入（见 _dict.vp set_int 的 int_ptr），读回须
-    # 给出有元素类型的指针：c.Deref 的宽度只认 pointee 类型，i8*（t.CPtr）恒读
-    # 1 字节，不再按赋值目标注解反推 4 字节。
+    # dict int values are stored as i32; reading back requires a typed pointer
+    # because c.Deref uses the pointee width (i8* always reads 1 byte).
     p1: t.CPtr = d["alpha"]
     stdio.printf("p1=%p\n", p1)
     p2: t.CPtr = d["beta"]
@@ -47,7 +46,7 @@ def main() -> CInt | CExport:
     testcheck.check(v2 == 20, "dict[beta]==20 OK", "dict[beta] FAILED")
     testcheck.check(v3 == 30, "dict[gamma]==30 OK", "dict[gamma] FAILED")
 
-    # === Test 2: 更新已有键 ===
+    # === Test 2: update existing key ===
     testcheck.section("Test 2: 更新已有键")
     d.set_int("beta", 99)
     p2b: t.CPtr = d["beta"]
@@ -74,7 +73,7 @@ def main() -> CInt | CExport:
     testcheck.check(has_alpha == 1, "contains alpha OK", "contains alpha FAILED")
     testcheck.check(has_missing == 0, "not contains missing OK", "contains missing FAILED")
 
-    # === Test 5: 迭代器 ===
+    # === Test 5: iterator ===
     testcheck.section("Test 5: 迭代器 for key in dict")
     iter_count: int = 0
     for key in d:
@@ -84,7 +83,7 @@ def main() -> CInt | CExport:
         iter_count += 1
     testcheck.check(iter_count == 3, "dict iter OK (3)", "dict iter FAILED")
 
-    # === Test 6: dict set_str 字符串值 ===
+    # === Test 6: dict set_str string values ===
     testcheck.section("Test 6: dict set_str 字符串值")
     d2: dict = dict(bd)
     d2.set_str("name", "Alice")
@@ -101,12 +100,12 @@ def main() -> CInt | CExport:
     city: str = city_p
     lang: str = lang_p
     stdio.printf("name=%s city=%s lang=%s\n", name, city, lang)
-    # i8* == 是指针地址比较（C-Like 语义），内容比较需显式 strcmp
+    # i8* == compares addresses (C-like); content compare needs strcmp
     testcheck.check(string.strcmp(name, "Alice") == 0, "dict str name OK", "dict str name FAILED")
     testcheck.check(string.strcmp(city, "Beijing") == 0, "dict str city OK", "dict str city FAILED")
     testcheck.check(string.strcmp(lang, "TransPyC") == 0, "dict str lang OK", "dict str lang FAILED")
 
-    # === Test 7: dict[str] 迭代 ===
+    # === Test 7: dict[str] iteration ===
     testcheck.section("Test 7: dict 迭代 (str values)")
     str_iter_count: int = 0
     for k in d2:
@@ -116,7 +115,7 @@ def main() -> CInt | CExport:
         str_iter_count += 1
     testcheck.check(str_iter_count == 3, "dict str iter OK (3)", "dict str iter FAILED")
 
-    # === Test 8: 扩容测试 ===
+    # === Test 8: expansion (>8 elements) ===
     testcheck.section("Test 8: 扩容测试 (>8 个元素)")
     d3: dict = dict(bd)
     for i in range(20):
@@ -127,7 +126,7 @@ def main() -> CInt | CExport:
     stdio.printf("d3 len=%lu (after 20 inserts)\n", n3)
     testcheck.check(n3 == 20, "dict expand OK (20)", "dict expand FAILED")
 
-    # 验证几个值
+    # verify a few values
     k5: str = stdlib.malloc(16)
     stdio.sprintf(k5, "key5")
     p5: t.CPtr = d3[k5]
@@ -198,7 +197,7 @@ def main() -> CInt | CExport:
     testcheck.check(rta == 1, "round-trip a OK", "round-trip a FAILED")
     testcheck.check(rtb == 2, "round-trip b OK", "round-trip b FAILED")
 
-    # === Test 13: 嵌套 dict ===
+    # === Test 13: nested dict ===
     testcheck.section("Test 13: 嵌套 dict")
     outer: dict = dict(bd)
     inner: dict = dict(bd)
@@ -215,7 +214,7 @@ def main() -> CInt | CExport:
     testcheck.check(sa == 1, "nested sub.a OK", "nested sub.a FAILED")
     testcheck.check(sb == 2, "nested sub.b OK", "nested sub.b FAILED")
 
-    # === Test 14: get_vtype 类型标签 ===
+    # === Test 14: get_vtype type tag ===
     testcheck.section("Test 14: get_vtype 类型标签")
     vt1: int = d.get_vtype("alpha")
     vt2: int = d2.get_vtype("name")

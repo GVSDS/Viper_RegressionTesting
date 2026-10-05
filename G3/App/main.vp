@@ -4,9 +4,8 @@ import testcheck
 from linkedlist import GSListNode
 
 # ============================================================
-# G3: 测试 F-bounded polymorphism
-# class Node(GSListNode[Node]) — 继承泛型基类，特化自身为类型参数
-# 这与 TransPyV 中 class Value(GSListNode[Value]) 是相同的模式
+# G3: test F-bounded polymorphism.
+# class Node(GSListNode[Node]) inherits a generic base specialized on itself.
 # ============================================================
 
 @t.NoVTable

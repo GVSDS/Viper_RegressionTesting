@@ -6,14 +6,13 @@ from g4node import G4Node, new_g4node
 
 
 # ============================================================
-# caller2: 另一个导入 G4Node 的模块
-#
-# 增加 G4Node 的跨模块引用次数，触发多模块竞争条件
+# caller2: a second module importing G4Node.
+# Raises cross-module reference count to stress multi-module handling.
 # ============================================================
 
 
 def caller2_reverse_chain(head: G4Node*) -> G4Node*:
-    """反转链表，直接访问 Next 字段"""
+    """Reverse the chain, accessing Next directly."""
     if head is None:
         return None
     prev: G4Node* = None
@@ -27,7 +26,7 @@ def caller2_reverse_chain(head: G4Node*) -> G4Node*:
 
 
 def caller2_count_nodes(head: G4Node*) -> int:
-    """计算链表节点数"""
+    """Count the chain nodes."""
     count: int = 0
     cur: G4Node* = head
     while cur is not None:

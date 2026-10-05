@@ -1,17 +1,8 @@
 import t
 from linkedlist import GSListNode
 
-# ============================================================
-# 最小化复现：类名 'Value' 与全局变量名冲突
-#
-# 这个类在 includes 目录中（走 Phase1 路径），生成 stub.ll
-# 继承 GSListNode[Value] 获取 Next 字段
-# 5 个自有字段 + 1 个继承字段(Next) = 6 字段
-#
-# 若 _get_or_create_struct('Value') 因 SymbolTable 中
-# IsVariable=True 而返回 _TypedPointerType，
-# 则 set_body 被跳过，struct 保持不完整 → GEP 越界崩溃
-# ============================================================
+# Minimal repro: class name 'Value' collides with global variable name.
+# GSListNode[Value] supplies Next; if the struct body is skipped, GEP overruns crash.
 
 @t.NoVTable
 class Value(GSListNode[Value]):

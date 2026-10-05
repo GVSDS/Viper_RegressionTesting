@@ -18,7 +18,7 @@ import w32.win32base
 import w32.win32process
 
 
-# 测试用临时文件/目录名前缀
+# Temp file/dir name prefixes used by tests
 define TEST_DIR = "__sylibtest_dir__"
 define TEST_FILE = "__sylibtest_file.txt"
 define TEST_COPY = "__sylibtest_copy.txt"
@@ -26,14 +26,11 @@ define TEST_TREE = "__sylibtest_tree__"
 define TEST_MOVE = "__sylibtest_moved.txt"
 
 
-# =============================================================================
-# Workaround: TransPyC 无法正确解析 os.xxx() 包级函数调用
-# (os.path.xxx() 子模块调用正常，但 os.xxx() 包级调用解析为本地模块)
-# 通过 os_backend 模块（单独导入 os._win32 / os._posix）绕过此问题
-# =============================================================================
+# ===== Workaround: TransPyC cannot resolve package-level os.xxx() calls =====
+# Use os_backend (imports os._win32 / os._posix) to bypass it.
 
 def _cleanup():
-    """清理可能残留的测试文件/目录"""
+    """Remove leftover test files/dirs."""
     if os_backend.os_exists(TEST_DIR):
         os.rmdir(TEST_DIR)
     if os_backend.os_exists(TEST_FILE):
@@ -51,12 +48,10 @@ def run() -> CInt:
 
     testcheck.begin("SysLibTest: 系统兼容层库测试")
 
-    # 清理残留
+    # Clean leftover
     _cleanup()
 
-    # =============================================================================
-    # 全局 MBuddy 初始化验证（在 main 中已初始化）
-    # =============================================================================
+    # ===== Global MBuddy init check (initialized in main) =====
     testcheck.section("全局 MBuddy 初始化验证")
 
     testcheck.check(os._mbuddy != None, "os._mbuddy initialized OK", "os._mbuddy NOT initialized")
@@ -64,13 +59,11 @@ def run() -> CInt:
     testcheck.check(shutil._mbuddy != None, "shutil._mbuddy initialized OK", "shutil._mbuddy NOT initialized")
     testcheck.check(subprocess._mbuddy != None, "subprocess._mbuddy initialized OK", "subprocess._mbuddy NOT initialized")
 
-    # 所有模块应共享同一个 MBuddy 对象
+    # All modules must share the same MBuddy object
     testcheck.check(os._mbuddy == sys._mbuddy, "os==sys same MBuddy OK", "os!=sys different MBuddy")
     testcheck.check(shutil._mbuddy == os._mbuddy, "shutil==os same MBuddy OK", "shutil!=os different MBuddy")
 
-    # =============================================================================
-    # MBuddy alloc/free/calloc/realloc（通过 os._mbuddy 测试）
-    # =============================================================================
+    # ===== MBuddy alloc/free/calloc/realloc (via os._mbuddy) =====
     testcheck.section("MBuddy alloc/free")
 
     p1: bytes = os._mbuddy.alloc(64)
@@ -87,7 +80,7 @@ def run() -> CInt:
     os._mbuddy.free(p2)
     testcheck.ok("free OK")
 
-    # calloc 清零测试
+    # calloc zeroing test
     testcheck.section("MBuddy calloc/realloc")
 
     cp: bytes = os._mbuddy.calloc(4, 16)
@@ -104,7 +97,7 @@ def run() -> CInt:
     else:
         testcheck.fail("calloc FAILED")
 
-    # realloc 数据保留测试
+    # realloc data preservation test
     rp: bytes = os._mbuddy.alloc(32)
     rp_c: CUInt8T | CPtr = CPtr(rp)
     for i in range(32):
@@ -122,9 +115,7 @@ def run() -> CInt:
     else:
         testcheck.fail("realloc FAILED")
 
-    # =============================================================================
-    # os.path 路径操作
-    # =============================================================================
+    # ===== os.path path operations =====
     testcheck.section("os.path 路径操作")
 
     # sep
@@ -151,9 +142,7 @@ def run() -> CInt:
     testcheck.check(os.path.isabs("/usr/local"), "isabs(/usr/local) OK", "isabs FAILED")
     testcheck.check(not os.path.isabs("relative/path"), "isabs(relative)=False OK", "isabs(relative) should be False")
 
-    # =============================================================================
-    # os 文件/目录操作
-    # =============================================================================
+    # ===== os file/dir operations =====
     testcheck.section("os 文件/目录操作")
 
     # getcwd
@@ -181,12 +170,10 @@ def run() -> CInt:
     testcheck.check(os_backend.os_exists(TEST_TREE) and not os_backend.os_exists(TEST_DIR), "rename: swapped OK", "rename: swap FAILED")
     testcheck.check(os.rmdir(TEST_TREE) == 0, "rmdir renamed OK", "rmdir renamed FAILED")
 
-    # =============================================================================
-    # shutil 高级文件操作
-    # =============================================================================
+    # ===== shutil high-level file operations =====
     testcheck.section("shutil 高级文件操作")
 
-    # 创建测试文件
+    # Create test file
     f: w32.fileio.File | CPtr = w32.fileio.File(TEST_FILE, w32.fileio.MODE.W)
     testcheck.check(not f.closed, "create test file OK", "create test file FAILED")
     f.write_str("hello shutil")
@@ -197,7 +184,7 @@ def run() -> CInt:
     testcheck.check(shutil.copyfile(TEST_FILE, TEST_COPY) == 0, "copyfile OK", "copyfile FAILED")
     testcheck.check(os_backend.os_exists(TEST_COPY), "copyfile: dst exists OK", "copyfile: dst not exists")
 
-    # 验证拷贝内容一致（检查文件大小）
+    # Verify copied content matches (compare size)
     src_size: int64 = os_backend.os_getsize(TEST_FILE)
     dst_size: int64 = os_backend.os_getsize(TEST_COPY)
     viperlib.snprintf(buf, 512, "src_size=%lld dst_size=%lld", src_size, dst_size)
@@ -209,12 +196,12 @@ def run() -> CInt:
     testcheck.check(os_backend.os_exists(TEST_MOVE), "move: dst exists OK", "move: dst not exists")
     os_backend.os_remove(TEST_MOVE)
 
-    # rmtree（递归删除目录树）
+    # rmtree (recursive tree delete)
     testcheck.check(os.mkdir(TEST_TREE) == 0, "mkdir tree OK", "mkdir tree FAILED")
-    # 在树中创建子目录
+    # Create subdir inside the tree
     subdir: str = os.path.join(TEST_TREE, "sub")
     testcheck.check(os.mkdir(subdir) == 0, "mkdir subdir OK", "mkdir subdir FAILED")
-    # 在子目录中创建文件
+    # Create a file inside the subdir
     subfile: str = os.path.join(subdir, "leaf.txt")
     sf: w32.fileio.File | CPtr = w32.fileio.File(subfile, w32.fileio.MODE.W)
     sf.write_str("leaf")
@@ -225,15 +212,13 @@ def run() -> CInt:
     testcheck.check(shutil.rmtree(TEST_TREE) == 0, "rmtree OK", "rmtree FAILED")
     testcheck.check(not os_backend.os_exists(TEST_TREE), "rmtree: gone OK", "rmtree: still exists")
 
-    # 清理剩余文件
+    # Clean remaining files
     if os_backend.os_exists(TEST_FILE):
         os_backend.os_remove(TEST_FILE)
     if os_backend.os_exists(TEST_COPY):
         os_backend.os_remove(TEST_COPY)
 
-    # =============================================================================
-    # sys 系统信息
-    # =============================================================================
+    # ===== sys system info =====
     testcheck.section("sys 系统信息")
 
     # platform
@@ -262,12 +247,10 @@ def run() -> CInt:
     testcheck.check(argv0 != None, "argv(0) OK", "argv(0) FAILED")
     testcheck.info(argv0)
 
-    # 越界访问
+    # Out-of-range access
     testcheck.check(sys.argv(9999) == None, "argv(out-of-range)=None OK", "argv(out-of-range) should be None")
 
-    # =============================================================================
-    # subprocess 子进程
-    # =============================================================================
+    # ===== subprocess =====
     testcheck.section("subprocess 子进程")
 
     # Windows: cmd /c echo hello
@@ -279,7 +262,7 @@ def run() -> CInt:
         testcheck.check(result.returncode == 0, "returncode == 0 OK", "returncode != 0")
         if result.stdout != None:
             testcheck.info(result.stdout)
-            # 验证输出包含 "hello"
+            # Verify output contains "hello"
             testcheck.check(string.strstr(result.stdout, "hello") != None,
                             "stdout contains 'hello' OK", "stdout missing 'hello'")
         else:
@@ -287,9 +270,7 @@ def run() -> CInt:
     else:
         testcheck.fail("run returned None")
 
-    # =============================================================================
-    # 清理
-    # =============================================================================
+    # ===== Cleanup =====
     _cleanup()
 
     stdlib.free(buf)

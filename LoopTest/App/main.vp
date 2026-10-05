@@ -30,7 +30,7 @@ def test_nested_loop():
         for j in range(5):
             if i < j:
                 count += 1
-    # 上三角: 4+3+2+1 = 10
+    # Upper triangle: 4+3+2+1 = 10.
     testcheck.check(count == 10, "nested loop (count=10)", "nested loop (expect 10)")
 
 def test_break():
@@ -50,7 +50,7 @@ def test_continue():
         if i % 3 == 0:
             continue
         sum_val += i
-    # 跳过 0,3,6,9,12,15,18, 剩余和 = sum(0..19) - sum(0,3,6,9,12,15,18) = 190 - 63 = 127
+    # Skip multiples of 3: 190 - 63 = 127.
     testcheck.check(sum_val == 127, "continue (sum=127)", "continue (expect 127)")
 
 def test_range_step():

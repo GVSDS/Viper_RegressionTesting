@@ -3,7 +3,7 @@ import stdio
 import testcheck
 
 # ============================================================
-# Test 1: nonlocal 在条件分支中修改
+# Test 1: nonlocal modified in conditional branches
 # ============================================================
 def test_nonlocal_conditional():
     testcheck.section("Test 1: nonlocal in conditional branches")
@@ -20,7 +20,7 @@ def test_nonlocal_conditional():
     testcheck.check(x == 120, "nonlocal conditional (x == 120)", "nonlocal conditional (expect 120)")
 
 # ============================================================
-# Test 2: 多个nonlocal变量同时修改
+# Test 2: multiple nonlocal variables modified together
 # ============================================================
 def test_nonlocal_multi_var():
     testcheck.section("Test 2: multiple nonlocal variables")
@@ -37,7 +37,7 @@ def test_nonlocal_multi_var():
     testcheck.check(a == 2 and b == 3 and c_val == 1, "multi nonlocal (a==2 b==3 c==1)", "multi nonlocal (expect 2 3 1)")
 
 # ============================================================
-# Test 3: global 在多个函数中交叉修改
+# Test 3: global modified across multiple functions
 # ============================================================
 g_counter: int = 0
 
@@ -60,7 +60,7 @@ def test_global_cross_functions():
     testcheck.check(g_counter == 13, "global cross (g_counter == 13)", "global cross (expect 13)")
 
 # ============================================================
-# Test 4: 嵌套函数修改外层局部变量（引用捕获）
+# Test 4: nested function modifies outer local (reference capture)
 # ============================================================
 def test_nested_ref_capture():
     testcheck.section("Test 4: nested function ref capture")
@@ -74,7 +74,7 @@ def test_nested_ref_capture():
     testcheck.check(total == 100, "ref capture (total == 100)", "ref capture (expect 100)")
 
 # ============================================================
-# Test 5: lambda捕获后修改原变量
+# Test 5: modify original variable after lambda capture
 # ============================================================
 def test_lambda_capture_then_modify():
     testcheck.section("Test 5: lambda capture then modify")
@@ -86,7 +86,7 @@ def test_lambda_capture_then_modify():
     testcheck.check(r1 == 10 and r2 == 10, "lambda value capture (before==10 after==10)", "lambda value capture (expect 10 10)")
 
 # ============================================================
-# Test 6: 嵌套函数中nonlocal与循环结合
+# Test 6: nonlocal combined with loop
 # ============================================================
 def test_nonlocal_loop_accumulate():
     testcheck.section("Test 6: nonlocal with loop accumulate")
@@ -102,7 +102,7 @@ def test_nonlocal_loop_accumulate():
     testcheck.check(sum_val == 21 and count == 8, "loop accumulate (sum==21 count==8)", "loop accumulate (expect 21 8)")
 
 # ============================================================
-# Test 7: 三层嵌套中每层修改不同变量
+# Test 7: three-level nesting, each level modifies a different var
 # ============================================================
 def test_deep_nested_vars():
     testcheck.section("Test 7: deep nested different vars")
@@ -125,7 +125,7 @@ def test_deep_nested_vars():
     testcheck.check(a == 2 and b == 20 and c_val == 200, "deep nested (a==2 b==20 c==200)", "deep nested (expect 2 20 200)")
 
 # ============================================================
-# Test 8: global + nonlocal 在同一嵌套函数中
+# Test 8: global and nonlocal in the same nested function
 # ============================================================
 g_state: int = 0
 
@@ -144,7 +144,7 @@ def test_global_nonlocal_same_func():
     testcheck.check(g_state == 5 and local_state == 10, "global+nonlocal same (g==5 l==10)", "global+nonlocal same (expect 5 10)")
 
 # ============================================================
-# Test 9: lambda带默认参数与捕获
+# Test 9: lambda with argument and capture
 # ============================================================
 def test_lambda_default_and_capture():
     testcheck.section("Test 9: lambda with arg and capture")
@@ -155,7 +155,7 @@ def test_lambda_default_and_capture():
     testcheck.check(r1 == 300 and r2 == 500, "lambda arg+capture (100*3==300 100*5==500)", "lambda arg+capture (expect 300 500)")
 
 # ============================================================
-# Test 10: 嵌套函数多次调用累积
+# Test 10: nested function accumulates over multiple calls
 # ============================================================
 def test_nested_accumulate():
     testcheck.section("Test 10: nested function accumulate")
@@ -169,7 +169,7 @@ def test_nested_accumulate():
     testcheck.check(total == 60, "nested accumulate (total == 60)", "nested accumulate (expect 60)")
 
 # ============================================================
-# Test 11: nonlocal在while循环中
+# Test 11: nonlocal in while loop
 # ============================================================
 def test_nonlocal_while():
     testcheck.section("Test 11: nonlocal in while loop")
@@ -184,7 +184,7 @@ def test_nonlocal_while():
     testcheck.check(result == 15, "nonlocal while (result == 15)", "nonlocal while (expect 15)")
 
 # ============================================================
-# Test 12: 嵌套函数修改结构体字段
+# Test 12: nested function modifies struct fields
 # ============================================================
 class Point:
     x: int

@@ -2,9 +2,7 @@ import t
 import stdio
 import testcheck
 
-# ============================================================
-# Test 1: 泛型类手动传类型参数 - Box[t.CInt](v)
-# ============================================================
+# Test 1: generic class with explicit type arg - Box[t.CInt](v)
 class Box[T]():
     value: T
 
@@ -23,9 +21,7 @@ def test_explicit_box():
     v: int = b.get()
     testcheck.check(v == 42, "Box[t.CInt](42).get() = 42", "expect 42")
 
-# ============================================================
-# Test 2: 泛型类手动传类型参数 - Pair[t.CInt, t.CInt]
-# ============================================================
+# Test 2: generic class with explicit type arg - Pair[t.CInt, t.CInt]
 class Pair[T1, T2]():
     first: T1
     second: T2
@@ -43,9 +39,7 @@ def test_explicit_pair():
     r: int = p.sum_as_int()
     testcheck.check(r == 30, "Pair[t.CInt,t.CInt](10,20).sum = 30", "expect 30")
 
-# ============================================================
-# Test 3: 泛型类手动传 + 自动推导混合
-# ============================================================
+# Test 3: generic class explicit + inferred mixed
 class Wrapper[T]():
     data: T
 
@@ -57,17 +51,15 @@ class Wrapper[T]():
 
 def test_mixed_generic_class():
     testcheck.section("Test 3: mixed explicit and inferred")
-    # 手动传
+    # Explicit
     w1 = Wrapper[int](100)
-    # 自动推导
+    # Inferred
     w2 = Wrapper(200)
     r1: int = w1.get()
     r2: int = w2.get()
     testcheck.check(r1 == 100 and r2 == 200, "Wrapper[t.CInt](100)=100 Wrapper(200)=200", "expect 100 200")
 
-# ============================================================
-# Test 4: 泛型类手动传 - 方法调用
-# ============================================================
+# Test 4: generic class explicit - method calls
 class Counter[T]():
     count: T
 
@@ -89,9 +81,7 @@ def test_explicit_counter():
     r: int = c.get_count()
     testcheck.check(r == 3, "Counter[t.CInt](0) +3 = 3", "expect 3")
 
-# ============================================================
-# Test 5: 泛型类手动传 - set 方法
-# ============================================================
+# Test 5: generic class explicit - set method
 def test_explicit_box_set():
     testcheck.section("Test 5: Box[t.CInt] set method")
     b = Box[int](10)

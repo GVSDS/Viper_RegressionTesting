@@ -6,7 +6,7 @@ import testcheck
 
 
 # ============================================================
-# 测试 1：@property getter
+# Test 1: @property getter
 # ============================================================
 class Rect:
     width: int
@@ -39,7 +39,7 @@ def test_property_getter():
 
 
 # ============================================================
-# 测试 2：@property.setter
+# Test 2: @property.setter
 # ============================================================
 class Temperature:
     _celsius: double
@@ -73,7 +73,7 @@ def test_property_setter():
 
 
 # ============================================================
-# 测试 3：@property.getter（重新定义 getter）
+# Test 3: @property.getter redefinition
 # ============================================================
 class Counter:
     _count: int
@@ -102,7 +102,7 @@ def test_property_getter_redef():
 
 
 # ============================================================
-# 测试 4：@property.deleter
+# Test 4: @property.deleter
 # ============================================================
 class Config:
     _value: int
@@ -143,7 +143,7 @@ def test_property_deleter():
 
 
 # ============================================================
-# 测试 5：@staticmethod
+# Test 5: @staticmethod
 # ============================================================
 class MathUtils:
     @staticmethod
@@ -157,13 +157,13 @@ class MathUtils:
 
 def test_staticmethod():
     testcheck.section("@staticmethod")
-    # 通过类名调用
+    # call via class name
     testcheck.check(MathUtils.add(3, 4) == 7, "MathUtils.add(3,4)==7", "MathUtils.add(3,4) expect 7")
     testcheck.check(MathUtils.max_val(5, 10) == 10, "MathUtils.max(5,10)==10", "MathUtils.max(5,10) expect 10")
 
 
 # ============================================================
-# 测试 6：@classmethod
+# Test 6: @classmethod
 # ============================================================
 class Point:
     x: double
@@ -190,7 +190,7 @@ class Point:
 
 def test_classmethod():
     testcheck.section("@classmethod")
-    # 通过类名调用
+    # call via class name
     p1: Point = Point.origin()
     testcheck.check(p1.x > -0.01 and p1.x < 0.01, "origin.x ~= 0", "origin.x expect ~0")
     testcheck.check(p1.y > -0.01 and p1.y < 0.01, "origin.y ~= 0", "origin.y expect ~0")
@@ -203,7 +203,7 @@ def test_classmethod():
 
 
 # ============================================================
-# 测试 7：综合测试 — @property + @staticmethod + @classmethod
+# Test 7: combined @property + @staticmethod + @classmethod
 # ============================================================
 class Circle:
     _radius: double
@@ -237,14 +237,14 @@ class Circle:
 
 def test_combined():
     testcheck.section("Combined @property + @staticmethod + @classmethod")
-    # 先测试直接构造
+    # first test direct construction
     cr0: Circle = Circle(1.0)
     testcheck.check(cr0.radius > 0.99 and cr0.radius < 1.01, "direct radius ~= 1", "direct radius expect ~1")
     testcheck.check(cr0.area > 3.14 and cr0.area < 3.15, "direct area ~= pi", "direct area expect ~pi")
     cr0.radius = 2.0
     testcheck.check(cr0.radius > 1.99 and cr0.radius < 2.01, "direct radius 2.0", "direct radius expect 2.0")
     testcheck.check(cr0.area > 12.56 and cr0.area < 12.58, "direct area ~= 4pi", "direct area expect ~4pi")
-    # 测试 classmethod
+    # test classmethod
     cr1: Circle = Circle.unit()
     testcheck.check(cr1.radius > 0.99 and cr1.radius < 1.01, "unit radius ~= 1", "unit radius expect ~1")
     testcheck.check(Circle.is_unit(1.0), "is_unit(1.0)", "is_unit(1.0) should be true")
@@ -252,7 +252,7 @@ def test_combined():
 
 
 # ============================================================
-# 主函数
+# main
 # ============================================================
 def main() -> int | t.CExport:
     testcheck.begin("Builtin Decorator Test")

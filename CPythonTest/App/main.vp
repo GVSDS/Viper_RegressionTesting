@@ -17,35 +17,35 @@ def test_long_operations():
     testcheck.section("PyLong operations")
     cpython.Py_Initialize()
 
-    # 创建整数
+    # Create int
     py_num: cpython.PyObject | CPtr = cpython.PyLong_FromLong(12345)
     testcheck.check(py_num != 0, "PyLong_FromLong != NULL", "PyLong_FromLong != NULL")
 
-    # 整数转字符串
+    # Int to string
     py_str: cpython.PyObject | CPtr = cpython.PyObject_Str(py_num)
     testcheck.check(py_str != 0, "PyObject_Str != NULL", "PyObject_Str != NULL")
 
-    # 获取 C 字符串
+    # Get C string
     c_str: char | CPtr = cpython.PyUnicode_AsUTF8(py_str)
     testcheck.check(c_str != 0, "PyUnicode_AsUTF8 != NULL", "PyUnicode_AsUTF8 != NULL")
     printf("  PyLong_FromLong(12345) -> str = %s\n", c_str)
 
-    # 读取回来
+    # Read back
     val: CLong = cpython.PyLong_AsLong(py_num)
     testcheck.check(val == 12345, "PyLong_AsLong == 12345", "PyLong_AsLong == 12345")
 
-    # 负数
+    # Negative
     py_neg: cpython.PyObject | CPtr = cpython.PyLong_FromLong(-999)
     neg_val: CLong = cpython.PyLong_AsLong(py_neg)
     testcheck.check(neg_val == -999, "PyLong_FromLong(-999) == -999", "PyLong_FromLong(-999) == -999")
 
-    # 浮点数转整数
+    # Float to int
     py_dbl: cpython.PyObject | CPtr = cpython.PyFloat_FromDouble(3.14159)
     testcheck.check(py_dbl != 0, "PyFloat_FromDouble != NULL", "PyFloat_FromDouble != NULL")
     dbl_val: CDouble = cpython.PyFloat_AsDouble(py_dbl)
     testcheck.check(dbl_val > 3.14 and dbl_val < 3.15, "PyFloat_AsDouble ~= 3.14", "PyFloat_AsDouble ~= 3.14")
 
-    # 清理
+    # Cleanup
     cpython.Py_DecRef(py_dbl)
     cpython.Py_DecRef(py_neg)
     cpython.Py_DecRef(py_str)
@@ -58,27 +58,27 @@ def test_string_operations():
     testcheck.section("PyUnicode operations")
     cpython.Py_Initialize()
 
-    # 从 C 字符串创建
+    # Create from C string
     py_s1: cpython.PyObject | CPtr = cpython.PyUnicode_FromString("Hello, Viper!")
     testcheck.check(py_s1 != 0, "PyUnicode_FromString != NULL", "PyUnicode_FromString != NULL")
 
-    # 获取 UTF8
+    # Get UTF-8
     utf8: char | CPtr = cpython.PyUnicode_AsUTF8(py_s1)
     testcheck.check(utf8 != 0, "AsUTF8 != NULL", "AsUTF8 != NULL")
     printf("  PyUnicode_FromString -> %s\n", utf8)
 
-    # 字符串长度
+    # String length
     length: CLong = cpython.PyUnicode_GetLength(py_s1)
     testcheck.check(length == 13, "GetLength == 13", "GetLength == 13")
 
-    # 字符串拼接
+    # String concat
     py_s2: cpython.PyObject | CPtr = cpython.PyUnicode_FromString(" World")
     py_concat: cpython.PyObject | CPtr = cpython.PyUnicode_Concat(py_s1, py_s2)
     concat_utf8: char | CPtr = cpython.PyUnicode_AsUTF8(py_concat)
     testcheck.check(py_concat != 0, "Concat != NULL", "Concat != NULL")
     printf("  Concat -> %s\n", concat_utf8)
 
-    # 清理
+    # Cleanup
     cpython.Py_DecRef(py_concat)
     cpython.Py_DecRef(py_s2)
     cpython.Py_DecRef(py_s1)
@@ -90,11 +90,11 @@ def test_list_operations():
     testcheck.section("PyList operations")
     cpython.Py_Initialize()
 
-    # 创建列表
+    # Create list
     py_list: cpython.PyObject | CPtr = cpython.PyList_New(0)
     testcheck.check(py_list != 0, "PyList_New != NULL", "PyList_New != NULL")
 
-    # Append 元素
+    # Append elements
     py_i1: cpython.PyObject | CPtr = cpython.PyLong_FromLong(10)
     py_i2: cpython.PyObject | CPtr = cpython.PyLong_FromLong(20)
     py_i3: cpython.PyObject | CPtr = cpython.PyLong_FromLong(30)
@@ -102,11 +102,11 @@ def test_list_operations():
     cpython.PyList_Append(py_list, py_i2)
     cpython.PyList_Append(py_list, py_i3)
 
-    # 检查大小
+    # Check size
     list_size: CSizeT = cpython.PyList_Size(py_list)
     testcheck.check(list_size == 3, "PyList_Size == 3", "PyList_Size == 3")
 
-    # 获取元素
+    # Get elements
     item0: cpython.PyObject | CPtr = cpython.PyList_GetItem(py_list, 0)
     val0: CLong = cpython.PyLong_AsLong(item0)
     testcheck.check(val0 == 10, "list[0] == 10", "list[0] == 10")
@@ -115,7 +115,7 @@ def test_list_operations():
     val2: CLong = cpython.PyLong_AsLong(item2)
     testcheck.check(val2 == 30, "list[2] == 30", "list[2] == 30")
 
-    # 清理
+    # Cleanup
     cpython.Py_DecRef(py_i3)
     cpython.Py_DecRef(py_i2)
     cpython.Py_DecRef(py_i1)
@@ -128,11 +128,11 @@ def test_dict_operations():
     testcheck.section("PyDict operations")
     cpython.Py_Initialize()
 
-    # 创建字典
+    # Create dict
     py_dict: cpython.PyObject | CPtr = cpython.PyDict_New()
     testcheck.check(py_dict != 0, "PyDict_New != NULL", "PyDict_New != NULL")
 
-    # 设置键值对
+    # Set key/value pairs
     py_key1: cpython.PyObject | CPtr = cpython.PyUnicode_FromString("name")
     py_val1: cpython.PyObject | CPtr = cpython.PyUnicode_FromString("Viper")
     cpython.PyDict_SetItem(py_dict, py_key1, py_val1)
@@ -141,24 +141,24 @@ def test_dict_operations():
     py_val2: cpython.PyObject | CPtr = cpython.PyLong_FromLong(1)
     cpython.PyDict_SetItem(py_dict, py_key2, py_val2)
 
-    # 检查大小
+    # Check size
     dict_size: CSizeT = cpython.PyDict_Size(py_dict)
     testcheck.check(dict_size == 2, "PyDict_Size == 2", "PyDict_Size == 2")
 
-    # 获取值
+    # Get value
     got_val: cpython.PyObject | CPtr = cpython.PyDict_GetItem(py_dict, py_key1)
     testcheck.check(got_val != 0, "GetItem(name) != NULL", "GetItem(name) != NULL")
     got_str: char | CPtr = cpython.PyUnicode_AsUTF8(got_val)
     testcheck.check(got_str != 0, "name == Viper", "name == Viper")
     printf("  dict['name'] = %s\n", got_str)
 
-    # 使用 GetItemString
+    # Use GetItemString
     got_ver: cpython.PyObject | CPtr = cpython.PyDict_GetItemString(py_dict, "version")
     testcheck.check(got_ver != 0, "GetItemString(version) != NULL", "GetItemString(version) != NULL")
     ver_val: CLong = cpython.PyLong_AsLong(got_ver)
     testcheck.check(ver_val == 1, "version == 1", "version == 1")
 
-    # 清理
+    # Cleanup
     cpython.Py_DecRef(py_val2)
     cpython.Py_DecRef(py_key2)
     cpython.Py_DecRef(py_val1)
@@ -172,15 +172,15 @@ def test_pyrun_string():
     testcheck.section("PyRun_SimpleString")
     cpython.Py_Initialize()
 
-    # 执行简单 Python 代码
+    # Run simple Python code
     rc: CInt = cpython.PyRun_SimpleString("print('Hello from embedded Python!')")
     testcheck.check(rc == 0, "PyRun_SimpleString == 0", "PyRun_SimpleString == 0")
 
-    # 执行赋值
+    # Run assignment
     rc2: CInt = cpython.PyRun_SimpleString("x = 6 * 7")
     testcheck.check(rc2 == 0, "PyRun_SimpleString(assign) == 0", "PyRun_SimpleString(assign) == 0")
 
-    # 读取结果
+    # Read result
     rc3: CInt = cpython.PyRun_SimpleString("print(f'The answer is {x}')")
     testcheck.check(rc3 == 0, "PyRun_SimpleString(print) == 0", "PyRun_SimpleString(print) == 0")
 
@@ -191,12 +191,12 @@ def test_import_module():
     testcheck.section("PyImport_ImportModule")
     cpython.Py_Initialize()
 
-    # 导入 math 模块
+    # Import math module
     math_mod: cpython.PyObject | CPtr = cpython.PyImport_ImportModule("math")
     testcheck.check(math_mod != 0, "import math != NULL", "import math != NULL")
 
     if math_mod != 0:
-        # 获取 math.pi
+        # Get math.pi
         pi_val: cpython.PyObject | CPtr = cpython.PyObject_GetAttrString(math_mod, "pi")
         testcheck.check(pi_val != 0, "math.pi != NULL", "math.pi != NULL")
         if pi_val != 0:
@@ -205,7 +205,7 @@ def test_import_module():
             printf("  math.pi = %f\n", pi_dbl)
             cpython.Py_DecRef(pi_val)
 
-        # 获取 math.sqrt 函数
+        # Get math.sqrt function
         sqrt_func: cpython.PyObject | CPtr = cpython.PyObject_GetAttrString(math_mod, "sqrt")
         testcheck.check(sqrt_func != 0, "math.sqrt != NULL", "math.sqrt != NULL")
         if sqrt_func != 0:

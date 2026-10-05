@@ -10,7 +10,7 @@ import w32.win32console
 
 
 # ==============================================
-# 工具函数：打印十六进制哈希串
+# Helper: print a hash digest as hex.
 # ==============================================
 def print_hex(buf: uint8*, length: int):
     for i in range(length):
@@ -28,7 +28,7 @@ def main() -> int | t.CExport:
 
     testcheck.begin("HashLibTest: 哈希与校验测试")
 
-    # ---------- hashlib 摘要测试 ----------
+    # ---------- hashlib digest tests ----------
     testcheck.section("HASHLIB")
     plain: str = "hello123"
 
@@ -67,7 +67,7 @@ def main() -> int | t.CExport:
     default_value_test_function(b=2, a=1)
     testcheck.ok("default value test completed")
 
-    # ---------- base64 编解码测试 ----------
+    # ---------- base64 encode/decode tests ----------
     testcheck.section("BASE64")
     b64_out: t.CArray[char, 256]
     b64_dec: t.CArray[uint8, 256]
@@ -78,7 +78,7 @@ def main() -> int | t.CExport:
     print("Base64 解码:", b64_dec)
     testcheck.ok("BASE64 encode/decode completed")
 
-    # ---------- binascii 全套测试 ----------
+    # ---------- binascii tests ----------
     testcheck.section("BINASCII")
     binascii.init_binascii()
     raw: str = "HelloWorld!"

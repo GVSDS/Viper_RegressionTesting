@@ -3,7 +3,7 @@ import stdio
 import string
 import testcheck
 
-# 定义结构体
+# Define structs
 class Point():
     x: int
     y: int
@@ -14,7 +14,7 @@ class Rect():
 
 class Node():
     value: int
-    next: t.CPtr  # Node* 类型
+    next: t.CPtr  # Node* type
 
 def test_struct_basic():
     testcheck.section("Test 1: struct basic")
@@ -37,12 +37,12 @@ def test_struct_pointer():
     p: Point = Point()
     p.x = 42
     p.y = 84
-    # 取结构体指针
+    # Take a struct pointer
     pp: Point* = t.CPtr(uint64(p))
-    # 通过指针修改
+    # Modify through the pointer
     pp.x = 100
     pp.y = 200
-    # 检查原始结构体是否被修改
+    # Check whether the original struct changed
     testcheck.check(p.x == 100 and p.y == 200, "struct pointer (x=100 y=200)", "struct pointer (x y expect 100 200)")
 
 def test_struct_param():
@@ -58,13 +58,13 @@ def point_sum(p: Point) -> int:
 
 def test_struct_array():
     testcheck.section("Test 5: struct array")
-    # 分配结构体数组
+    # Allocate a struct array
     buf: uint8* = w32.win32memory.VirtualAlloc(None, 256, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 256)
-    # 将缓冲区转为 Point 数组
+    # Reinterpret the buffer as a Point array
     pts: Point* = (Point*)(buf)
     pts[0].x = 1
     pts[0].y = 2

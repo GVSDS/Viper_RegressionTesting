@@ -6,18 +6,18 @@ import testcheck
 import remote
 
 
-# 同模块函数（有 docstring）
+# Same-module function (has docstring).
 def local_func() -> int:
     "Local function docstring."
     return 0
 
 
-# 同模块函数（无 docstring）
+# Same-module function (no docstring).
 def no_doc_func() -> int:
     return 0
 
 
-# 同模块类（有 docstring）
+# Same-module class (has docstring).
 class LocalClass:
     "Local class docstring."
     value: int
@@ -28,7 +28,7 @@ class LocalClass:
 
 
 def _check_doc_adaptive(name: str, doc: str, expected: str):
-    """自适应检查 docstring：非空时验证匹配，空时视为优化剥离"""
+    """Check docstring: verify when present, treat null as optimized out."""
     if doc is None:
         testcheck.ok(f"{name}: __doc__ optimized out (null)")
         return
@@ -39,7 +39,7 @@ def _check_doc_adaptive(name: str, doc: str, expected: str):
 
 
 def _check_doc_null(name: str, doc: str):
-    """检查 docstring 为 null（无 docstring 的符号）"""
+    """Check that a symbol's docstring is null."""
     if doc is None:
         testcheck.ok(f"{name}: __doc__ is null")
     else:

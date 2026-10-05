@@ -4,24 +4,19 @@ import testcheck
 import atom
 
 
-# ============================================================
-# G6: 验证 atom 模块的内联汇编原子操作
-#
-# TPV 在编译 atom.py 的 __atomic_test_and_set 时崩溃
-# (ACCESS_VIOLATION in ASM args loop ai3=2)
-# 此测试用 TPC 编译验证 atom 模块是否正确工作
-# ============================================================
+# G6: verify the atom module's inline-asm atomic operations.
+# Compiled with TPC to validate atom behavior in this area.
 
 
 def test_atomic_test_and_set():
     testcheck.section("Test 1: __atomic_test_and_set")
     flag: uint8 = 0
     result: bool = atom.__atomic_test_and_set(&flag, atom.ATOMIC_ACQUIRE)
-    # test_and_set 返回旧值: flag=0 -> 返回 0, flag 变为 1
+    # test_and_set returns the old value: flag=0 returns 0 and sets flag=1
     testcheck.check(result == bool(0), "first set returns old value 0", "expect 0")
     testcheck.check(flag == 1, "flag is 1 after set", "expect 1")
 
-    # 第二次设置应返回 1（旧值已为 1）
+    # Second set returns 1 because the old value is now 1.
     result2: bool = atom.__atomic_test_and_set(&flag, atom.ATOMIC_ACQUIRE)
     testcheck.check(result2 == bool(1), "second set returns old value 1", "expect 1")
 
@@ -35,7 +30,7 @@ def test_atomic_clear():
 
 def test_atomic_thread_fence():
     testcheck.section("Test 3: __atomic_thread_fence")
-    # 只是验证不崩溃
+    # Only checks that the call does not crash.
     atom.__atomic_thread_fence(atom.ATOMIC_SEQ_CST)
     testcheck.ok("mfence executed OK")
 
@@ -51,12 +46,12 @@ def test_atomic_spinlock():
     testcheck.section("Test 5: spinlock pattern (test_and_set + clear)")
     lock: uint8 = 0
 
-    # 获取锁
+    # Acquire the lock
     while atom.__atomic_test_and_set(&lock, atom.ATOMIC_ACQUIRE) == bool(1):
         pass
     testcheck.check(lock == 1, "lock acquired", "expect lock=1")
 
-    # 释放锁
+    # Release the lock
     atom.__atomic_clear(&lock, atom.ATOMIC_RELEASE)
     testcheck.check(lock == 0, "lock released", "expect lock=0")
 

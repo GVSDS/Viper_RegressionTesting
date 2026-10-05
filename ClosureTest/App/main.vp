@@ -3,7 +3,7 @@ import stdio
 import testcheck
 
 # ============================================================
-# Test 1: global 在嵌套函数中
+# Test 1: global in nested function
 # ============================================================
 g_val: int = 100
 
@@ -22,7 +22,7 @@ def test_global_in_nested():
     testcheck.check(g_val == 150, "global nested (g_val == 150)", "global nested (expect 150)")
 
 # ============================================================
-# Test 2: nonlocal 在多层嵌套中
+# Test 2: nonlocal across multiple nesting levels
 # ============================================================
 def test_nonlocal_multi_level():
     testcheck.section("Test 2: nonlocal multi-level")
@@ -42,7 +42,7 @@ def test_nonlocal_multi_level():
     testcheck.check(x == 1111, "nonlocal multi (x == 1111)", "nonlocal multi (expect 1111)")
 
 # ============================================================
-# Test 3: global 和 nonlocal 混合
+# Test 3: global and nonlocal mixed
 # ============================================================
 g_mixed: int = 0
 
@@ -61,7 +61,7 @@ def test_global_nonlocal_mixed():
     testcheck.check(g_mixed == 20 and local_var == 40, "mixed (global==20 local==40)", "mixed (expect global=20 local=40)")
 
 # ============================================================
-# Test 4: lambda 捕获多个变量
+# Test 4: lambda captures multiple variables
 # ============================================================
 def test_lambda_multi_capture():
     testcheck.section("Test 4: lambda multi-capture")
@@ -72,7 +72,7 @@ def test_lambda_multi_capture():
     testcheck.check(r == 30, "lambda multi-capture (a+b == 30)", "lambda multi-capture (expect 30)")
 
 # ============================================================
-# Test 5: lambda 带参数 + 捕获
+# Test 5: lambda with argument + capture
 # ============================================================
 def test_lambda_arg_capture():
     testcheck.section("Test 5: lambda arg + capture")
@@ -82,7 +82,7 @@ def test_lambda_arg_capture():
     testcheck.check(r == 142, "lambda arg+capture (100+42 == 142)", "lambda arg+capture (expect 142)")
 
 # ============================================================
-# Test 6: 嵌套函数返回值
+# Test 6: nested function return value
 # ============================================================
 def test_nested_return():
     testcheck.section("Test 6: nested function return")
@@ -95,7 +95,7 @@ def test_nested_return():
     testcheck.check(r == 10 and x == 10, "nested return (r==10 x==10)", "nested return (expect r=10 x=10)")
 
 # ============================================================
-# Test 7: nonlocal 与循环变量
+# Test 7: nonlocal with loop variable
 # ============================================================
 def test_nonlocal_loop():
     testcheck.section("Test 7: nonlocal with loop")
@@ -110,7 +110,7 @@ def test_nonlocal_loop():
     testcheck.check(total == 20, "nonlocal loop (total == 20)", "nonlocal loop (expect 20)")
 
 # ============================================================
-# Test 8: global 数组操作
+# Test 8: global array operation
 # ============================================================
 g_arr: t.CArray[int, 4] = [0]
 
@@ -125,7 +125,7 @@ def test_global_array():
     testcheck.check(total == 100, "global array (total == 100)", "global array (expect 100)")
 
 # ============================================================
-# Test 9: 嵌套函数条件调用
+# Test 9: nested function conditional call
 # ============================================================
 def test_nested_conditional():
     testcheck.section("Test 9: nested conditional call")
@@ -140,7 +140,7 @@ def test_nested_conditional():
     testcheck.check(result == 42, "nested conditional (result == 42)", "nested conditional (expect 42)")
 
 # ============================================================
-# Test 10: lambda 链式调用
+# Test 10: lambda chained calls
 # ============================================================
 def test_lambda_chain():
     testcheck.section("Test 10: lambda chain")

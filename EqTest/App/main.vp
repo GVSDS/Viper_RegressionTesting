@@ -14,12 +14,12 @@ def main() -> CInt | CExport:
 
     testcheck.begin("== 重载和 is 地址比较测试")
 
-    # === Test 1: str == str 值比较 ===
+    # === Test 1: str == str value compare ===
     testcheck.section("Test 1: str == str 值比较")
     s1: str = "hello"
     s2: str = "hello"
     s3: str = "world"
-    # i8* == 是指针地址比较（C-Like 语义），内容比较需显式 strcmp
+    # i8* == compares addresses (C-like); use strcmp for content compare
     testcheck.check(string.strcmp(s1, s2) == 0, "str == str (same value) OK", "str == str (same value) FAILED")
     testcheck.check(string.strcmp(s1, s3) != 0, "str != str (diff value) OK", "str != str (diff value) FAILED")
 
@@ -28,16 +28,16 @@ def main() -> CInt | CExport:
     testcheck.check(string.strcmp(s1, s3) != 0, "str != str (diff) OK", "str != str (diff) FAILED")
     testcheck.check(string.strcmp(s1, s2) == 0, "str == str (same) via != OK", "str == str (same) via != FAILED")
 
-    # === Test 3: str == 字面量 ===
+    # === Test 3: str == literal ===
     testcheck.section("Test 3: str == literal")
     testcheck.check(string.strcmp(s1, "hello") == 0, "str == literal OK", "str == literal FAILED")
     testcheck.check(string.strcmp(s1, "world") != 0, "str != literal OK", "str != literal FAILED")
 
-    # === Test 4: str is str 地址比较 ===
+    # === Test 4: str is str address compare ===
     testcheck.section("Test 4: str is str address compare")
-    # s1 和 s2 是不同的字符串变量，地址不同
+    # s1 and s2 are distinct variables with different addresses
     testcheck.check(not (s1 is s2), "str is str (diff addr) OK", "str is str (diff addr) FAILED")
-    # s1 is s1 应该为 True（同一变量）
+    # s1 is s1 is True (same variable)
     testcheck.check(s1 is s1, "str is self OK", "str is self FAILED")
 
     # === Test 5: int == int ===
@@ -48,32 +48,32 @@ def main() -> CInt | CExport:
     testcheck.check(i1 == i2, "int == int (same) OK", "int == int (same) FAILED")
     testcheck.check(not (i1 == i3), "int != int (diff) OK", "int != int (diff) FAILED")
 
-    # === Test 6: None 比较 ===
+    # === Test 6: None compare ===
     testcheck.section("Test 6: None compare")
     null_ptr: str = None
     testcheck.check(null_ptr == None, "ptr == None OK", "ptr == None FAILED")
     testcheck.check(not (s1 == None), "str != None OK", "str != None FAILED")
 
-    # === Test 7: 整型 vs None（整数上的 None 隐式为 0）===
-    # 语义（TPC / TPV 统一）：x is None ≡ x == None ≡ x == 0；x is not None ≡ x != None ≡ x != 0
+    # === Test 7: int vs None (None on int is implicitly 0) ===
+    # Unified semantics: x is None, x == None and x == 0 agree (and negations)
     testcheck.section("Test 7: int vs None")
     nz: int = 7
     zr: int = 0
-    # 非零整数 ⇒ 不等于 None
+    # nonzero int => not None
     testcheck.check(not (nz is None), "int(7) is None -> false OK", "int(7) is None FAILED")
     testcheck.check(nz is not None, "int(7) is not None -> true OK", "int(7) is not None FAILED")
     testcheck.check(not (nz == None), "int(7) == None -> false OK", "int(7) == None FAILED")
     testcheck.check(nz != None, "int(7) != None -> true OK", "int(7) != None FAILED")
-    # 零值 ⇒ 等价于 None
+    # zero => equivalent to None
     testcheck.check(zr is None, "int(0) is None -> true OK", "int(0) is None FAILED")
     testcheck.check(not (zr is not None), "int(0) is not None -> false OK", "int(0) is not None FAILED")
     testcheck.check(zr == None, "int(0) == None -> true OK", "int(0) == None FAILED")
     testcheck.check(not (zr != None), "int(0) != None -> false OK", "int(0) != None FAILED")
-    # None 在左侧的镜像方向（TPV 此前该方向分支有误，恒判相等）
+    # mirrored None-on-left direction
     testcheck.check(not (None is nz), "None is int(7) -> false OK", "None is int(7) FAILED")
     testcheck.check(None is zr, "None is int(0) -> true OK", "None is int(0) FAILED")
 
-    # === Test 8: 其它整型位宽 vs None（i8 / i64，防"从空指针 load"回归）===
+    # === Test 8: other int widths vs None (i8/i64, guards null-pointer load) ===
     testcheck.section("Test 8: char / sizet vs None")
     c8: char = 0
     c8nz: char = 65

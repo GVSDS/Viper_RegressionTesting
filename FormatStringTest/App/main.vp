@@ -5,9 +5,7 @@ import stdio
 import testcheck
 
 
-# ============================================================
-# FormatStringTest - 格式化字符串回归测试
-# ============================================================
+# FormatStringTest - format string regression test
 export def main() -> int:
     testcheck.begin("FormatStringTest: Format String Regression")
 
@@ -31,14 +29,12 @@ export def main() -> int:
     print("Dec: ", f"{42:d}")
     print("Float: ", f"{3.14159:.2f}")
 
-    # f-string 赋值测试（验证不再直接 printf，而是生成字符串）
+    # f-string assignment: must build a string, not printf directly
     s: str = f"Value=0x{ULONGLONG(42)}, Hex=0x{ULONGLONG(0x11):016X}"
     print("Assigned: ", s)
 
-    # ctraits.isptr 编译时类型判断测试
-    # &s 取的是局部变量 s（str = i8*）的地址，结果是 i8**（char**）；
-    # 与 INTPTR（= int*，见 includes/stdint.vp）层数与基座都不同，
-    # 且指针隐式转换已收紧（层数必须相同）⇒ 注解按实际类型写 str*（= i8**）。
+    # ctraits.isptr compile-time type check.
+    # &s is i8** (char**); implicit pointer casts require matching depth, so annotate str*.
     ptr_var: str* = &s
     val_var: int = 42
     if c.CIf(ctraits.isptr(ptr_var)):

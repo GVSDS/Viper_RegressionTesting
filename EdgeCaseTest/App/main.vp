@@ -45,10 +45,8 @@ renum Opt:
     None_ = 0
 
 
-# ============================================================
-# Test 5: 前向引用检测 — _class_graph 正确识别父类
-# （注：检测已修复，但成员继承仍需父类先处理）
-# ============================================================
+# Test 5: forward reference detection - _class_graph resolves the base class.
+# Member inheritance still requires the base class to be processed first.
 class Parent:
     a: int
 
@@ -63,9 +61,7 @@ class Child(Parent):
         return self.a + self.b
 
 
-# ============================================================
-# Test 6: 多层继承 A -> B -> C，CVTable 向上传播
-# ============================================================
+# Test 6: multi-level inheritance A -> B -> C, CVTable propagates upward
 class Base:
     x: int
 
@@ -87,24 +83,18 @@ class Leaf(Mid):
         return self.z
 
 
-# ============================================================
-# Test 7: 类型别名用于注解
-# ============================================================
+# Test 7: type alias in annotation
 val: myint = 42
 
 
-# ============================================================
-# Test 8: BigEndian 字节序
-# ============================================================
+# Test 8: BigEndian byte order
 class NetHeader:
     magic: int | t.BigEndian
     length: t.CShort | t.BigEndian
     normal: int
 
 
-# ============================================================
-# Test 9: import t as tt; tt.CInt 作为类型注解
-# ============================================================
+# Test 9: import t as tt; tt.CInt as type annotation
 # class TtStruct:
 #     x: tt.CInt
 #     y: tt.CFloat
@@ -118,9 +108,7 @@ class TtPoint:
     y: int
 
 
-# ============================================================
-# Test 11: import t as tt; @tt.Object 装饰器
-# ============================================================
+# Test 11: import t as tt; @tt.Object decorator
 class TtObject:
     val: int
 

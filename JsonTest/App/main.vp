@@ -7,9 +7,7 @@ import string
 import w32.win32memory as win32mem
 import testcheck
 
-# ============================================================
-# 测试 1：构造 JSON 值（使用 mpool）
-# ============================================================
+# --- Test 1: construct JSON values (with mpool) ---
 def test_construct(pool: memhub.MemPool*):
     testcheck.section("Construct JsonValue (with mpool)")
 
@@ -54,13 +52,11 @@ def test_construct(pool: memhub.MemPool*):
     testcheck.check(len(v9) == 0, "object empty len()==0", "object empty len()==0")
 
 
-# ============================================================
-# 测试 2：构造数组和对象（Python风格API）
-# ============================================================
+# --- Test 2: build arrays and objects (Pythonic API) ---
 def test_build_structures(pool: memhub.MemPool*):
     testcheck.section("Build Arrays and Objects (Pythonic API)")
 
-    # 构建数组 [1, 2, 3]
+    # Build array [1, 2, 3]
     arr: json.JsonValue* = json.array(pool)
     json.array_append(pool, arr, json.int_val(pool, 1))
     json.array_append(pool, arr, json.int_val(pool, 2))
@@ -70,13 +66,13 @@ def test_build_structures(pool: memhub.MemPool*):
     testcheck.check(arr.get_item(1).as_int() == 2, "array get_item(1)==2", "array get_item(1)==2")
     testcheck.check(arr.get_item(2).as_int() == 3, "array get_item(2)==3", "array get_item(2)==3")
 
-    # 构建对象 {"name": "Viper", "version": 1}
+    # Build object {"name": "Viper", "version": 1}
     obj: json.JsonValue* = json.object(pool)
     json.object_set(pool, obj, "name", json.string_val(pool, "Viper"))
     json.object_set(pool, obj, "version", json.int_val(pool, 1))
     testcheck.check(len(obj) == 2, "object len()==2", "object len()==2")
 
-    # Python风格取值：obj["key"]
+    # Pythonic access: obj["key"]
     name_val: json.JsonValue* = obj["name"]
     testcheck.check(name_val != None and string.strcmp(name_val.as_string(), "Viper") == 0, "obj['name']==Viper", "obj['name']==Viper")
     ver_val: json.JsonValue* = obj["version"]
@@ -85,32 +81,30 @@ def test_build_structures(pool: memhub.MemPool*):
     testcheck.check(missing == None, "obj['missing']==None", "obj['missing']==None")
 
 
-# ============================================================
-# 测试 3：JSON 解析
-# ============================================================
+# --- Test 3: parse JSON ---
 def test_parse(pool: memhub.MemPool*):
     testcheck.section("Parse JSON")
 
-    # 解析整数
+    # Parse int
     v1: json.JsonValue* = json.parse(pool, "42")
     testcheck.check(v1.is_int(), "parse int is_int", "parse int is_int")
     testcheck.check(v1.as_int() == 42, "parse int == 42", "parse int == 42")
 
-    # 解析负数
+    # Parse negative int
     v2: json.JsonValue* = json.parse(pool, "-7")
     testcheck.check(v2.as_int() == -7, "parse neg int == -7", "parse neg int == -7")
 
-    # 解析浮点数
+    # Parse float
     v3: json.JsonValue* = json.parse(pool, "3.14")
     testcheck.check(v3.is_float(), "parse float is_float", "parse float is_float")
     testcheck.check(v3.as_float() > 3.13 and v3.as_float() < 3.15, "parse float ~= 3.14", "parse float ~= 3.14")
 
-    # 解析字符串
+    # Parse string
     v4: json.JsonValue* = json.parse(pool, '"hello world"')
     testcheck.check(v4.is_string(), "parse string is_string", "parse string is_string")
     testcheck.check(string.strcmp(v4.as_string(), "hello world") == 0, "parse string == hello world", "parse string == hello world")
 
-    # 解析布尔
+    # Parse bool
     v5: json.JsonValue* = json.parse(pool, "true")
     testcheck.check(v5.is_bool(), "parse true is_bool", "parse true is_bool")
     testcheck.check(v5.as_bool(), "parse true as_bool", "parse true as_bool")
@@ -118,18 +112,18 @@ def test_parse(pool: memhub.MemPool*):
     v6: json.JsonValue* = json.parse(pool, "false")
     testcheck.check(not v6.as_bool(), "parse false !as_bool", "parse false !as_bool")
 
-    # 解析 null
+    # Parse null
     v7: json.JsonValue* = json.parse(pool, "null")
     testcheck.check(v7.is_null(), "parse null is_null", "parse null is_null")
 
-    # 解析数组
+    # Parse array
     v8: json.JsonValue* = json.parse(pool, "[1, 2, 3]")
     testcheck.check(v8.is_array(), "parse array is_array", "parse array is_array")
     testcheck.check(len(v8) == 3, "parse array len()==3", "parse array len()==3")
     testcheck.check(v8.get_item(0).as_int() == 1, "parse array get_item(0)==1", "parse array get_item(0)==1")
     testcheck.check(v8.get_item(2).as_int() == 3, "parse array get_item(2)==3", "parse array get_item(2)==3")
 
-    # 解析对象（Python风格取值）
+    # Parse object (Pythonic access)
     v9: json.JsonValue* = json.parse(pool, '{"x": 10, "y": 20}')
     testcheck.check(v9.is_object(), "parse object is_object", "parse object is_object")
     testcheck.check(len(v9) == 2, "parse object len()==2", "parse object len()==2")
@@ -139,23 +133,21 @@ def test_parse(pool: memhub.MemPool*):
     testcheck.check(y_val != None and y_val.as_int() == 20, "parse obj['y']==20", "parse obj['y']==20")
 
 
-# ============================================================
-# 测试 4：JSON 序列化
-# ============================================================
+# --- Test 4: write JSON ---
 def test_write(pool: memhub.MemPool*):
     testcheck.section("Write JSON")
 
-    # 写整数
+    # Write int
     v1: json.JsonValue* = json.int_val(pool, 42)
     s1: char* = json.write(pool, v1, False)
     testcheck.check(string.strcmp(s1, "42") == 0, "write int 42", "write int 42")
 
-    # 写字符串
+    # Write string
     v2: json.JsonValue* = json.string_val(pool, "hello")
     s2: char* = json.write(pool, v2, False)
     testcheck.check(string.strcmp(s2, '"hello"') == 0, "write string hello", "write string hello")
 
-    # 写布尔
+    # Write bool
     v3: json.JsonValue* = json.bool_val(pool, True)
     s3: char* = json.write(pool, v3, False)
     testcheck.check(string.strcmp(s3, "true") == 0, "write bool true", "write bool true")
@@ -164,12 +156,12 @@ def test_write(pool: memhub.MemPool*):
     s4: char* = json.write(pool, v4, False)
     testcheck.check(string.strcmp(s4, "false") == 0, "write bool false", "write bool false")
 
-    # 写 null
+    # Write null
     v5: json.JsonValue* = json.null(pool)
     s5: char* = json.write(pool, v5, False)
     testcheck.check(string.strcmp(s5, "null") == 0, "write null", "write null")
 
-    # 写数组
+    # Write array
     arr: json.JsonValue* = json.array(pool)
     json.array_append(pool, arr, json.int_val(pool, 1))
     json.array_append(pool, arr, json.int_val(pool, 2))
@@ -177,7 +169,7 @@ def test_write(pool: memhub.MemPool*):
     s6: char* = json.write(pool, arr, False)
     testcheck.check(string.strcmp(s6, "[1,2,3]") == 0, "write array [1,2,3]", "write array [1,2,3]")
 
-    # 写对象
+    # Write object
     obj: json.JsonValue* = json.object(pool)
     json.object_set(pool, obj, "a", json.int_val(pool, 1))
     json.object_set(pool, obj, "b", json.string_val(pool, "x"))
@@ -185,9 +177,7 @@ def test_write(pool: memhub.MemPool*):
     testcheck.check(s7 != None, "write object non-null", "write object non-null")
 
 
-# ============================================================
-# 测试 5：解析复杂嵌套 JSON（Python风格API）
-# ============================================================
+# --- Test 5: parse nested JSON (Pythonic API) ---
 def test_nested(pool: memhub.MemPool*):
     testcheck.section("Parse Nested JSON (Pythonic API)")
 
@@ -196,7 +186,7 @@ def test_nested(pool: memhub.MemPool*):
     testcheck.check(root.is_object(), "nested is_object", "nested is_object")
     testcheck.check(len(root) == 4, "nested len()==4", "nested len()==4")
 
-    # Python风格取值：root["name"]
+    # Pythonic access: root["name"]
     name: json.JsonValue* = root["name"]
     testcheck.check(name != None and string.strcmp(name.as_string(), "Viper") == 0, "root['name']==Viper", "root['name']==Viper")
 
@@ -204,14 +194,14 @@ def test_nested(pool: memhub.MemPool*):
     ver: json.JsonValue* = root["version"]
     testcheck.check(ver != None and ver.as_int() == 1, "root['version']==1", "root['version']==1")
 
-    # root["features"] 数组
+    # root["features"] array
     feat: json.JsonValue* = root["features"]
     testcheck.check(feat != None and feat.is_array(), "root['features'] is_array", "root['features'] is_array")
     testcheck.check(feat != None and len(feat) == 3, "root['features'] len()==3", "root['features'] len()==3")
     testcheck.check(feat != None and string.strcmp(feat.get_item(0).as_string(), "fast") == 0, "root['features'][0]==fast", "root['features'][0]==fast")
     testcheck.check(feat != None and string.strcmp(feat.get_item(2).as_string(), "portable") == 0, "root['features'][2]==portable", "root['features'][2]==portable")
 
-    # root["nested"] 对象
+    # root["nested"] object
     nested: json.JsonValue* = root["nested"]
     testcheck.check(nested != None and nested.is_object(), "root['nested'] is_object", "root['nested'] is_object")
     nk: json.JsonValue* = nested["key"] if nested != None else None
@@ -220,30 +210,28 @@ def test_nested(pool: memhub.MemPool*):
     testcheck.check(nn != None and nn.as_int() == 99, "root['nested']['num']==99", "root['nested']['num']==99")
 
 
-# ============================================================
-# 测试 6：mpool 重置后重新使用
-# ============================================================
+# --- Test 6: reuse mpool after reset ---
 def test_mpool_reuse():
     testcheck.section("MPool Reuse")
 
-    # 分配内存
+    # Allocate memory
     mem: t.CPtr = win32mem.VirtualAlloc(None, 8192, 0x3000, 0x04)
     testcheck.check(mem != None, "VirtualAlloc ok", "VirtualAlloc ok")
 
     pool: memhub.MemPool* = memhub.MemPool(mem, 8192)
 
-    # 第一次使用
+    # First use
     v1: json.JsonValue* = json.int_val(pool, 100)
     testcheck.check(v1.as_int() == 100, "reuse round1 int==100", "reuse round1 int==100")
 
-    # 重置 mpool
+    # Reset mpool
     pool.reset()
 
-    # 第二次使用（内存复用）
+    # Second use (reuses memory)
     v2: json.JsonValue* = json.string_val(pool, "reused")
     testcheck.check(string.strcmp(v2.as_string(), "reused") == 0, "reuse round2 string==reused", "reuse round2 string==reused")
 
-    # 重置后再解析
+    # Reset then parse again
     pool.reset()
     v3: json.JsonValue* = json.parse(pool, '{"test": true}')
     testcheck.check(v3.is_object(), "reuse round3 parse ok", "reuse round3 parse ok")
@@ -253,13 +241,11 @@ def test_mpool_reuse():
     win32mem.VirtualFree(mem, 0, 0x8000)
 
 
-# ============================================================
-# 测试 7：转义字符解析
-# ============================================================
+# --- Test 7: escape characters ---
 def test_escape(pool: memhub.MemPool*):
     testcheck.section("Escape Characters")
 
-    # 解析含转义字符的字符串
+    # Parse string with escapes
     v1: json.JsonValue* = json.parse(pool, '"hello\\nworld"')
     testcheck.check(v1.is_string(), "escape \\n is_string", "escape \\n is_string")
     sv1: char* = v1.as_string()
@@ -274,13 +260,11 @@ def test_escape(pool: memhub.MemPool*):
     testcheck.check(v3.is_string(), "escape \\\" is_string", "escape \\\" is_string")
 
 
-# ============================================================
-# 主函数
-# ============================================================
+# --- main ---
 def main() -> int | t.CExport:
     testcheck.begin("JSON Library Test (Pythonic API)")
 
-    # 使用 mpool 的 bump 分配器
+    # Use mpool bump allocator
     mem: t.CPtr = win32mem.VirtualAlloc(None, 65536, 0x3000, 0x04)
     pool: memhub.MemPool* = memhub.MemPool(mem, 65536)
 

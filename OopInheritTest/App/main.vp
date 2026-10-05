@@ -7,7 +7,7 @@ import stdlib
 import testcheck
 
 
-# === OOP 继承 + 虚方法 ===
+# === OOP inheritance + virtual methods ===
 
 @t.CVTable
 class Shape:
@@ -64,7 +64,7 @@ class Rect(Shape):
         return self
 
 
-# === 运算符重载 + 链式调用（堆分配） ===
+# === operator overloading + chained calls (heap allocated) ===
 
 class Vec2:
     x: CFloat64T
@@ -133,7 +133,7 @@ class Vec3:
         return self.dot(self)
 
 
-# === 独立类（非继承） ===
+# === standalone classes (no inheritance) ===
 
 @t.CVTable
 class Dog:
@@ -180,7 +180,7 @@ class Cat:
         return 0
 
 
-# === 嵌套对象组合（堆分配） ===
+# === nested object composition (heap allocated) ===
 
 class Transform:
     px: CFloat64T
@@ -211,7 +211,7 @@ class Transform:
         return Vec3(self.px * self.scale_x, self.py * self.scale_y, self.pz * self.scale_z)
 
 
-# === 多层继承（子类只重写需要的方法） ===
+# === multilevel inheritance (subclasses override only what they need) ===
 
 @t.CVTable
 class Vehicle:
@@ -264,7 +264,7 @@ def main() -> CInt | CExport:
 
     buf: CChar | CPtr = CPtr(stdlib.malloc(256))
 
-    # === OOP 继承测试 ===
+    # === OOP inheritance test ===
     testcheck.section("OOP 继承测试")
     c1 = Circle(0.0, 0.0, 5.0)
     viperlib.snprintf(buf, 256, "Circle area=%.2f perim=%.2f", c1.area(), c1.perimeter())
@@ -274,7 +274,7 @@ def main() -> CInt | CExport:
     viperlib.snprintf(buf, 256, "Rect area=%.2f perim=%.2f", r1.area(), r1.perimeter())
     print(buf)
 
-    # 链式调用: scale -> move
+    # chained calls: scale -> move
     c2 = Circle(1.0, 2.0, 3.0)
     c2.scale(2.0).move(10.0, 20.0)
     viperlib.snprintf(buf, 256, "Circle after scale+move: x=%.1f y=%.1f r=%.1f area=%.2f",
@@ -288,7 +288,7 @@ def main() -> CInt | CExport:
     print(buf)
     testcheck.ok("OOP 继承测试完成")
 
-    # === Vec2 运算符重载 + 链式调用（堆分配） ===
+    # === Vec2 operator overloading + chained calls (heap) ===
     testcheck.section("Vec2 运算符重载 + 链式调用")
     v1 = Vec2(3.0, 4.0)
     v2 = Vec2(1.0, 2.0)
@@ -312,13 +312,13 @@ def main() -> CInt | CExport:
     viperlib.snprintf(buf, 256, "Vec2 dot: %.1f", d)
     print(buf)
 
-    # 链式运算: (v1 + v2) * 3.0
+    # chained op: (v1 + v2) * 3.0
     v_chain = (v1 + v2) * 3.0
     viperlib.snprintf(buf, 256, "Vec2 chain (v1+v2)*3: (%.1f, %.1f)", v_chain.x, v_chain.y)
     print(buf)
     testcheck.ok("Vec2 运算符重载测试完成")
 
-    # === Vec3 运算符重载 + 链式调用（堆分配） ===
+    # === Vec3 operator overloading + chained calls (heap) ===
     testcheck.section("Vec3 运算符重载 + 链式调用")
     a1 = Vec3(1.0, 0.0, 0.0)
     a2 = Vec3(0.0, 1.0, 0.0)
@@ -330,7 +330,7 @@ def main() -> CInt | CExport:
     viperlib.snprintf(buf, 256, "Vec3 dot: %.1f", dot_v)
     print(buf)
 
-    # 链式: (a + b).dot(c)
+    # chained: (a + b).dot(c)
     a3 = Vec3(1.0, 2.0, 3.0)
     a4 = Vec3(4.0, 5.0, 6.0)
     a5 = Vec3(7.0, 8.0, 9.0)
@@ -338,18 +338,18 @@ def main() -> CInt | CExport:
     viperlib.snprintf(buf, 256, "Vec3 chain dot: %.1f", chain_dot)
     print(buf)
 
-    # 链式: (a * 2.0 - b).cross(c)
+    # chained: (a * 2.0 - b).cross(c)
     chain_cross = (a3 * 2.0 - a4).cross(a5)
     viperlib.snprintf(buf, 256, "Vec3 chain cross: (%.1f, %.1f, %.1f)", chain_cross.x, chain_cross.y, chain_cross.z)
     print(buf)
 
-    # len_sq 链式
+    # chained len_sq
     lsq = a3.len_sq()
     viperlib.snprintf(buf, 256, "Vec3 len_sq: %.1f", lsq)
     print(buf)
     testcheck.ok("Vec3 运算符重载测试完成")
 
-    # === Dog/Cat 虚方法 ===
+    # === Dog/Cat virtual methods ===
     testcheck.section("Dog/Cat 虚方法")
     dog = Dog(1, CInt32T(30))
     cat = Cat(2, CInt32T(9))
@@ -368,7 +368,7 @@ def main() -> CInt | CExport:
     print(buf)
     testcheck.ok("Dog/Cat 虚方法测试完成")
 
-    # === Transform 嵌套组合（堆分配，链式调用） ===
+    # === Transform nested composition (heap, chained calls) ===
     testcheck.section("Transform 嵌套组合")
     tr = Transform(10.0, 20.0, 30.0)
     tr.apply_scale(2.0, 3.0, 4.0)
@@ -383,7 +383,7 @@ def main() -> CInt | CExport:
     print(buf)
     testcheck.ok("Transform 嵌套组合测试完成")
 
-    # === 多层继承 ===
+    # === multilevel inheritance ===
     testcheck.section("多层继承")
     ec = ElectricCar(CInt32T(120), CInt32T(4), CInt32T(80))
     viperlib.snprintf(buf, 256, "ECar speed=%d doors=%d battery=%d", ec.speed, ec.doors, ec.battery)

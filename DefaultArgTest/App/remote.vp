@@ -1,21 +1,21 @@
 import t
 
 
-# 跨模块：单个尾随默认值（对照 includes/json/__writer.vp 的 write 形态）
+# Cross-module: single trailing default (mirrors write in includes/json/__writer.vp)
 def one(x: int, cap: sizet = 4096) -> sizet:
     return cap
 
 
-# 跨模块：4 参、最后一个有默认值（与 json.write(pool, val, pretty, cap=4096) 同形）
+# Cross-module: 4 params, last has a default (same shape as json.write(pool, val, pretty, cap=4096))
 def write(a: int, b: int, pretty: bool, cap: sizet = 4096) -> sizet:
     return cap
 
 
-# 跨模块：多个尾随默认值
+# Cross-module: multiple trailing defaults
 def quad(a: int, b: int = 10, c: int = 20, d: int = 30) -> int:
     return a + b * 100 + c * 10000 + d * 1000000
 
 
-# 跨模块：乱序/命名传参（wiki 04-functions.md 的 add 形态）
+# Cross-module: named / out-of-order args (add shape in wiki 04-functions.md)
 def many(x: int, y: int, z: int = 1) -> int:
     return (x + y) * z

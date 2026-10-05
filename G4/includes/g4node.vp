@@ -3,25 +3,17 @@ from linkedlist import GSListNode
 import memhub
 
 # ============================================================
-# G4Node: 继承 GSListNode[G4Node] 的测试类
-#
-# 这个类在 includes 目录中，会走 Phase1 路径
-# 模拟 TransPyV 中 Value 类的结构：
-#   - 继承 GSListNode[G4Node] 获取 Next 字段
-#   - 5 个自有字段（与 Value 相同数量）
-#   - @t.NoVTable 装饰器
-#
-# 继承展平后应有 6 个字段：Next + 5 自有
-# 若继承展平失败，只有 5 个字段（缺少 Next）
+# G4Node: test class inheriting GSListNode[G4Node] (in includes, so it uses
+# the Phase1 path); flattened it must have 6 fields: Next + 5 own fields.
 # ============================================================
 
 @t.NoVTable
 class G4Node(GSListNode[G4Node]):
-    Ty: t.CPtr             # 模拟 Value.Ty
-    Name: t.CPtr           # 模拟 Value.Name
-    IsConst: int        # 模拟 Value.IsConst
-    IntVal: int64      # 模拟 Value.IntVal
-    FloatVal: double    # 模拟 Value.FloatVal
+    Ty: t.CPtr             # mirrors Value.Ty
+    Name: t.CPtr           # mirrors Value.Name
+    IsConst: int        # mirrors Value.IsConst
+    IntVal: int64      # mirrors Value.IntVal
+    FloatVal: double    # mirrors Value.FloatVal
 
     def __init__(self):
         self.Ty = None
@@ -32,7 +24,7 @@ class G4Node(GSListNode[G4Node]):
         self.Next = None
 
 
-# 工厂函数（与 __values.py 中的 new_value 类似）
+# factory function (similar to new_value in __values.py)
 def new_g4node(pool: memhub.MemBuddy*) -> G4Node*:
     ptr: G4Node* = pool.alloc(48)
     if ptr:

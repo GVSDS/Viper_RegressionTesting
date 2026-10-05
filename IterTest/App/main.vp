@@ -26,20 +26,20 @@ def test_for_in_char_ptr():
 def test_strcpy_for_in():
     testcheck.section("Test 3: strcpy using for-in")
     src: char* = "test"
-    # 手动实现 strcpy 用 for-in
+    # Implement strcpy by hand with for-in.
     import w32.win32memory
     buf: char* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
-    # 用 for-in 复制
+    # Copy with for-in.
     p: char* = buf
     for ch in src:
         p[0] = ch
         p += 1
     p[0] = 0
-    # i8* == 是指针地址比较（C-Like 语义），字符串内容比较需显式 strcmp
+    # '==' on pointers compares addresses (C-like); use strcmp for contents.
     testcheck.check(string.strcmp(buf, "test") == 0, "strcpy for-in (result=test)", "strcpy for-in (cmp mismatch)")
 
 import w32.win32memory

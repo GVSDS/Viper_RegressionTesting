@@ -3,7 +3,7 @@ import stdio
 import testcheck
 
 # ============================================================
-# Test 1: 泛型函数 - 基本加法
+# Test 1: generic function, basic addition
 # ============================================================
 def add[T](a: T, b: T) -> T:
     return a + b
@@ -15,7 +15,7 @@ def test_generic_add():
     testcheck.check(r1 == 8 and r2 == 300, "generic add (3+5=8, 100+200=300)", "generic add expect 8 and 300")
 
 # ============================================================
-# Test 2: 泛型函数 - 多类型参数
+# Test 2: generic function, multiple type parameters
 # ============================================================
 def combine[T1, T2](a: T1, b: T2) -> T1:
     return a + T1(b)
@@ -26,7 +26,7 @@ def test_generic_combine():
     testcheck.check(r == 30, "generic combine (10+T1(20)=30)", "generic combine expect 30")
 
 # ============================================================
-# Test 3: 泛型函数 - 最大值
+# Test 3: generic function, maximum
 # ============================================================
 def max_val[T](a: T, b: T) -> T:
     if a > b:
@@ -40,7 +40,7 @@ def test_generic_max():
     testcheck.check(r1 == 20 and r2 == 50, "generic max (max(10,20)=20, max(50,30)=50)", "generic max expect 20 and 50")
 
 # ============================================================
-# Test 4: 泛型类 - Box[T]
+# Test 4: generic class Box[T]
 # ============================================================
 class Box[T]():
     value: T
@@ -61,7 +61,7 @@ def test_generic_box():
     testcheck.check(v == 42, "Box[int] (get=42)", "Box[int] expect 42")
 
 # ============================================================
-# Test 5: 泛型类 - Pair[T1, T2]
+# Test 5: generic class Pair[T1, T2]
 # ============================================================
 class Pair[T1, T2]():
     first: T1
@@ -81,7 +81,7 @@ def test_generic_pair():
     testcheck.check(r == 30, "Pair[int,int] (sum=30)", "Pair[int,int] expect 30")
 
 # ============================================================
-# Test 6: list[T, N] 固定数组
+# Test 6: list[T, N] fixed array
 # ============================================================
 def test_fixed_array():
     testcheck.section("Test 6: list[T, N] fixed array")
@@ -95,7 +95,7 @@ def test_fixed_array():
     testcheck.check(total == 100, "fixed array (total=100)", "fixed array expect 100")
 
 # ============================================================
-# Test 7: list[t.CChar, N] 字符数组
+# Test 7: list[t.CChar, N] char array
 # ============================================================
 def test_char_array():
     testcheck.section("Test 7: list[t.CChar, N] char array")
@@ -106,7 +106,7 @@ def test_char_array():
     testcheck.check(buf[0] == 72 and buf[1] == 105, "char array (H=72 i=105)", "char array expect H=72 i=105")
 
 # ============================================================
-# Test 8: 泛型函数多次特化
+# Test 8: generic function specialized multiple times
 # ============================================================
 def identity[T](x: T) -> T:
     return x
@@ -118,7 +118,7 @@ def test_generic_identity():
     testcheck.check(r1 == 42 and r2 == 0, "identity (42=42, 0=0)", "identity expect 42 and 0")
 
 # ============================================================
-# Test 9: 泛型函数嵌套调用
+# Test 9: generic function nested call
 # ============================================================
 def double_val[T](x: T) -> T:
     return add(x, x)
@@ -129,7 +129,7 @@ def test_generic_nested():
     testcheck.check(r == 42, "generic nested (double(21)=42)", "generic nested expect 42")
 
 # ============================================================
-# Test 10: 泛型类方法调用
+# Test 10: generic class method call
 # ============================================================
 class Counter[T]():
     count: T

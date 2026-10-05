@@ -5,20 +5,13 @@ import stdlib
 import memhub
 from conflict_node import Value
 
-# ============================================================
-# 关键冲突点：全局变量名 'Value' 与类名 'Value' 相同
-#
-# LlvmGenerator 预处理扫描会将 'Value' 注册为 IsVariable=True
-# 覆盖 SymbolTable 中的类条目。
-# 之后 _get_or_create_struct('Value') 发现 IsVariable=True，
-# 返回 _TypedPointerType 而非 IdentifiedStructType，
-# 导致 _TryLoadStructFromStub 中 set_body 被跳过。
-# ============================================================
+# G7: global variable 'Value' collides with class 'Value'
+# Variable registration overrides the struct symbol, so struct body setup is skipped.
 Value: t.CPtr = None
 
 
 def test_value_struct_fields():
-    """验证 Value struct 有 6 个字段（Next + 5 自有）"""
+    """Verify the Value struct has 6 fields (Next + 5 own)."""
     testcheck.section("Value struct field access (6 fields expected)")
     arena: bytes = stdlib.malloc(4096)
     if arena is None:
@@ -29,15 +22,15 @@ def test_value_struct_fields():
     if node is None:
         testcheck.check(False, "alloc Value", "FAIL")
         return
-    # 写入字段 0 (Next, 继承自 GSListNode)
+    # Field 0: Next (inherited from GSListNode)
     node.Next = None
-    # 写入字段 1-5 (自有字段)
+    # Fields 1-5: own fields
     node.Ty = None
     node.Name = None
     node.IsConst = 1
     node.IntVal = 42
     node.FloatVal = 3.14
-    # 读取验证
+    # Read back and verify
     v: int = node.IntVal
     testcheck.check(v == 42, "Value.IntVal = 42", "expect 42")
     f: double = node.FloatVal

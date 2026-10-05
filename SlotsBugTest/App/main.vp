@@ -3,9 +3,9 @@ import ast
 
 
 # ============================================================
-# 回归测试：__slots__ + ast.AST 字段类型
-# 验证 TPC 修复：无法识别的类型注解应报错终止，而非 VoidType alloca 崩溃
-# 对照：使用 ast.expr（无效）会报错；使用 ast.AST（有效）应编译成功
+# Regression test: __slots__ with ast.AST field types.
+# An unrecognized type annotation must error out instead of crashing in
+# VoidType alloca; ast.expr (invalid) errors, ast.AST (valid) compiles.
 # ============================================================
 class Result:
     __slots__ = ('elem_type_node', 'count_node', 'is_pointer')

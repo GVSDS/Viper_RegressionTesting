@@ -6,18 +6,12 @@ from t import CInt, CPtr, CExport
 
 
 # ============================================================
-# isinstance 内建函数测试（运行时 vtable 继承链比较）
-#
-# 场景覆盖：
-#   1. CVTable 自身/子类→基类
-#   2. 运行时多态（基类指针指向子类对象）
-#   3. 元组 (A, B)
-#   4. 多继承（AB 同时是 A 和 B 的实例）
-#   5. NoVTable 类（编译时静态判断）
+# isinstance builtin test: runtime vtable inheritance-chain comparison over
+# self/subclass, polymorphism, tuples, multiple inheritance, and NoVTable.
 # ============================================================
 
 
-# ========== CVTable 继承 ==========
+# ========== CVTable inheritance ==========
 
 @t.CVTable
 class Animal:
@@ -45,7 +39,7 @@ class Cat(Animal):
         return "Meow"
 
 
-# ========== 多继承 ==========
+# ========== multiple inheritance ==========
 
 @t.CVTable
 class A:
@@ -70,7 +64,7 @@ class AB(A, B):
         self.b = b
 
 
-# ========== NoVTable（编译时判断） ==========
+# ========== NoVTable (compile-time) ==========
 
 @t.NoVTable
 class Plain:
@@ -80,7 +74,7 @@ class Plain:
 def main() -> CInt | CExport:
     testcheck.begin("IsinstanceTest: isinstance 内建函数测试")
 
-    # --- 1. 自身类型 + 子类→基类 ---
+    # --- 1. self type and subclass -> base ---
     d: Dog | CPtr = Dog("dog")
     testcheck.check(isinstance(d, Dog) == 1, "isinstance(d, Dog) 自身 OK",
                     "isinstance(d, Dog) FAILED")
@@ -89,7 +83,7 @@ def main() -> CInt | CExport:
     testcheck.check(isinstance(d, Cat) == 0, "isinstance(d, Cat) 不匹配 OK",
                     "isinstance(d, Cat) FAILED")
 
-    # --- 2. 运行时多态：基类指针指向子类对象 ---
+    # --- 2. runtime polymorphism: base pointer to subclass object ---
     a: Animal | CPtr = (Animal | CPtr)(d)
     testcheck.check(isinstance(a, Dog) == 1,
                     "isinstance(Animal*, Dog 对象) 运行时多态 OK",
@@ -101,13 +95,13 @@ def main() -> CInt | CExport:
                     "isinstance(Animal*, Cat) 运行时 False OK",
                     "isinstance(Animal*, Cat) FAILED")
 
-    # --- 3. 元组 ---
+    # --- 3. tuple ---
     testcheck.check(isinstance(d, (Cat, Dog)) == 1, "isinstance 元组命中 OK",
                     "isinstance 元组 FAILED")
     testcheck.check(isinstance(d, (Cat, A)) == 0, "isinstance 元组未命中 OK",
                     "isinstance 元组未命中 FAILED")
 
-    # --- 4. 多继承 ---
+    # --- 4. multiple inheritance ---
     ab: AB | CPtr = AB(1, 2)
     testcheck.check(isinstance(ab, A) == 1, "isinstance(AB, A) 多继承 OK",
                     "isinstance(AB, A) FAILED")
@@ -118,14 +112,14 @@ def main() -> CInt | CExport:
     testcheck.check(ab.get_a() == 1 and ab.get_b() == 2, "AB 字段/方法正常 OK",
                     "AB 字段/方法 FAILED")
 
-    # --- 5. NoVTable（编译时静态判断） ---
+    # --- 5. NoVTable (compile-time static) ---
     p: Plain | CPtr = Plain()
     p.v = 42
     testcheck.check(isinstance(p, Plain) == 1, "isinstance NoVTable 编译时 OK",
                     "isinstance NoVTable FAILED")
     testcheck.check(p.v == 42, "NoVTable 字段正常 OK", "NoVTable 字段 FAILED")
 
-    # --- 6. 跨模块 isinstance（vtable 跨 obj 链接解析） ---
+    # --- 6. cross-module isinstance (vtable resolved at link time) ---
     cc: geom_lib.Circle | CPtr = geom_lib.Circle(5)
     testcheck.check(isinstance(cc, geom_lib.Circle) == 1,
                     "跨模块 isinstance 自身 OK", "跨模块 isinstance 自身 FAILED")
@@ -144,7 +138,7 @@ def main() -> CInt | CExport:
     testcheck.check(shp.area() == 5, "跨模块虚方法分派 OK", "跨模块虚方法分派 FAILED")
     testcheck.check(cc.area() == 5, "跨模块 Circle.area OK", "跨模块 Circle.area FAILED")
 
-    # --- 7. NoVTable 跨模块静态判断 ---
+    # --- 7. NoVTable cross-module static ---
     ps: geom_lib.PlainShape | CPtr = geom_lib.PlainShape()
     testcheck.check(isinstance(ps, geom_lib.PlainShape) == 1,
                     "跨模块 NoVTable 静态 OK", "跨模块 NoVTable 静态 FAILED")

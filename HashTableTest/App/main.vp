@@ -16,11 +16,11 @@ def main() -> CInt | CExport:
 
     testcheck.begin("HashTableTest: 开放寻址哈希表测试")
 
-    # 分配内存竞技场
+    # Allocate the memory arena
     arena: bytes = stdlib.malloc(65536)
     bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
-    # === Test 1: 基本插入和查找 ===
+    # === Test 1: basic insert and lookup ===
     testcheck.section("Test 1: 基本插入和查找 (set_int)")
     ht: hashtable.HashTable = hashtable.HashTable(bd)
     ht.set_int("alpha", 10)
@@ -30,9 +30,8 @@ def main() -> CInt | CExport:
     stdio.printf("len=%lu\n", n)
     testcheck.check(n == 3, "ht len OK (3)", "ht len FAILED")
 
-    # 哈希表的 int 值按 int（i32）写入（见 hashtable.vp set_int 的 int_ptr），读回
-    # 须给出有元素类型的指针：c.Deref 的宽度只认 pointee 类型，i8*（t.CPtr）恒读
-    # 1 字节，不再按赋值目标注解反推 4 字节。
+    # set_int stores the value as i32; read it back through a typed pointer, since
+    # c.Deref width follows the pointee type and i8* (t.CPtr) always reads 1 byte.
     p1: t.CPtr = ht["alpha"]
     v1: int = *(int*)(p1)
     p2: t.CPtr = ht["beta"]
@@ -44,7 +43,7 @@ def main() -> CInt | CExport:
     testcheck.check(v2 == 20, "ht[beta]==20 OK", "ht[beta] FAILED")
     testcheck.check(v3 == 30, "ht[gamma]==30 OK", "ht[gamma] FAILED")
 
-    # === Test 2: 更新已有键 ===
+    # === Test 2: update existing key ===
     testcheck.section("Test 2: 更新已有键")
     ht.set_int("beta", 99)
     p2b: t.CPtr = ht["beta"]
@@ -70,7 +69,7 @@ def main() -> CInt | CExport:
     testcheck.check(has_alpha == 1, "contains alpha OK", "contains alpha FAILED")
     testcheck.check(has_missing == 0, "not contains missing OK", "contains missing FAILED")
 
-    # === Test 5: 删除 ===
+    # === Test 5: delete ===
     testcheck.section("Test 5: 删除 (del)")
     deleted: int = ht.__delitem__("beta")
     stdio.printf("del beta=%d\n", deleted)
@@ -79,11 +78,11 @@ def main() -> CInt | CExport:
     has_beta: int = "beta" in ht
     testcheck.check(has_beta == 0, "beta gone OK", "beta still exists FAILED")
 
-    # 删除不存在的 key
+    # Delete a nonexistent key
     del_missing: int = ht.__delitem__("nokey")
     testcheck.check(del_missing == 0, "del missing returns 0 OK", "del missing FAILED")
 
-    # === Test 6: 删除后重新插入 ===
+    # === Test 6: re-insert after delete ===
     testcheck.section("Test 6: 删除后重新插入")
     ht.set_int("beta", 555)
     p2c: t.CPtr = ht["beta"]
@@ -92,7 +91,7 @@ def main() -> CInt | CExport:
     testcheck.check(v2c == 555, "ht re-insert beta OK", "ht re-insert beta FAILED")
     testcheck.check(len(ht) == 3, "ht len 3 after re-insert OK", "ht len after re-insert FAILED")
 
-    # === Test 7: 迭代器 ===
+    # === Test 7: iterator ===
     testcheck.section("Test 7: 迭代器 for key in ht")
     iter_count: int = 0
     for key in ht:
@@ -102,7 +101,7 @@ def main() -> CInt | CExport:
         iter_count += 1
     testcheck.check(iter_count == 3, "ht iter OK (3)", "ht iter FAILED")
 
-    # === Test 8: 字符串值 ===
+    # === Test 8: string values ===
     testcheck.section("Test 8: 字符串值 (set_str)")
     ht2: hashtable.HashTable = hashtable.HashTable(bd)
     ht2.set_str("name", "Alice")
@@ -119,12 +118,12 @@ def main() -> CInt | CExport:
     city: str = city_p
     lang: str = lang_p
     stdio.printf("name=%s city=%s lang=%s\n", name, city, lang)
-    # i8* == 是指针地址比较（C-Like 语义），内容比较需显式 strcmp
+    # i8* == compares pointer addresses (C-like); use strcmp for content
     testcheck.check(string.strcmp(name, "Alice") == 0, "ht str name OK", "ht str name FAILED")
     testcheck.check(string.strcmp(city, "Beijing") == 0, "ht str city OK", "ht str city FAILED")
     testcheck.check(string.strcmp(lang, "TransPyC") == 0, "ht str lang OK", "ht str lang FAILED")
 
-    # === Test 9: 扩容测试 ===
+    # === Test 9: expansion test ===
     testcheck.section("Test 9: 扩容测试 (>16 个元素)")
     ht3: hashtable.HashTable = hashtable.HashTable(bd)
     for i in range(50):
@@ -135,7 +134,7 @@ def main() -> CInt | CExport:
     stdio.printf("ht3 len=%lu (after 50 inserts)\n", n3)
     testcheck.check(n3 == 50, "ht expand OK (50)", "ht expand FAILED")
 
-    # 验证几个值
+    # Verify some values
     k5: str = stdlib.malloc(16)
     stdio.sprintf(k5, "key5")
     p5: t.CPtr = ht3[k5]
@@ -157,7 +156,7 @@ def main() -> CInt | CExport:
     stdio.printf("ht3[key49]=%d\n", v49)
     testcheck.check(v49 == 4900, "ht expand key49 OK", "ht expand key49 FAILED")
 
-    # === Test 10: 扩容后迭代 ===
+    # === Test 10: iterate after expansion ===
     testcheck.section("Test 10: 扩容后迭代")
     iter_count3: int = 0
     for k in ht3:
@@ -165,7 +164,7 @@ def main() -> CInt | CExport:
     stdio.printf("ht3 iter count=%d\n", iter_count3)
     testcheck.check(iter_count3 == 50, "ht expand iter OK (50)", "ht expand iter FAILED")
 
-    # === Test 11: 删除后扩容 ===
+    # === Test 11: operations after batch delete ===
     testcheck.section("Test 11: 批量删除后操作")
     for j in range(25):
         del_buf: str = stdlib.malloc(16)
@@ -175,7 +174,7 @@ def main() -> CInt | CExport:
     stdio.printf("ht3 len=%lu (after 25 deletes)\n", n3b)
     testcheck.check(n3b == 25, "ht after del OK (25)", "ht after del FAILED")
 
-    # 验证剩余的值
+    # Verify remaining values
     k30: str = stdlib.malloc(16)
     stdio.sprintf(k30, "key30")
     p30: t.CPtr = ht3[k30]
@@ -183,13 +182,13 @@ def main() -> CInt | CExport:
     stdio.printf("ht3[key30]=%d\n", v30)
     testcheck.check(v30 == 3000, "ht key30 after del OK", "ht key30 after del FAILED")
 
-    # 验证已删除的 key 不存在
+    # Verify the deleted key is gone
     k0: str = stdlib.malloc(16)
     stdio.sprintf(k0, "key0")
     has_k0: int = k0 in ht3
     testcheck.check(has_k0 == 0, "ht key0 deleted OK", "ht key0 still exists FAILED")
 
-    # === Test 12: 空表操作 ===
+    # === Test 12: empty table operations ===
     testcheck.section("Test 12: 空表操作")
     ht4: hashtable.HashTable = hashtable.HashTable(bd)
     testcheck.check(len(ht4) == 0, "empty ht len 0 OK", "empty ht len FAILED")

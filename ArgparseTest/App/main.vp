@@ -8,7 +8,7 @@ import argparse
 import testcheck
 
 
-# 全局 MBuddy 指针
+# Global MBuddy pointer
 _mbuddy: memhub.MemBuddy*
 
 
@@ -17,7 +17,7 @@ def main() -> int:
     global _mbuddy
     testcheck.begin("ArgparseTest: 命令行参数解析")
 
-    # 初始化内存管理器
+    # Initialize the memory manager
     arena: bytes = stdlib.malloc(16 * 1024 * 1024)
     if arena is None:
         testcheck.fail("malloc arena failed")
@@ -26,8 +26,8 @@ def main() -> int:
     _mbuddy = memhub.MemBuddy(arena, 16 * 1024 * 1024)
     argparse._mbuddy = _mbuddy
 
-    # 构造模拟 argv: myprog --input test.txt -c 42 --verbose output.dat
-    argv_buf: bytes = _mbuddy.alloc(8 * 7)  # 7 个指针
+    # Build a synthetic argv: myprog --input test.txt -c 42 --verbose output.dat
+    argv_buf: bytes = _mbuddy.alloc(8 * 7)  # 7 pointers
     argv: str* = (str*)(argv_buf)
 
     # argv[0] = "myprog"
@@ -74,9 +74,7 @@ def main() -> int:
 
     argc: INT = 7
 
-    # ============================================================
-    # Test 1: 基本解析 (--input, -c, --verbose, output)
-    # ============================================================
+    # Test 1: basic parsing (--input, -c, --verbose, output)
     testcheck.section("Test 1: 基本解析")
     parser = argparse.ArgumentParser("myprog", "A test program for argparse", pool=_mbuddy)
     parser.add_argument("--input", "-i", argparse.STRING, 0, None, True, argparse.STORE, "input file path")
@@ -99,9 +97,7 @@ def main() -> int:
     else:
         testcheck.fail("parse_args returned NULL")
 
-    # ============================================================
-    # Test 2: --name=value 语法
-    # ============================================================
+    # Test 2: --name=value syntax
     testcheck.section("Test 2: --name=value 语法")
 
     argv2_buf: bytes = _mbuddy.alloc(8 * 3)
@@ -134,9 +130,7 @@ def main() -> int:
     else:
         testcheck.fail("parse_args returned NULL")
 
-    # ============================================================
-    # Test 3: -v COUNT 计数动作
-    # ============================================================
+    # Test 3: -v COUNT counting action
     testcheck.section("Test 3: COUNT 计数动作")
 
     argv3_buf: bytes = _mbuddy.alloc(8 * 4)
@@ -177,9 +171,7 @@ def main() -> int:
     else:
         testcheck.fail("parse_args returned NULL")
 
-    # ============================================================
-    # Test 4: 关键字参数调用 add_argument
-    # ============================================================
+    # Test 4: keyword arguments to add_argument
     testcheck.section("Test 4: 关键字参数")
 
     parser3 = argparse.ArgumentParser("myprog", "Keyword arg test", pool=_mbuddy)

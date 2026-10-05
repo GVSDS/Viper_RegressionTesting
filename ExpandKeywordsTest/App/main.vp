@@ -5,50 +5,50 @@ import testcheck
 
 
 # ============================================================
-# ExpandKeywordsTest - 验证 def 别名关键字 fn/fun/func/function
-# 语义与 def 完全相同（定义/调用/嵌套/泛型/空函数体）
+# ExpandKeywordsTest - verify def alias keywords fn/fun/func/function;
+# identical semantics to def (define/call/nest/generic/empty body).
 # ============================================================
 
-# fn: 单参数返回
+# fn: single argument, returns value
 fn add_one(x: int) -> int:
     return x + 1
 
 
-# fun: 双参数返回
+# fun: two arguments, returns value
 fun add_two(a: int, b: int) -> int:
     return a + b
 
 
-# func: 浮点参数返回
+# func: float arguments
 func mul_float(a: double, b: double) -> double:
     return a * b
 
 
-# function: 内部用 def 定义再调用（别名与 def 混用）
+# function: defines and calls an inner def (alias mixed with def)
 function get_ten() -> int:
     def inner() -> int:
         return 10
     return inner()
 
 
-# fn 泛型（PEP 695 风格类型参数）
+# fn generic (PEP 695 style type parameters)
 fn ident[T](x: T) -> T:
     return x
 
 
-# fn 空函数体（pass）
+# fn empty body (pass)
 fn noop():
     pass
 
 
-# fun 递归
+# fun recursion
 fun fact(n: int) -> int:
     if n <= 1:
         return 1
     return n * fact(n - 1)
 
 
-# func 多语句 + 局部变量
+# func multiple statements + local variable
 func avg3(a: double, b: double, c: double) -> double:
     total: double = a + b + c
     return total / 3.0

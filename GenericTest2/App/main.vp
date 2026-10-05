@@ -4,7 +4,7 @@ import c
 import testcheck
 
 # ============================================================
-# Test 1: 泛型函数 - 不同整数类型特化
+# Test 1: generic function with different int type specializations
 # ============================================================
 def square[T](x: T) -> T:
     return x * x
@@ -16,7 +16,7 @@ def test_generic_square_types():
     testcheck.check(r1 == 25 and r2 == 100, "square (5^2=25 10^2=100)", "square expect 25 100")
 
 # ============================================================
-# Test 2: 泛型函数 - 三参数
+# Test 2: generic function with three parameters
 # ============================================================
 def clamp[T](val: T, lo: T, hi: T) -> T:
     if val < lo:
@@ -33,7 +33,7 @@ def test_generic_clamp():
     testcheck.check(r1 == 5 and r2 == 0 and r3 == 10, "clamp (5 0 10)", "clamp expect 5 0 10")
 
 # ============================================================
-# Test 3: 泛型类 - Stack[T]
+# Test 3: generic class Stack[T]
 # ============================================================
 class Stack[T]():
     data: t.CArray[int, 16]
@@ -63,8 +63,8 @@ class Stack[T]():
 
 def test_generic_stack():
     testcheck.section("Test 3: generic Stack[T]")
-    # 显式标注 Stack[int]：T 无法从实参推断（__init__ 无参），且 T 决定
-    # push/pop 的元素宽度（t.CInt(val) ↔ i32），静默默认 int 已被禁止。
+    # Annotate Stack[int] explicitly: T is not inferable (no-arg __init__) and
+    # sets push/pop element width; implicit int default is forbidden.
     s = Stack[int]()
     s.push(10)
     s.push(20)
@@ -75,7 +75,7 @@ def test_generic_stack():
     testcheck.check(r1 == 30 and r2 == 20 and r3 == 10, "Stack (pop=30 20 10)", "Stack expect 30 20 10")
 
 # ============================================================
-# Test 4: 泛型函数 - swap via pointer
+# Test 4: generic swap via pointer
 # ============================================================
 class IntPair:
     a: int
@@ -95,7 +95,7 @@ def test_generic_swap():
     testcheck.check(p.a == 200 and p.b == 100, "swap (a=200 b=100)", "swap expect 200 100")
 
 # ============================================================
-# Test 5: 泛型类 - Range[T] 迭代器
+# Test 5: generic iterable class Range[T]
 # ============================================================
 class Range[T]():
     start: T
@@ -117,12 +117,12 @@ class Range[T]():
 
 def test_generic_range():
     testcheck.section("Test 5: generic Range[T]")
-    r = Range(0, 10, 1)  # 0+1+2+...+9=45
+    r = Range(0, 10, 1)  # sum 0..9 = 45
     s: int = r.sum_all()
     testcheck.check(s == 45, "Range sum (0..9=45)", "Range sum expect 45")
 
 # ============================================================
-# Test 6: 泛型函数 - 数组求和（非泛型数组参数）
+# Test 6: generic function summing a fixed-size array argument
 # ============================================================
 def array_sum(arr: t.CArray[int, 8], n: int) -> int:
     result: int = 0
@@ -139,7 +139,7 @@ def test_generic_array_sum():
     testcheck.check(s == 360, "array sum (360)", "array sum expect 360")
 
 # ============================================================
-# Test 7: 泛型函数 - 比较并返回较大值
+# Test 7: generic function returning the max of three values
 # ============================================================
 def max_of_three[T](a: T, b: T, c_val: T) -> T:
     m: T = a
@@ -157,7 +157,7 @@ def test_generic_max_three():
     testcheck.check(r1 == 3 and r2 == 30 and r3 == 50, "max3 (3 30 50)", "max3 expect 3 30 50")
 
 # ============================================================
-# Test 8: 泛型类 - 带方法的容器
+# Test 8: generic container class with methods
 # ============================================================
 class Container[T]():
     values: t.CArray[int, 8]
@@ -187,8 +187,8 @@ class Container[T]():
 
 def test_generic_container():
     testcheck.section("Test 8: generic Container[T]")
-    # 显式标注 Container[int]：__init__ 无参 ⇒ T 无从推断；
-    # 元素由 add(10)/contains(20)/total() 证据确定是 int（t.CArray[t.CInt, 8]）。
+    # Annotate Container[int] explicitly: no-arg __init__ gives no T to infer;
+    # int is inferred from usage; storage is CArray[int, 8].
     c = Container[int]()
     c.add(10)
     c.add(20)
@@ -199,7 +199,7 @@ def test_generic_container():
     testcheck.check(has20 == 1 and has99 == 0 and total == 60, "Container (has20=1 has99=0 total=60)", "Container expect 1 0 60")
 
 # ============================================================
-# Test 9: 泛型函数 - 阶乘
+# Test 9: generic factorial
 # ============================================================
 def factorial[T](n: T) -> T:
     result: T = T(1)
@@ -216,7 +216,7 @@ def test_generic_factorial():
     testcheck.check(r1 == 120 and r2 == 3628800, "factorial (5!=120 10!=3628800)", "factorial expect 120 3628800")
 
 # ============================================================
-# Test 10: 泛型类 - 累加器
+# Test 10: generic accumulator class
 # ============================================================
 class Accumulator[T]():
     total: T
@@ -240,13 +240,12 @@ def test_generic_accumulator():
     testcheck.check(r == 60, "Accumulator (result=60)", "Accumulator expect 60")
 
 # ============================================================
-# Test 11: 泛型结构体 sizeof (修复验证)
-# 特化后 Stack[int] = { [16 x i32], i32 } = 68 字节
-# 验证 obj.__sizeof__() 和类内部 self.__sizeof__() 均返回正确大小
+# Test 11: generic struct sizeof; specialized Stack[int] is 68 bytes.
+# Checks obj.__sizeof__() and in-class self.__sizeof__().
 # ============================================================
 def test_generic_sizeof_bug():
     testcheck.section("Test 11: generic sizeof (fixed)")
-    # 同 Test 3：无参构造必须显式标注类型实参；Stack[int] = { [16 x i32], i32 } = 68。
+    # Same as Test 3: no-arg construction needs an explicit type argument; Stack[int] = 68 bytes.
     s = Stack[int]()
     s.push(10)
     sz: sizet = s.__sizeof__()

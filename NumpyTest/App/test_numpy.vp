@@ -68,8 +68,7 @@ def section_footer():
 
 
 # ============================================================
-# Timer: 单调时钟（GetTickCount64 毫秒 → 秒）
-# 原 c.Timer() 无编译器支持（TPC/TPV 均无），改用 Win32 API
+# Timer: monotonic clock (GetTickCount64 ms -> s) via Win32 API.
 # ============================================================
 def timer_sec() -> double:
     return double(w32.win32base.GetTickCount64()) / double(1000.0)

@@ -21,7 +21,7 @@ ARENA_SIZE: CInt = 16777216
 def main() -> CInt | CExport:
     printf("=== NewAstTest Start ===\n")
 
-    # 初始化分配器
+    # Initialize allocator
     arena: bytes = stdlib.malloc(ARENA_SIZE)
     if arena is None:
         printf("FAIL: arena alloc failed\n")
@@ -34,7 +34,7 @@ def main() -> CInt | CExport:
     passed: CInt = 0
     failed: CInt = 0
 
-    # --- 分配 dump 缓冲区（用于 AST 反向输出测试） ---
+    # --- Allocate dump buffer for AST round-trip output tests ---
     DUMP_BUF_SIZE: sizet = 8192
     dump_buf: char | CPtr = stdlib.malloc(DUMP_BUF_SIZE)
     if dump_buf is None:
@@ -42,7 +42,7 @@ def main() -> CInt | CExport:
         stdlib.free(arena)
         return 1
 
-    # --- Test 0: Match 语句 ---
+    # --- Test 0: Match statement ---
     match_src: str = """match x:
     case 1:
         pass
@@ -57,7 +57,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: parse match with cases failed\n")
 
-    # --- Test 1: Name 节点创建 ---
+    # --- Test 1: Name node creation ---
     name_x: Name | CPtr = Name(pool, "x", ASTCtx.Load)
     if name_x is None:
         printf("FAIL: Name creation\n")
@@ -66,7 +66,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Name('x'), kind=%d\n", name_x.kind())
 
-    # --- Test 2: ConstantInt 节点 ---
+    # --- Test 2: ConstantInt node ---
     int_42: Constant | CPtr = Constant(pool, CONST_INT, 42, 0.0, None, 1, 0)
     if int_42 is None:
         printf("FAIL: ConstantInt creation\n")
@@ -76,7 +76,7 @@ def main() -> CInt | CExport:
         printf("PASS: ConstantInt(42), kind=%d, val=%lld\n",
                int_42.kind(), int_42.int_val)
 
-    # --- Test 3: ConstantStr 节点 ---
+    # --- Test 3: ConstantStr node ---
     str_hello: Constant | CPtr = Constant(pool, CONST_STR, 0, 0.0, "hello", 2, 0)
     if str_hello is None:
         printf("FAIL: ConstantStr creation\n")
@@ -85,7 +85,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: ConstantStr('hello'), kind=%d\n", str_hello.kind())
 
-    # --- Test 4: ConstantNone 节点 ---
+    # --- Test 4: ConstantNone node ---
     const_none: Constant | CPtr = Constant(pool, CONST_NONE, 0, 0.0, None, 3, 0)
     if const_none is None:
         printf("FAIL: ConstantNone creation\n")
@@ -94,7 +94,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: ConstantNone, kind=%d\n", const_none.kind())
 
-    # --- Test 5: BinOp 节点 (x + 42) ---
+    # --- Test 5: BinOp node (x + 42) ---
     binop: BinOp | CPtr = BinOp(pool, name_x, OpKind.Add, int_42)
     if binop is None:
         printf("FAIL: BinOp creation\n")
@@ -103,7 +103,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: BinOp(Add), kind=%d\n", binop.kind())
 
-    # --- Test 6: UnaryOp 节点 (-x) ---
+    # --- Test 6: UnaryOp node (-x) ---
     unary: UnaryOp | CPtr = UnaryOp(pool, OpKind.USub, name_x)
     if unary is None:
         printf("FAIL: UnaryOp creation\n")
@@ -112,7 +112,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: UnaryOp(USub), kind=%d\n", unary.kind())
 
-    # --- Test 7: list[AST | CPtr] 容器 ---
+    # --- Test 7: list[AST | CPtr] container ---
     body: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
     if body is None:
         printf("FAIL: list creation\n")
@@ -128,7 +128,7 @@ def main() -> CInt | CExport:
             failed += 1
             printf("FAIL: list count=%zu (expected 2)\n", cnt)
 
-    # --- Test 8: list get + kind 分派 ---
+    # --- Test 8: list get + kind dispatch ---
     if body is not None:
         item0: AST | CPtr = body.get(0)
         if item0 is not None:
@@ -143,7 +143,7 @@ def main() -> CInt | CExport:
             failed += 1
             printf("FAIL: list get(0) returned None\n")
 
-    # --- Test 9: Module 节点 (新签名：Module(pool) + append) ---
+    # --- Test 9: Module node (Module(pool) + append) ---
     mod: Module | CPtr = Module(pool)
     if mod is None:
         printf("FAIL: Module creation\n")
@@ -154,7 +154,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Module, kind=%d\n", mod.kind())
 
-    # --- Test 10: 多态分派 — 通过 AST 基类指针调用 kind() ---
+    # --- Test 10: polymorphic dispatch via AST base pointer kind() ---
     ast_ptr: AST | CPtr = mod
     poly_kind: CInt = ast_ptr.kind()
     if poly_kind == ASTKind.Module:
@@ -164,7 +164,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: polymorphic kind()=%d (expected %d)\n", poly_kind, ASTKind.Module)
 
-    # --- Test 11: 多态分派 — list 中的节点 ---
+    # --- Test 11: polymorphic dispatch on list elements ---
     if body is not None:
         ast_item: AST | CPtr = body.get(1)
         if ast_item is not None:
@@ -179,7 +179,7 @@ def main() -> CInt | CExport:
             failed += 1
             printf("FAIL: list get(1) returned None\n")
 
-    # --- Test 12: Return 节点 ---
+    # --- Test 12: Return node ---
     ret: Return | CPtr = Return(pool, binop)
     if ret is None:
         printf("FAIL: Return creation\n")
@@ -188,7 +188,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Return, kind=%d\n", ret.kind())
 
-    # --- Test 13: Expr 语句节点 ---
+    # --- Test 13: Expr statement node ---
     expr_stmt: Expr | CPtr = Expr(pool, binop)
     if expr_stmt is None:
         printf("FAIL: Expr creation\n")
@@ -197,7 +197,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Expr, kind=%d\n", expr_stmt.kind())
 
-    # --- Test 14: If 节点 (新签名：If(pool, test, orelse)，body=children) ---
+    # --- Test 14: If node (If(pool, test, orelse), body = children) ---
     empty_else: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
     if_stmt: If | CPtr = If(pool, binop, empty_else)
     if if_stmt is None:
@@ -209,7 +209,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: If, kind=%d\n", if_stmt.kind())
 
-    # --- Test 15: Compare 节点 ---
+    # --- Test 15: Compare node ---
     cmp_ops: list[int] | CPtr = list[int](pool)
     cmp_ops.append(OpKind.Lt)
     cmp_comparators: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
@@ -222,7 +222,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Compare, kind=%d\n", cmp_node.kind())
 
-    # --- Test 16: Assign 节点 ---
+    # --- Test 16: Assign node ---
     assign_targets: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
     assign_targets.append(name_x)
     assign_node: Assign | CPtr = Assign(pool, assign_targets, int_42)
@@ -233,7 +233,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Assign, kind=%d\n", assign_node.kind())
 
-    # --- Test 17: Call 节点 ---
+    # --- Test 17: Call node ---
     call_args: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
     call_args.append(int_42)
     call_kwargs: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
@@ -245,7 +245,7 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: Call, kind=%d\n", call_node.kind())
 
-    # --- Test 18: 字段访问验证 ---
+    # --- Test 18: field access check ---
     if name_x is not None:
         nm: str = name_x.id
         if nm is not None:
@@ -259,7 +259,7 @@ def main() -> CInt | CExport:
             failed += 1
             printf("FAIL: Name.id is None\n")
 
-    # --- Test 19: parent 指针验证 (binop 被 append 到 mod) ---
+    # --- Test 19: parent pointer check (binop appended to mod) ---
     if binop is not None and binop.parent is mod:
         passed += 1
         printf("PASS: BinOp.parent == Module (via append)\n")
@@ -267,7 +267,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: BinOp.parent != Module\n")
 
-    # --- Test 20: Module.children 遍历 ---
+    # --- Test 20: Module.children traversal ---
     if mod is not None and mod.children is not None:
         mod_cnt: sizet = mod.children.__len__()
         if mod_cnt == 2:
@@ -280,7 +280,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: Module.children is None\n")
 
-    # --- Test 21: Module.children 多态分派 ---
+    # --- Test 21: Module.children polymorphic dispatch ---
     if mod is not None and mod.children is not None:
         c0: AST | CPtr = mod.children.get(0)
         c1: AST | CPtr = mod.children.get(1)
@@ -300,7 +300,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: Module.children unavailable\n")
 
-    # --- Test 22: If.children 遍历 (ret + expr_stmt) ---
+    # --- Test 22: If.children traversal (ret + expr_stmt) ---
     if if_stmt is not None and if_stmt.children is not None:
         if_cnt: sizet = if_stmt.children.__len__()
         if if_cnt == 2:
@@ -313,7 +313,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: If.children is None\n")
 
-    # --- Test 23: parent 向上遍历 (if_stmt.children[0].parent == if_stmt) ---
+    # --- Test 23: parent upward traversal (child.parent == if_stmt) ---
     if if_stmt is not None and if_stmt.children is not None:
         first_child: AST | CPtr = if_stmt.children.get(0)
         if first_child is not None and first_child.parent is if_stmt:
@@ -326,7 +326,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: If.children unavailable for parent test\n")
 
-    # --- Test 24: parse_expression 解析 "x + 42" ---
+    # --- Test 24: parse_expression on "x + 42" ---
     expr_src: str = "x + 42"
     expr_tree: AST | CPtr = parse_expression(expr_src, pool)
     if expr_tree is not None:
@@ -336,7 +336,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: parse_expression returned None\n")
 
-    # --- Test 25: parse 解析简单模块 "x = 42\n" ---
+    # --- Test 25: parse simple module "x = 42" ---
     mod_src: str = "x = 42\n"
     parsed_mod: Module | CPtr = parse(mod_src, pool)
     if parsed_mod is not None and parsed_mod.kind() == ASTKind.Module:
@@ -346,7 +346,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: parse('x = 42') failed\n")
 
-    # --- Test 26: parse 模块的 children 验证 ---
+    # --- Test 26: parsed module children check ---
     if parsed_mod is not None and parsed_mod.children is not None:
         pmod_cnt: sizet = parsed_mod.children.__len__()
         if pmod_cnt == 1:
@@ -359,7 +359,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: parsed Module.children is None\n")
 
-    # --- Test 27: parse 模块子节点类型验证 (Assign) ---
+    # --- Test 27: parsed module child kind check (Assign) ---
     if parsed_mod is not None and parsed_mod.children is not None:
         pmod_child: AST | CPtr = parsed_mod.children.get(0)
         if pmod_child is not None:
@@ -378,7 +378,7 @@ def main() -> CInt | CExport:
         failed += 1
         printf("FAIL: parsed Module.children unavailable for kind test\n")
 
-    # --- Test 28: parse 多语句模块 ---
+    # --- Test 28: parse multi-statement module ---
     multi_src: str = """a = 1
 b = 2
 c = a + b
@@ -396,7 +396,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse multi-stmt failed\n")
 
-    # --- Test 29: parse if 语句 ---
+    # --- Test 29: parse if statement ---
     if_src: str = """if x > 0:
     y = 1
 """
@@ -414,7 +414,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse if failed\n")
 
-    # --- Test 30: parse for 循环 ---
+    # --- Test 30: parse for loop ---
     for_src: str = """for i in range(10):
     pass
 """
@@ -432,7 +432,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse for failed\n")
 
-    # --- Test 31: parse while 循环 ---
+    # --- Test 31: parse while loop ---
     while_src: str = """while x < 100:
     x = x + 1
 """
@@ -450,7 +450,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse while failed\n")
 
-    # --- Test 32: parse 函数定义 ---
+    # --- Test 32: parse function definition ---
     def_src: str = """def foo(a, b):
     return a + b
 """
@@ -468,7 +468,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse def failed\n")
 
-    # --- Test 33: parse 复杂表达式 (a + b * c - 1) ---
+    # --- Test 33: parse complex expression (a + b * c - 1) ---
     complex_expr_src: str = "a + b * c - 1"
     complex_expr: AST | CPtr = parse_expression(complex_expr_src, pool)
     if complex_expr is not None:
@@ -483,7 +483,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse complex expr failed\n")
 
-    # --- Test 34: parse 嵌套语句 (for 内 if) ---
+    # --- Test 34: parse nested statement (if inside for) ---
     nested_src: str = """for i in range(10):
     if i > 5:
         x = 1
@@ -502,7 +502,7 @@ c = a + b
         failed += 1
         printf("FAIL: parse nested for-if failed\n")
 
-    # --- Test 35: parse 混合多语句模块 ---
+    # --- Test 35: parse mixed multi-statement module ---
     mixed_src: str = """x = 1
 y = 2
 if x < y:
@@ -524,7 +524,7 @@ w = z * 2
         failed += 1
         printf("FAIL: parse mixed module failed\n")
 
-    # --- Test 36: dump 反向 - parse("x = 42") → dump → strstr 验证 ---
+    # --- Test 36: dump round-trip - parse("x = 42") then strstr check ---
     if parsed_mod is not None:
         dump(parsed_mod, dump_buf, DUMP_BUF_SIZE)
         has_assign: str = string.strstr(dump_buf, "Assign")
@@ -539,7 +539,7 @@ w = z * 2
         failed += 1
         printf("FAIL: parsed_mod unavailable for dump test\n")
 
-    # --- Test 37: dump 反向 - parse_expression("x + 42 * 2") → dump → strstr BinOp ---
+    # --- Test 37: dump round-trip - complex expr then strstr BinOp ---
     if complex_expr is not None:
         dump(complex_expr, dump_buf, DUMP_BUF_SIZE)
         has_binop: str = string.strstr(dump_buf, "BinOp")
@@ -553,7 +553,7 @@ w = z * 2
         failed += 1
         printf("FAIL: complex_expr unavailable for dump test\n")
 
-    # --- Test 38: dump 反向 - parse if → dump → strstr "If" + "Compare" ---
+    # --- Test 38: dump round-trip - parse if then strstr If/Compare ---
     if if_mod is not None:
         dump(if_mod, dump_buf, DUMP_BUF_SIZE)
         has_if: str = string.strstr(dump_buf, "If(")
@@ -568,7 +568,7 @@ w = z * 2
         failed += 1
         printf("FAIL: if_mod unavailable for dump test\n")
 
-    # --- Test 39: dump 反向 - parse def → dump → strstr "FunctionDef" ---
+    # --- Test 39: dump round-trip - parse def then strstr FunctionDef ---
     if def_mod is not None:
         dump(def_mod, dump_buf, DUMP_BUF_SIZE)
         has_fdef: str = string.strstr(dump_buf, "FunctionDef")
@@ -582,11 +582,11 @@ w = z * 2
         failed += 1
         printf("FAIL: def_mod unavailable for dump test\n")
 
-    # --- Test 40: AST 结构化输出 - dump 多语句模块完整输出 ---
+    # --- Test 40: structured dump of multi-statement module ---
     if mixed_mod is not None:
         dump(mixed_mod, dump_buf, DUMP_BUF_SIZE)
         printf("--- AST dump of mixed module ---\n%s\n--- end dump ---\n", dump_buf)
-        # 验证包含多种节点
+        # Check multiple node kinds present
         has_m_assign: str = string.strstr(dump_buf, "Assign")
         has_m_if: str = string.strstr(dump_buf, "If(")
         if has_m_assign is not None and has_m_if is not None:
@@ -599,7 +599,7 @@ w = z * 2
         failed += 1
         printf("FAIL: mixed_mod unavailable for structured dump\n")
 
-    # --- Test 41: AST 结构化输出 - dump for 循环完整输出 ---
+    # --- Test 41: structured dump of for loop ---
     if for_mod is not None:
         dump(for_mod, dump_buf, DUMP_BUF_SIZE)
         printf("--- AST dump of for loop ---\n%s\n--- end dump ---\n", dump_buf)
@@ -614,7 +614,7 @@ w = z * 2
         failed += 1
         printf("FAIL: for_mod unavailable for structured dump\n")
 
-    # --- Test 42: type_name 多态分派验证 ---
+    # --- Test 42: type_name polymorphic dispatch check ---
     if parsed_mod is not None and parsed_mod.children is not None:
         tn_node: AST | CPtr = parsed_mod.children.get(0)
         if tn_node is not None:
@@ -632,7 +632,7 @@ w = z * 2
         failed += 1
         printf("FAIL: parsed_mod unavailable for type_name test\n")
 
-    # --- Test 43: parse 类定义 ---
+    # --- Test 43: parse class definition ---
     class_src: str = """class Foo(Base):
     x = 1
     def bar(self):
@@ -672,7 +672,7 @@ except:
         failed += 1
         printf("FAIL: parse try/except failed\n")
 
-    # --- Test 45: parse import 语句 ---
+    # --- Test 45: parse import statement ---
     import_src: str = """import os
 from sys import path
 """
@@ -710,7 +710,7 @@ x += 1
         failed += 1
         printf("FAIL: parse AugAssign failed\n")
 
-    # --- Test 47: parse 条件表达式 (x if y else z) ---
+    # --- Test 47: parse conditional expression (x if y else z) ---
     ifexp_src: str = "x if y else z"
     ifexp_tree: AST | CPtr = parse_expression(ifexp_src, pool)
     ifexp_expr: Expression | CPtr = (Expression | CPtr)(ifexp_tree)
@@ -726,7 +726,7 @@ x += 1
         failed += 1
         printf("FAIL: parse IfExp failed\n")
 
-    # --- Test 48: parse 嵌套函数定义 ---
+    # --- Test 48: parse nested function definition ---
     nested_def_src: str = """def outer():
     x = 1
     def inner():
@@ -747,7 +747,7 @@ x += 1
         failed += 1
         printf("FAIL: parse nested def failed\n")
 
-    # --- Test 49: dump 复杂代码 (类 + try + 嵌套函数) ---
+    # --- Test 49: dump complex code (class + try + nested def) ---
     complex_src: str = """class Foo(Base):
     x = 1
 try:
@@ -774,7 +774,7 @@ def bar():
         failed += 1
         printf("FAIL: parse complex module failed\n")
 
-    # --- Test 50: 复杂 mixed_src - 综合语法实例 ---
+    # --- Test 50: complex mixed_src - combined syntax sample ---
     complex_mixed_src: str = """def gcd(a, b):
     while b:
         t = b
@@ -819,7 +819,7 @@ else:
         failed += 1
         printf("FAIL: complex mixed_src parse failed\n")
 
-    # --- Test 51: Lambda 表达式 ---
+    # --- Test 51: Lambda expression ---
     lambda_src: str = "f = lambda x: x + 1"
     lambda_mod: Module | CPtr = parse(lambda_src, pool)
     if lambda_mod is not None:
@@ -887,7 +887,7 @@ else:
         failed += 1
         printf("FAIL: SetComp parse returned None\n")
 
-    # --- Test 55: With 语句 ---
+    # --- Test 55: With statement ---
     with_src: str = """with open('f') as f:
     data = f.read()
 """
@@ -907,7 +907,7 @@ else:
         failed += 1
         printf("FAIL: With parse returned None\n")
 
-    # --- Test 56: Raise 语句 ---
+    # --- Test 56: Raise statement ---
     raise_src: str = "raise ValueError('bad')"
     raise_mod: Module | CPtr = parse(raise_src, pool)
     if raise_mod is not None:
@@ -923,7 +923,7 @@ else:
         failed += 1
         printf("FAIL: Raise parse returned None\n")
 
-    # --- Test 57: Assert 语句 ---
+    # --- Test 57: Assert statement ---
     assert_src: str = "assert x > 0, 'x must be positive'"
     assert_mod: Module | CPtr = parse(assert_src, pool)
     if assert_mod is not None:
@@ -939,7 +939,7 @@ else:
         failed += 1
         printf("FAIL: Assert parse returned None\n")
 
-    # --- Test 58: Del 语句 ---
+    # --- Test 58: Del statement ---
     del_src: str = "del x"
     del_mod: Module | CPtr = parse(del_src, pool)
     if del_mod is not None:
@@ -973,7 +973,7 @@ else:
         failed += 1
         printf("FAIL: Slice parse returned None\n")
 
-    # --- Test 60: Tuple 解包 ---
+    # --- Test 60: Tuple unpacking ---
     tuple_src: str = "a, b = 1, 2"
     tuple_mod: Module | CPtr = parse(tuple_src, pool)
     if tuple_mod is not None:
@@ -989,7 +989,7 @@ else:
         failed += 1
         printf("FAIL: Tuple parse returned None\n")
 
-    # --- Test 61: 默认参数 + 关键字参数签名 ---
+    # --- Test 61: default args + keyword args signature ---
     defdef_src: str = "def f(a, b=10): return a + b"
     defdef_mod: Module | CPtr = parse(defdef_src, pool)
     if defdef_mod is not None:
@@ -1007,7 +1007,7 @@ else:
         failed += 1
         printf("FAIL: defdef parse returned None\n")
 
-    # --- Test 62: 装饰器 ---
+    # --- Test 62: decorator ---
     deco_src: str = """@my_dec
 def f():
     pass
@@ -1026,7 +1026,7 @@ def f():
         failed += 1
         printf("FAIL: Decorator parse returned None\n")
 
-    # --- Test 63: 链式赋值 ---
+    # --- Test 63: chained assignment ---
     chain_src: str = "a = b = c = 42"
     chain_mod: Module | CPtr = parse(chain_src, pool)
     if chain_mod is not None:
@@ -1045,7 +1045,7 @@ def f():
         failed += 1
         printf("FAIL: Chain parse returned None\n")
 
-    # --- Test 64: 位运算 ---
+    # --- Test 64: bitwise ops ---
     bit_src: str = "y = (a | b) & c ^ d << 2"
     bit_mod: Module | CPtr = parse(bit_src, pool)
     if bit_mod is not None:
@@ -1064,7 +1064,7 @@ def f():
         failed += 1
         printf("FAIL: Bit ops parse returned None\n")
 
-    # --- Test 65: 多继承 + 多装饰器 ---
+    # --- Test 65: multiple inheritance + decorators ---
     multi_src: str = """@dec1
 @dec2
 class C(Base1, Base2):
@@ -1126,7 +1126,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: fstring parse returned None\n")
 
-    # --- Test 68: 嵌套函数 + 闭包 ---
+    # --- Test 68: nested function + closure ---
     nested_src: str = """def outer():
     x = 10
     def inner():
@@ -1149,7 +1149,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: nested parse returned None\n")
 
-    # --- Test 69: Match 字面量整数模式 ---
+    # --- Test 69: Match literal int pattern ---
     m_lit_src: str = """match x:
     case 1:
         pass
@@ -1168,7 +1168,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match literal int parse returned None\n")
 
-    # --- Test 70: Match 字面量字符串模式 ---
+    # --- Test 70: Match literal string pattern ---
     m_str_src: str = """match x:
     case "hello":
         pass
@@ -1187,7 +1187,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match literal str parse returned None\n")
 
-    # --- Test 71: Match 负数字面量模式 ---
+    # --- Test 71: Match negative literal pattern ---
     m_neg_src: str = """match x:
     case -1:
         pass
@@ -1206,7 +1206,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match negative literal parse returned None\n")
 
-    # --- Test 72: Match None 单例模式 ---
+    # --- Test 72: Match None singleton pattern ---
     m_none_src: str = """match x:
     case None:
         pass
@@ -1225,7 +1225,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match None parse returned None\n")
 
-    # --- Test 73: Match True 单例模式 ---
+    # --- Test 73: Match True singleton pattern ---
     m_true_src: str = """match x:
     case True:
         pass
@@ -1244,7 +1244,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match True parse returned None\n")
 
-    # --- Test 74: Match False 单例模式 ---
+    # --- Test 74: Match False singleton pattern ---
     m_false_src: str = """match x:
     case False:
         pass
@@ -1263,7 +1263,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match False parse returned None\n")
 
-    # --- Test 75: Match 通配符 _ 模式 ---
+    # --- Test 75: Match wildcard _ pattern ---
     m_wild_src: str = """match x:
     case _:
         pass
@@ -1282,7 +1282,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match wildcard parse returned None\n")
 
-    # --- Test 76: Match 捕获变量模式 ---
+    # --- Test 76: Match capture variable pattern ---
     m_cap_src: str = """match x:
     case y:
         pass
@@ -1301,7 +1301,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match capture parse returned None\n")
 
-    # --- Test 77: Match 值模式 (dotted name Color.RED) ---
+    # --- Test 77: Match value pattern (dotted name Color.RED) ---
     m_val_src: str = """match x:
     case Color.RED:
         pass
@@ -1322,7 +1322,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match value parse returned None\n")
 
-    # --- Test 78: Match 序列模式 [1, 2] ---
+    # --- Test 78: Match sequence pattern [1, 2] ---
     m_seq_src: str = """match x:
     case [1, 2]:
         pass
@@ -1341,7 +1341,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match sequence parse returned None\n")
 
-    # --- Test 79: Match 序列带星号 [a, *rest] ---
+    # --- Test 79: Match starred sequence [a, *rest] ---
     m_star_src: str = """match x:
     case [a, *rest]:
         pass
@@ -1360,7 +1360,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match star parse returned None\n")
 
-    # --- Test 80: Match 类模式 Point(x, y) ---
+    # --- Test 80: Match class pattern Point(x, y) ---
     m_cls_src: str = """match p:
     case Point(x, y):
         pass
@@ -1379,7 +1379,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match class parse returned None\n")
 
-    # --- Test 81: Match 类模式带关键字 Point(x=0, y=0) ---
+    # --- Test 81: Match keyword class pattern Point(x=0, y=0) ---
     m_kwcls_src: str = """match p:
     case Point(x=0, y=0):
         pass
@@ -1398,7 +1398,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match class kwd parse returned None\n")
 
-    # --- Test 82: Match OR 模式 1 | 2 ---
+    # --- Test 82: Match OR pattern 1 | 2 ---
     m_or_src: str = """match x:
     case 1 | 2:
         pass
@@ -1417,7 +1417,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match OR parse returned None\n")
 
-    # --- Test 83: Match AS 模式 [x] as p ---
+    # --- Test 83: Match AS pattern [x] as p ---
     m_as_src: str = """match x:
     case [x] as p:
         pass
@@ -1438,7 +1438,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match AS parse returned None\n")
 
-    # --- Test 84: Match guard 模式 case x if x > 0 ---
+    # --- Test 84: Match guard pattern case x if x > 0 ---
     m_guard_src: str = """match x:
     case x if x > 0:
         pass
@@ -1457,7 +1457,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match guard parse returned None\n")
 
-    # --- Test 85: Match 映射模式 {"k": v} ---
+    # --- Test 85: Match mapping pattern {"k": v} ---
     m_map_src: str = """match x:
     case {"k": v}:
         pass
@@ -1476,7 +1476,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match mapping parse returned None\n")
 
-    # --- Test 86: Match 映射带 rest {"k": v, **rest} ---
+    # --- Test 86: Match mapping with rest {"k": v, **rest} ---
     m_map2_src: str = """match x:
     case {"k": v, **rest}:
         pass
@@ -1497,7 +1497,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match mapping rest parse returned None\n")
 
-    # --- Test 87: Match 组合模式 (1 | 2) as p ---
+    # --- Test 87: Match combined pattern (1 | 2) as p ---
     m_combo_src: str = """match x:
     case (1 | 2) as p:
         pass
@@ -1634,7 +1634,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: async with parse returned None\n")
 
-    # --- Test 91: Match 复合语句 (多 case + 多类型模式) ---
+    # --- Test 91: Match compound statement (multi-case, multi-pattern) ---
     m_complex_src: str = """match cmd:
     case "quit":
         pass
@@ -1665,7 +1665,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: Match complex parse returned None\n")
 
-    # --- Test 92: async def + async for + async with 组合 ---
+    # --- Test 92: async def + async for + async with combo ---
     acombo_src: str = """async def f():
     async with ctx:
         async for x in y:
@@ -1695,7 +1695,7 @@ class C(Base1, Base2):
         failed += 1
         printf("FAIL: async combo parse returned None\n")
 
-    # --- 结果汇总 ---
+    # --- Result summary ---
     printf("\n=== Results: %d passed, %d failed ===\n", passed, failed)
 
     stdlib.free(dump_buf)

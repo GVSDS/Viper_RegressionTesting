@@ -7,19 +7,13 @@ import viperlib
 import stdlib
 
 
-# ============================================================
-# 子类继承 linkedlist.LinkedNode：启用链表/树形能力
-# 字段展平，无 vtable；OOP 方法通过 _generate_inherited_method_wrappers
-# 自动生成子类包装（self bitcast 为父类指针后调用父类方法）。
-# 从 LinkedNode* 取回 Node* 需显式向下转型：(Node | t.CPtr)(ptr)
-# ============================================================
+# Subclass of linkedlist.LinkedNode: flattened fields, no vtable; OOP wrappers are auto-generated.
+# Cast LinkedNode* back to Node* explicitly: (Node | t.CPtr)(ptr)
 class Node(linkedlist.LinkedNode):
     value: int
 
 
-# ============================================================
-# 测试 1：append + child_count
-# ============================================================
+# --- Test 1: append + child_count ---
 def test_append():
     testcheck.section("Test 1: append")
     root: Node = Node()
@@ -35,7 +29,7 @@ def test_append():
     testcheck.check(root.child_count == 3,
                     "append count=3",
                     "append count fail")
-    # 验证顺序（LinkedNode* → Node* 显式向下转型）
+    # verify order (explicit downcast LinkedNode* -> Node*)
     c1: Node* = (Node*)(root.child)
     c2: Node* = (Node*)(c1.next)
     c3: Node* = (Node*)(c2.next)
@@ -44,9 +38,7 @@ def test_append():
                     "order fail")
 
 
-# ============================================================
-# 测试 2：双向链表 prev 指针
-# ============================================================
+# --- Test 2: doubly linked prev ---
 def test_prev_link():
     testcheck.section("Test 2: prev pointer (doubly linked)")
     root: Node = Node()
@@ -56,20 +48,18 @@ def test_prev_link():
     b.value = 2
     root.append(a)
     root.append(b)
-    # b.prev 应指向 a
+    # b.prev should point to a
     bp: Node* = (Node*)(b.prev)
     testcheck.check(bp is not None and bp.value == 1,
                     "b.prev.value=1",
                     "prev link fail")
-    # a.prev 应为 None（第一个子节点）
+    # a.prev should be None (first child)
     testcheck.check(a.prev is None,
                     "a.prev=None",
                     "first prev fail")
 
 
-# ============================================================
-# 测试 3：last_child 指针（O(1) 追加验证）
-# ============================================================
+# --- Test 3: last_child pointer ---
 def test_last_child():
     testcheck.section("Test 3: last_child pointer")
     root: Node = Node()
@@ -89,9 +79,7 @@ def test_last_child():
                     "last_child fail 2")
 
 
-# ============================================================
-# 测试 4：detach（O(1) 摘除）
-# ============================================================
+# --- Test 4: detach (O(1) unlink) ---
 def test_remove():
     testcheck.section("Test 4: detach (O(1) unlink)")
     root: Node = Node()
@@ -104,30 +92,28 @@ def test_remove():
     root.append(a)
     root.append(b)
     root.append(c)
-    # 摘除中间的 b
+    # detach middle node b
     b.detach()
     testcheck.check(root.child_count == 2,
                     "count=2 after detach",
                     "detach count fail")
-    # a.next 应直接指向 c
+    # a.next should point directly to c
     an: Node* = (Node*)(a.next)
     testcheck.check(an is not None and an.value == 3,
                     "a.next.value=3",
                     "detach link fail")
-    # c.prev 应指向 a
+    # c.prev should point to a
     cp: Node* = (Node*)(c.prev)
     testcheck.check(cp is not None and cp.value == 1,
                     "c.prev.value=1",
                     "detach prev fail")
-    # b 的链接应清空
+    # b links should be cleared
     testcheck.check(b.parent is None and b.next is None and b.prev is None,
                     "b cleared",
                     "b not cleared")
 
 
-# ============================================================
-# 测试 5：remove_child
-# ============================================================
+# --- Test 5: remove_child ---
 def test_remove_child():
     testcheck.section("Test 5: remove_child")
     root: Node = Node()
@@ -147,9 +133,7 @@ def test_remove_child():
                     "remove_child first fail")
 
 
-# ============================================================
-# 测试 6：prepend + insert_before + insert_after
-# ============================================================
+# --- Test 6: prepend/insert_before/insert_after ---
 def test_insert_ops():
     testcheck.section("Test 6: prepend/insert_before/insert_after")
     root: Node = Node()
@@ -163,9 +147,9 @@ def test_insert_ops():
     d.value = 4
     root.append(a)       # [1]
     root.append(c)       # [1, 3]
-    root.insert_before(c, b)   # [1, 2, 3]  在 c 前插入 b
-    root.insert_after(a, d)    # [1, 4, 2, 3] 在 a 后插入 d
-    # 遍历验证顺序
+    root.insert_before(c, b)   # [1, 2, 3] insert b before c
+    root.insert_after(a, d)    # [1, 4, 2, 3] insert d after a
+    # traverse to verify order
     cur: Node* = (Node*)(root.child)
     v0: int = cur.value
     cur = (Node*)(cur.next)
@@ -182,11 +166,8 @@ def test_insert_ops():
                     "insert count fail")
 
 
-# ============================================================
-# 测试 7：child_at + count_children
-# 注意：Viper 中 Node() 是栈分配，循环内 n 会被复用（同一地址），
-# 导致所有子节点指向同一内存。必须用独立变量保证各节点地址不同。
-# ============================================================
+# --- Test 7: child_at + count_children ---
+# Node() is stack-allocated; use distinct variables so each node has a unique address.
 def test_index_access():
     testcheck.section("Test 7: child_at + count_children")
     root: Node = Node()
@@ -229,9 +210,7 @@ def test_index_access():
                     "count_children fail")
 
 
-# ============================================================
-# 测试 8：has_children + first_sibling/last_sibling
-# ============================================================
+# --- Test 8: has_children + sibling traverse ---
 def test_sibling_traverse():
     testcheck.section("Test 8: has_children + sibling traverse")
     root: Node = Node()
@@ -250,7 +229,7 @@ def test_sibling_traverse():
     testcheck.check(root.has_children() == 1,
                     "has_children=1",
                     "has_children fail")
-    # 从 b 出发找头尾兄弟
+    # find first/last sibling starting from b
     fs: Node* = (Node*)(b.first_sibling())
     ls: Node* = (Node*)(b.last_sibling())
     testcheck.check(fs is not None and fs.value == 1,
@@ -261,9 +240,7 @@ def test_sibling_traverse():
                     "last_sibling fail")
 
 
-# ============================================================
-# 测试 9：unlink（断开所有连接）
-# ============================================================
+# --- Test 9: unlink ---
 def test_unlink():
     testcheck.section("Test 9: unlink")
     root: Node = Node()
@@ -273,7 +250,7 @@ def test_unlink():
     b.value = 2
     root.append(a)
     root.append(b)
-    # unlink a：从兄弟链摘除 + 断开父子链接
+    # unlink a: remove from sibling chain and clear parent/child links
     a.unlink()
     testcheck.check(a.next is None and a.prev is None and a.parent is None,
                     "a links cleared",
@@ -281,15 +258,13 @@ def test_unlink():
     testcheck.check(a.child is None and a.last_child is None and a.child_count == 0,
                     "a child cleared",
                     "a child not cleared")
-    # root 应只剩 b
+    # root should keep only b
     testcheck.check(root.child_count == 1,
                     "root count=1 after unlink",
                     "root count fail")
 
 
-# ============================================================
-# 测试 10：SListNode 单向链表（OOP 方法）
-# ============================================================
+# --- Test 10: SListNode (singly linked, OOP) ---
 class SNode(linkedlist.SListNode):
     value: int
 
@@ -302,7 +277,7 @@ def test_slist():
     n0.value = 100
     n1.value = 200
     n2.value = 300
-    # append (O(n)) — 直接用 n0 作为 head
+    # append (O(n)); use n0 as head
     head: linkedlist.SListNode* = n0
     head = head.append(n1)
     head = head.append(n2)
@@ -327,7 +302,7 @@ def test_slist():
     testcheck.check(a3 is None,
                     "at(3)=None",
                     "at 3 fail")
-    # remove (移除中间节点 n1)
+    # remove (drop middle node n1)
     head = head.remove(n1)
     testcheck.check(head.count() == 2,
                     "after remove count=2",
@@ -335,7 +310,7 @@ def test_slist():
     testcheck.check(n1.Next is None,
                     "n1.Next cleared",
                     "n1.Next not cleared")
-    # 移除后 a0.Next 应指向 n2
+    # after removal a0.Next should point to n2
     a0b: SNode* = (SNode*)(a0.Next)
     testcheck.check(a0b is not None and a0b.value == 300,
                     "after remove a0.Next=300",
@@ -352,12 +327,10 @@ def test_slist():
                     "append count fail")
 
 
-# ============================================================
-# 测试 11：viperlib.sprintf *args 转发
-# ============================================================
+# --- Test 11: viperlib.sprintf *args forwarding ---
 def test_sprintf_vararg():
     testcheck.section("Test 11: viperlib.sprintf *args forwarding")
-    # 测试 %d 单参数
+    # single %d argument
     buf: char* = stdlib.malloc(32)
     if buf is None: return
     buf[0] = 0
@@ -365,7 +338,7 @@ def test_sprintf_vararg():
     testcheck.check(string.strcmp(buf, "key42") == 0,
                     "sprintf key42",
                     "sprintf key%d fail")
-    # 测试无参数
+    # no argument
     buf2: char* = stdlib.malloc(32)
     if buf2 is None: return
     buf2[0] = 0
@@ -373,7 +346,7 @@ def test_sprintf_vararg():
     testcheck.check(string.strcmp(buf2, "hello") == 0,
                     "sprintf hello",
                     "sprintf no-arg fail")
-    # 测试多参数
+    # multiple arguments
     buf3: char* = stdlib.malloc(32)
     if buf3 is None: return
     buf3[0] = 0
@@ -383,18 +356,8 @@ def test_sprintf_vararg():
                     "sprintf multi-arg fail")
 
 
-# ============================================================
-# 测试 12：泛型 GSListNode[T] + GSList[T]
-#
-# 验证 4 个技术点（为 mlirlite 简化铺路）：
-#   1. 递归泛型 class GNode(GSListNode[GNode]):
-#   2. novirtual class + 泛型组合（GNode 无 vptr，字段展平）
-#   3. 泛型类作字段类型 lst: GSList[GNode]
-#   4. 泛型方法继承 lst.append(n) / lst.count() / lst.at(i)
-#      （GSList[T] 的方法在特化 GSList[GNode] 后可用）
-#
-# 注：编译器暂不支持 模块.泛型类[T]() 跨模块构造，故本地定义。
-# ============================================================
+# --- Test 12: generic GSListNode[T] + GSList[T] ---
+# Recursive generic, novirtual flattened fields, generic as field type; local def (no cross-module generic support yet).
 novirtual class GSListNode[T]:
     Next: T*
 
@@ -438,10 +401,10 @@ class GNode(GSListNode[GNode]):
 
 def test_generic_slist():
     testcheck.section("Test 12: Generic GSListNode[T] + GSList[T]")
-    # 技术点 3: 泛型类作字段类型 + 构造
+    # generic class as field type + construction
     lst: GSList[GNode]* = GSList[GNode]()
 
-    # 技术点 1+2: 递归泛型 + NoVTable 组合（GNode 定义在上方）
+    # recursive generic + NoVTable combo (GNode defined above)
     n0: GNode = GNode()
     n1: GNode = GNode()
     n2: GNode = GNode()
@@ -449,7 +412,7 @@ def test_generic_slist():
     n1.Value = 20
     n2.Value = 30
 
-    # 技术点 4: 泛型方法继承
+    # generic method inheritance
     lst.append(n0)
     lst.append(n1)
     lst.append(n2)
@@ -459,7 +422,7 @@ def test_generic_slist():
                     "GSList.count()=3",
                     "GSList count fail")
 
-    # at (O(n)) — 返回 GNode|CPtr，无需向下转型
+    # at (O(n)) returns GNode|CPtr, no downcast needed
     a0: GNode* = lst.at(0)
     a1: GNode* = lst.at(1)
     a2: GNode* = lst.at(2)
@@ -477,7 +440,7 @@ def test_generic_slist():
                     "GSList.at(3)=None",
                     "GSList at 3 fail")
 
-    # Next 字段强类型（a0.Next 直接是 GNode|CPtr，无需转型）
+    # Next is strongly typed (a0.Next is GNode|CPtr, no cast)
     testcheck.check(a0.Next is a1,
                     "a0.Next is a1 (strong type)",
                     "a0.Next fail")

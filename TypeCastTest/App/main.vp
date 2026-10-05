@@ -6,65 +6,62 @@ import w32.win32console
 import w32.win32memory
 import testcheck
 
-# ============================================================
-# TypeCastTest - 测试类型转换、zext/sext/trunc 行为、
-#               有符号/无符号混合运算、CDefine 常量
-# ============================================================
+# TypeCastTest: type casts, zext/sext/trunc behavior,
+# mixed signed/unsigned arithmetic and CDefine constants
 
-# --- Test 1: CUInt8T -> CUInt32T 零扩展 (zext) ---
+# --- Test 1: CUInt8T -> CUInt32T zero extension (zext) ---
 def test_zext_u8_u32():
-    v: uint8 = 200  # 0xC8, 如果 sign-extend 会变成 0xFFFFFFC8
+    v: uint8 = 200  # 0xC8; sign-extension would yield 0xFFFFFFC8
     wide: uint32 = uint32(v)
     testcheck.check(wide == 200, "zext u8->u32 (200)", "zext u8->u32 (expected 200)")
 
 
-# --- Test 2: CInt8T -> CInt32T 符号扩展 (sext) ---
+# --- Test 2: CInt8T -> CInt32T sign extension (sext) ---
 def test_sext_i8_i32():
     v: int8 = -50  # 0xCE
     wide: int32 = int32(v)
     testcheck.check(wide == -50, "sext i8->i32 (-50)", "sext i8->i32 (expected -50)")
 
 
-# --- Test 3: CUInt32T -> CUInt64T 零扩展 ---
+# --- Test 3: CUInt32T -> CUInt64T zero extension ---
 def test_zext_u32_u64():
-    v: uint32 = 0x80000000  # 最高位为1
+    v: uint32 = 0x80000000  # top bit set
     wide: uint64 = uint64(v)
     testcheck.check(wide == 0x80000000, "zext u32->u64 (0x80000000)", "zext u32->u64 (expected 0x80000000)")
 
 
-# --- Test 4: CInt32T -> CInt64T 符号扩展 ---
+# --- Test 4: CInt32T -> CInt64T sign extension ---
 def test_sext_i32_i64():
     v: int32 = -1  # 0xFFFFFFFF
     wide: int64 = int64(v)
     testcheck.check(wide == -1, "sext i32->i64 (-1)", "sext i32->i64 (expected -1)")
 
 
-# --- Test 5: CUInt64T -> CUInt32T 截断 (trunc) ---
+# --- Test 5: CUInt64T -> CUInt32T truncation (trunc) ---
 def test_trunc_u64_u32():
     v: uint64 = 0x123456789ABCDEF0
     narrow: uint32 = uint32(v)
     testcheck.check(narrow == 0x9ABCDEF0, "trunc u64->u32 (0x9ABCDEF0)", "trunc u64->u32 (expected 0x9ABCDEF0)")
 
 
-# --- Test 6: 有符号/无符号混合运算 ---
+# --- Test 6: mixed signed/unsigned arithmetic ---
 def test_mixed_signed_unsigned():
     a: int = -10
     b: uint32 = 20
-    # C 中有符号/无符号混合运算，有符号会转为无符号
-    # -10 作为 unsigned 是 0xFFFFFFF6 = 4294967286
-    # 4294967286 + 20 = 4294967306 (overflow to 10 on u32)
+    # In C mixed signed/unsigned ops convert the signed value to unsigned.
+    # -10 as u32 is 0xFFFFFFF6; +20 overflows to 10.
     result: uint32 = uint32(a) + b
     stdio.printf("  mixed signed+unsigned: %u (C behavior: %u)\n", result, uint32(-10) + 20)
     testcheck.ok("mixed signed+unsigned (C behavior)")
 
 
-# --- Test 7: CDefine 常量在运算中的行为 ---
+# --- Test 7: CDefine constants in operations ---
 define VAL_32BIT = 0x80000000
 define VAL_NEG = -1
 define VAL_BIG = 0xFFFFFFFF
 
 def test_cdefine_values():
-    """测试 CDefine 常量值是否正确"""
+    """Verify CDefine constant values."""
     v1: uint32 = uint32(VAL_32BIT)
     v2: int = VAL_NEG
     v3: uint32 = uint32(VAL_BIG)
@@ -72,20 +69,20 @@ def test_cdefine_values():
     testcheck.ok("CDefine constants")
 
 
-# --- Test 8: 位运算与类型宽度 ---
+# --- Test 8: bit operations and type width ---
 def test_bitops_width():
-    """测试位运算是否保持正确类型宽度"""
-    # 左移
+    """Verify bit operations keep the correct type width."""
+    # Left shift
     v: uint32 = 1
-    shifted: uint32 = v << 31  # 应该是 0x80000000
+    shifted: uint32 = v << 31  # should be 0x80000000
     testcheck.check(shifted == 0x80000000, "bit shift (1<<31 = 0x80000000)", "bit shift (expected 0x80000000)")
 
-    # 右移
-    back: uint32 = shifted >> 31  # 应该是 1
+    # Right shift
+    back: uint32 = shifted >> 31  # should be 1
     testcheck.check(back == 1, "bit shift (0x80000000>>31 = 1)", "bit shift (expected 1)")
 
 
-# --- Test 9: 整数除法与取模 (无符号) ---
+# --- Test 9: integer div/mod (unsigned) ---
 def test_unsigned_divmod():
     a: uint32 = 100
     b: uint32 = 7
@@ -94,20 +91,19 @@ def test_unsigned_divmod():
     testcheck.check(q == 14 and r == 2, "unsigned div/mod (100//7=14, 100%7=2)", "unsigned div/mod (expected 14,2)")
 
 
-# --- Test 10: 整数除法与取模 (有符号负数) ---
+# --- Test 10: integer div/mod (signed negative) ---
 def test_signed_divmod_neg():
     a: int = -100
     b: int = 7
     q: int = a // b
     r: int = a % b
-    # C 语言: -100/7 = -14, -100%7 = -2
-    # Python: -100//7 = -15, -100%7 = 5
-    # TransPyC 应该遵循 C 语义
+    # C: -100/7 = -14, -100%7 = -2; Python: -15 and 5.
+    # TransPyC follows C semantics.
     stdio.printf("  signed div/mod: -100//7=%d, -100%%7=%d (C: -14,-2)\n", q, r)
     testcheck.ok("signed div/mod (C semantics)")
 
 
-# --- Test 11: 比较运算返回值 ---
+# --- Test 11: comparison operation results ---
 def test_comparison_types():
     a: int = 10
     b: int = 20
@@ -118,22 +114,22 @@ def test_comparison_types():
     testcheck.check(lt == 1 and eq == 1 and gt == 1, "comparison operations", "comparison operations failed")
 
 
-# --- Test 12: 指针与整数互转 ---
+# --- Test 12: pointer/integer casts ---
 def test_ptr_int_cast():
     buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not buf:
         testcheck.fail("VirtualAlloc returned NULL")
         return
-    # 指针转整数
+    # Pointer to integer
     addr: uint64 = uint64(buf)
     stdio.printf("  ptr->int: addr=0x%lx\n", addr)
-    # 整数转指针
+    # Integer to pointer
     p2: uint32* = (uint32*)(addr)
     p2[0] = 0x12345678
     testcheck.check(buf[0] == 0x12345678, "ptr<->int roundtrip", "ptr<->int roundtrip failed")
 
 
-# --- Test 13: CUInt64T 乘法溢出行为 ---
+# --- Test 13: CUInt64T multiplication ---
 def test_u64_mul():
     a: uint64 = 1000
     b: uint64 = 1000
@@ -141,19 +137,19 @@ def test_u64_mul():
     testcheck.check(c_val == 1000000, "u64 mul (1000*1000=1000000)", "u64 mul (expected 1000000)")
 
 
-# --- Test 14: bool 运算 (and/or) ---
+# --- Test 14: bool operations (and/or) ---
 def test_bool_ops():
     a: int = 5
     b: int = 0
     c_val: int = 3
-    # Python `and`/`or` 是短路求值
-    r1: int = a and c_val  # 5 and 3 -> 在 C 中应该是 (5 && 3) = 1
-    r2: int = b or c_val   # 0 or 3 -> 在 C 中应该是 (0 || 3) = 1
+    # Python and/or are short-circuiting
+    r1: int = a and c_val  # 5 and 3 -> (5 && 3) = 1 in C
+    r2: int = b or c_val   # 0 or 3 -> (0 || 3) = 1 in C
     stdio.printf("  bool: 5 and 3 = %d, 0 or 3 = %d (expect 1,1 in C)\n", r1, r2)
     testcheck.ok("bool ops (C semantics)")
 
 
-# --- Test 15: 条件表达式 (三元运算符) ---
+# --- Test 15: conditional expression (ternary) ---
 def test_ternary():
     a: int = 10
     b: int = 20

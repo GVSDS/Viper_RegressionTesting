@@ -6,34 +6,33 @@ import os._posix
 
 
 # =============================================================================
-# Workaround: TransPyC 无法正确解析 os.xxx() 包级函数调用
-# (os.path.xxx() 子模块调用正常，但 os.xxx() 包级调用解析为本地模块)
-# 此文件单独导入 os._win32 / os._posix 子模块，避免污染调用方的 os.rmdir() 等解析。
+# Workaround: TransPyC mis-resolves package-level os.xxx() calls as a local
+# module. Import os._win32 / os._posix here so caller code stays intact.
 # =============================================================================
 
 def os_exists(path: str) -> bool:
-    """检查文件/目录是否存在（跨平台）"""
+    """Return whether the file/dir exists."""
     if platmacro.IS_WINDOWS:
         return os._win32.exists(path)
     return os._posix.exists(path)
 
 
 def os_remove(path: str) -> int:
-    """删除文件（跨平台）。成功返回 0，失败返回 -1。"""
+    """Remove a file. Returns 0 on success, -1 on failure."""
     if platmacro.IS_WINDOWS:
         return os._win32.remove(path)
     return os._posix.remove(path)
 
 
 def os_isdir(path: str) -> bool:
-    """检查路径是否为目录（跨平台）"""
+    """Return whether the path is a directory."""
     if platmacro.IS_WINDOWS:
         return os._win32.isdir(path)
     return os._posix.isdir(path)
 
 
 def os_getsize(path: str) -> int64:
-    """返回文件大小（字节，跨平台）。失败返回 -1。"""
+    """Return file size in bytes, or -1 on failure."""
     if platmacro.IS_WINDOWS:
         return os._win32.getsize(path)
     return os._posix.getsize(path)

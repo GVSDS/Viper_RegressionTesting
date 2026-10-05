@@ -9,19 +9,17 @@ import memhub
 import testcheck
 
 
-# 全局内存池
+# Global memory pool
 arena: uint8* = None
 pool: memhub.MemPool* = None
 
-# 外部函数: clock() 用于性能计时
+# External function: clock() for performance timing
 def clock() -> t.CLong | t.CExtern: pass
 
 define CLOCK_PER_SEC = 1000
 
 
-# ============================================================
-# 1. AVX2 double4 正确性测试
-# ============================================================
+# 1. AVX2 double4 correctness tests
 
 def test_avx2_add_sub_mul_div():
     testcheck.section("AVX2 add/sub/mul/div 4d")
@@ -220,9 +218,7 @@ def test_avx2_fma():
     out.delete()
 
 
-# ============================================================
-# 2. 批量数组运算正确性测试
-# ============================================================
+# 2. Batch array operation correctness tests
 
 def test_batch_array_ops():
     testcheck.section("Batch array operations")
@@ -285,9 +281,7 @@ def test_batch_array_ops():
     out1.delete()
 
 
-# ============================================================
-# 3. LLVMIR 精确标量运算测试
-# ============================================================
+# 3. LLVMIR precise scalar operation tests
 
 def test_llvmir_scalar():
     testcheck.section("LLVMIR precise scalar ops")
@@ -357,9 +351,7 @@ def test_llvmir_scalar():
     testcheck.check(r == double(1024.0), "pow(2,10)==1024", "pow(2,10)==1024")
 
 
-# ============================================================
-# 4. 性能基准测试: SIMD vs 标量
-# ============================================================
+# 4. Benchmark: SIMD vs scalar
 
 define N_ELEM = 40000
 define N_ITER = 50000
@@ -451,7 +443,7 @@ def benchmark_simd_vs_scalar():
     else:
         printf("  speedup=N/A\n")
 
-    # 验证结果正确性
+    # Verify result correctness
     testcheck.check(out.data[0] > double(0.0), "bench result[0] valid", "bench result[0] valid")
 
     a.delete()

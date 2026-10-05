@@ -8,11 +8,8 @@ import testcheck
 
 
 # ============================================================
-# DefineTest - CDefine 宏 / c.CIf / platmacro 专项测试
-#
-# 从 TestProject3/App/definetest.vp 独立提取。
-# 验证: CDefine 常量、宏函数、c.CIf/c.CIfdef/c.CIfndef、
-#       platmacro 平台宏（输出以 print 为准，人工核对）。
+# DefineTest: CDefine constants/macros, c.CIf family, platmacro.
+# Prints results for manual inspection.
 # ============================================================
 
 

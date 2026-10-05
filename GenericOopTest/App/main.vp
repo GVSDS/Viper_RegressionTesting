@@ -7,7 +7,7 @@ import stdlib
 import testcheck
 
 
-# === 函数泛型 ===
+# === Generic functions ===
 
 def add[T](a: T, b: T) -> T:
     return a + b
@@ -28,7 +28,7 @@ def double_add[T](a: T, b: T) -> T:
     return add(a, b) + add(a, b)
 
 
-# === 结构体泛型 ===
+# === Generic structs ===
 
 class A[T]():
     a: T
@@ -77,7 +77,7 @@ def main() -> CInt | CExport:
 
     buf: CChar | CPtr = CPtr(stdlib.malloc(256))
 
-    # === 基础函数泛型 ===
+    # === Basic generic functions ===
     testcheck.section("基础函数泛型")
     print(add(3, 5))
     print(add(1.5, 2.5))
@@ -87,7 +87,7 @@ def main() -> CInt | CExport:
     print(double_add(5, 7))
     testcheck.ok("基础函数泛型测试完成")
 
-    # === 基础结构体泛型 ===
+    # === Basic generic structs ===
     testcheck.section("基础结构体泛型")
     a = A(100)
     print(a.get_a())
@@ -96,7 +96,7 @@ def main() -> CInt | CExport:
     print(p1.get_second())
     testcheck.ok("基础结构体泛型测试完成")
 
-    # === 泛型 + OOP 组合 ===
+    # === Generic + OOP combined ===
     testcheck.section("泛型 + OOP 组合")
     calc1 = Calculator(10)
     print(calc1.compute(5))
@@ -108,7 +108,7 @@ def main() -> CInt | CExport:
     print(c1_gen.get_flag())
     testcheck.ok("泛型 + OOP 组合测试完成")
 
-    # === snprintf 格式化 ===
+    # === snprintf formatting ===
     testcheck.section("snprintf 格式化")
     viperlib.snprintf(buf, 256, "int=%d, float=%.2f", 42, 3.14)
     print(buf)
@@ -116,7 +116,7 @@ def main() -> CInt | CExport:
     print(buf)
     testcheck.ok("snprintf 格式化测试完成")
 
-    # === 新语法类型强转 (t1|t2)(x) ===
+    # === New cast syntax (t1|t2)(x) ===
     testcheck.section("新语法类型强转 (t1|t2)(x)")
     val_i64: CUInt64T = CUInt64T(42)
     val_i32 = (int)(val_i64)

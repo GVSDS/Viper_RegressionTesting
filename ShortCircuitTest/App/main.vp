@@ -8,13 +8,13 @@ import string
 import testcheck
 
 
-# 副作用函数：将 buf[0] 置为 1，返回 True
+# side-effect helper: set buf[0] = 1 and return True
 def bump_true(buf: bytes) -> bool:
     buf[0] = 1
     return True
 
 
-# 副作用函数：将 buf[0] 置为 1，返回 False
+# side-effect helper: set buf[0] = 1 and return False
 def bump_false(buf: bytes) -> bool:
     buf[0] = 1
     return False
@@ -28,31 +28,31 @@ def main() -> CInt | CExport:
 
     buf: bytes = stdlib.malloc(1)
 
-    # === Test 1: False and bump_true() - bump 不应被调用 ===
+    # === Test 1: False and bump_true() - bump must not be called ===
     testcheck.section("Test 1: False and bump_true()")
     buf[0] = 0
     r1: bool = False and bump_true(buf)
     testcheck.check(buf[0] == 0, "and short-circuit OK (bump not called)", "and short-circuit FAILED (bump called)")
 
-    # === Test 2: True or bump_true() - bump 不应被调用 ===
+    # === Test 2: True or bump_true() - bump must not be called ===
     testcheck.section("Test 2: True or bump_true()")
     buf[0] = 0
     r2: bool = True or bump_true(buf)
     testcheck.check(buf[0] == 0, "or short-circuit OK (bump not called)", "or short-circuit FAILED (bump called)")
 
-    # === Test 3: True and bump_true() - bump 应被调用 ===
+    # === Test 3: True and bump_true() - bump must be called ===
     testcheck.section("Test 3: True and bump_true()")
     buf[0] = 0
     r3: bool = True and bump_true(buf)
     testcheck.check(buf[0] == 1, "and eval OK (bump called)", "and eval FAILED (bump not called)")
 
-    # === Test 4: False or bump_true() - bump 应被调用 ===
+    # === Test 4: False or bump_true() - bump must be called ===
     testcheck.section("Test 4: False or bump_true()")
     buf[0] = 0
     r4: bool = False or bump_true(buf)
     testcheck.check(buf[0] == 1, "or eval OK (bump called)", "or eval FAILED (bump not called)")
 
-    # === Test 5: if 语句中的短路 ===
+    # === Test 5: short-circuit in if statement ===
     testcheck.section("Test 5: if 语句中的短路")
     buf[0] = 0
     if False and bump_true(buf):
@@ -66,7 +66,7 @@ def main() -> CInt | CExport:
         testcheck.check(False, "should enter if", "if True or else")
     testcheck.check(buf[0] == 0, "if or short-circuit OK", "if or short-circuit FAILED")
 
-    # === Test 6: 嵌套短路 ===
+    # === Test 6: nested short-circuit ===
     testcheck.section("Test 6: 嵌套短路")
     buf[0] = 0
     r6: bool = False and (True or bump_true(buf))
@@ -76,7 +76,7 @@ def main() -> CInt | CExport:
     r7: bool = True or (False and bump_true(buf))
     testcheck.check(buf[0] == 0, "nested or short-circuit OK", "nested or short-circuit FAILED")
 
-    # === Test 7: not 与短路 ===
+    # === Test 7: not with short-circuit ===
     testcheck.section("Test 7: not 与短路")
     buf[0] = 0
     r8: bool = not False and bump_true(buf)
@@ -86,19 +86,19 @@ def main() -> CInt | CExport:
     r9: bool = not True or bump_true(buf)
     testcheck.check(buf[0] == 1, "not or eval OK (bump called)", "not or eval FAILED (bump not called)")
 
-    # === Test 8: and 链中第一个为 False，后续不评估 ===
+    # === Test 8: and chain, first False stops later evaluation ===
     testcheck.section("Test 8: and 链短路")
     buf[0] = 0
     r10: bool = False and bump_true(buf) and bump_true(buf)
     testcheck.check(buf[0] == 0, "and chain short-circuit OK", "and chain short-circuit FAILED")
 
-    # === Test 9: or 链中第一个为 True，后续不评估 ===
+    # === Test 9: or chain, first True stops later evaluation ===
     testcheck.section("Test 9: or 链短路")
     buf[0] = 0
     r11: bool = True or bump_true(buf) or bump_true(buf)
     testcheck.check(buf[0] == 0, "or chain short-circuit OK", "or chain short-circuit FAILED")
 
-    # === Test 10: and 返回值正确性 ===
+    # === Test 10: and return value correctness ===
     testcheck.section("Test 10: and 返回值正确性")
     buf[0] = 0
     r12: bool = True and bump_true(buf)
@@ -108,7 +108,7 @@ def main() -> CInt | CExport:
     r13: bool = True and bump_false(buf)
     testcheck.check(not r13, "and return False OK", "and return False FAILED")
 
-    # === Test 11: or 返回值正确性 ===
+    # === Test 11: or return value correctness ===
     testcheck.section("Test 11: or 返回值正确性")
     buf[0] = 0
     r14: bool = False or bump_true(buf)

@@ -176,7 +176,7 @@ def test_compressobj():
     printf("  Flush result    : %zu bytes  -> ", out_length)
     print_hex_test(c3, out_length, 16)
     if out_length > 0 and c3:
-        new_all: BYTEPTR = stdlib.realloc(all, total + out_length) # éå¼è½¬æ¢
+        new_all: BYTEPTR = stdlib.realloc(all, total + out_length) # implicit cast
         if new_all:
             all = new_all
             string.memcpy(all + total, c3, out_length)
@@ -643,7 +643,7 @@ def test_huffman_tree():
     printf("  Active codes: %d, max code lengthgth: %d\n", total_codes, max_length_found)
 
     printf("  Code assignments:\n")
-    names: t.CArray[str, None] = ["A","B","C","D","E","F"] # ä¸ä¸ªé½æ?char* çæ°ç»?
+    names: t.CArray[str, None] = ["A","B","C","D","E","F"] # all char* array
     syms: t.CArray[int, None] = ['A','B','C','D','E','F']
     for i in range(6):
         printf("    '%s' (freq=%3d): code=0x%04X, bits=%d\n",
@@ -761,9 +761,8 @@ def test_huffman_tree():
 
     stdlib.free(w.buf)
 
-    # 全量 257 符号往返：ZlibDbg 随机数据的失败只在"多符号码表"场景出现，
-    # 上面 4 符号抽样覆盖不到——这里把 0..256 全部编码再解码逐一比对，
-    # 与 ZlibDbg 的失败形态（码表把部分符号编成无码位/错码位）直接对齐。
+    # Full 257-symbol roundtrip: encode and decode every symbol 0..256.
+    # The 4-symbol sample above misses failures that only appear with many symbols.
     w2 = zdef.zbit_writer(None)
     for i in range(257):
         of_tree.encode_symbol(i, &w2)
@@ -874,10 +873,8 @@ def main123456() -> int:
     printf("  Python zlib - C Implementation Tests\n")
     printf("==============================================\n")
 
-    # Huffman 树/码表构建前置：此前以 "skip: heap corruption from earlier tests"
-    # 跳过——排在其它用例之后时，前面用例造成的堆破坏会让本用例崩溃，从而掩盖
-    # 它自己的结论。前置后可在干净堆上独立复现（ZlibDbg 随机数据 roundtrip 失败
-    # 已定位到"多符号码表构建"这一层，本用例是当前最小复现入口）。
+    # Run Huffman tree / code-table construction first, on a clean heap.
+    # After other tests, earlier heap corruption crashes this case and hides its result.
     test_huffman_tree()
     test_constants()
     test_version()
@@ -895,7 +892,7 @@ def main123456() -> int:
     test_gzip_format()
     test_raw_deflate()
     test_zdict()
-    # test_huffman_tree()  # 已前置到 main123456 开头（理由见该处注释）
+    # test_huffman_tree()  # moved to the start of main123456 (see note there)
     test_error_handling()
 
     printf("\n==============================================\n")
