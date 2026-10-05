@@ -43,16 +43,16 @@ def main() -> int:
     dns_sock = socket.Socket(socket.AF_INET, socket.SOCK_STREAM)
     if dns_sock.fd != socket.INVALID_SOCKET:
         dns_sock.settimeout(5000)
-        result: INT = dns_sock.connect("example.com", 80)
+        result: INT = dns_sock.connect("cn.bing.com", 80)
         if result == 0:
-            stdio.printf("DNS: example.com resolved OK\n")
+            stdio.printf("DNS: cn.bing.com resolved OK\n")
         else:
-            stdio.printf("DNS: example.com resolved but connect failed (err in _MakeAddr debug above)\n")
+            stdio.printf("DNS: cn.bing.com resolved but connect failed (err in _MakeAddr debug above)\n")
         dns_sock.close()
 
-    # 测试 HTTP GET — 使用 DNS 解析 example.com
-    stdio.printf("\n--- HTTP GET test (example.com) ---\n")
-    resp = requests.get("http://example.com/")
+    # 测试 HTTP GET — 使用 DNS 解析 cn.bing.com（example.com 在部分网络下不可达）
+    stdio.printf("\n--- HTTP GET test (cn.bing.com) ---\n")
+    resp = requests.get("http://cn.bing.com/")
     if resp is not None:
         stdio.printf("requests.get: OK\n")
         code: INT = resp.status_code
