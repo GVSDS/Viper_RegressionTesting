@@ -13,7 +13,6 @@
     "linker": {
         "cmd": "clang++",
         "flags": [
-            "-Wl,--allow-multiple-definition",
             "-lmsvcrt",
             "-lucrt",
             "-lpthread",

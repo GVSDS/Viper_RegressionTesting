@@ -10,7 +10,7 @@
     },
     "linker": {
         "cmd": "clang++",
-        "flags": ["-Wl,--allow-multiple-definition", "-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32"],
+        "flags": ["-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32"],
         "output": "ForAndLoopTest.exe"
     },
     "includes": [

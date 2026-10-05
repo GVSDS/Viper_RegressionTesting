@@ -10,7 +10,7 @@
     },
     "linker": {
         "cmd": "clang++",
-        "flags": ["-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32", "-Wl,--allow-multiple-definition"],
+        "flags": ["-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32"],
         "output": "LLvmLiteTest.exe",
         "static_libs": [
             "D:/msys64/clang64/lib/clang/22/lib/windows/libclang_rt.asan_dynamic-x86_64.dll.a",

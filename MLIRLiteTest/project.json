@@ -10,7 +10,7 @@
     },
     "linker": {
         "cmd": "clang++",
-        "flags": ["-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32", "-Wl,--allow-multiple-definition"],
+        "flags": ["-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex", "-lkernel32"],
         "output": "MLIRLiteTest.exe"
     },
     "includes": [

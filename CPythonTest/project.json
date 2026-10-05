@@ -14,8 +14,7 @@
             "-L", "D:\\Python312\\libs",
             "-lmsvcrt", "-lucrt", "-lpthread", "-lmingwex",
             "-lkernel32", "-luser32",
-            "-lpython312",
-            "-Wl,--allow-multiple-definition"
+            "-lpython312"
         ],
         "output": "CPythonTest.exe"
     },
