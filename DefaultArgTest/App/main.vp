@@ -2,7 +2,7 @@ import t
 import stdio
 import testcheck
 import remote
-import vrandom
+import random
 
 
 # 同模块：单个尾随默认值
@@ -64,7 +64,7 @@ def main() -> t.CInt:
     # ⑥ include 模块（顶层 .vp）默认值：vrandom.randrange(start, stop, step = 1)
     # stop-start==1 ⇒ width==1 ⇒ 结果恒为 start；step 未填充时会退化为 0/垃圾
     testcheck.section("include-module defaults")
-    r15: t.CInt = vrandom.randrange(5, 6)
+    r15: t.CInt = random.randrange(5, 6)
     testcheck.check(r15 == 5, "vrandom.randrange(5,6) = 5 (step default)", "vrandom.randrange(5,6) != 5")
 
     return testcheck.end()

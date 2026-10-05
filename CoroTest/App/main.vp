@@ -31,7 +31,7 @@ async def task() -> int:
 def main() -> t.CInt:
     n: t.CInt = 0
     for i in range(3):
-        tt: coro.Coroutine = c.Addr(task())
+        tt: coro.Coroutine = coro.Coroutine(*&task())
         r: t.CInt = coro.coro_run(tt)
         e: t.CInt = coro.coro_exception(tt)
         m: t.CPtr = coro.coro_exception_msg(tt)

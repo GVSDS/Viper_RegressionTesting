@@ -8,8 +8,7 @@ import testcheck
 # ============================================================
 # FormatStringTest - 格式化字符串回归测试
 # ============================================================
-@t.CExport
-def main() -> int:
+export def main() -> int:
     testcheck.begin("FormatStringTest: Format String Regression")
 
     b: str = "hello world"

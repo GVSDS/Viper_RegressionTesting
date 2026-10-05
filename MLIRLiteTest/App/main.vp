@@ -1,4 +1,3 @@
-import t, c
 from stdint import *
 import stdio
 import string
@@ -10,46 +9,16 @@ import viperlib
 import mlirlite
 
 
-# 主池大小：只用于给**每个测试切一块子池**（见 main / _sub_arena）。
-# 给足：SUB_POOL_SIZE 取 2MB 块时每个测试占用 2MB，16 块 ≈ 32MB；即便伙伴分配器
-# 因 +16 头/canary 向上取整到 4MB 块（16 块 = 64MB）也仍在池内。
-POOL_SIZE: t.CDefine = 83886080
-# 每个测试的子池大小 = 2MB − 16（16 = memhub 的 HEADER 8 + CANARY 8）。
-# 取这个值是为了让 `main_pool.alloc()` 的 `needed = size + 16` 恰好等于 2MB，
-# 伙伴分配器正好给一个 order16(2MB) 块；若直接传 2MB，needed=2MB+16 会向上取到
-# order17(4MB) ⇒ 每块浪费一倍，15+ 个测试就把主池吃干（现场：alloc size=2097152
-# needed=2097168 order=17 失败，used=62914560/池容量=67108576）。
-# 子池存在的意义：测试内的 IR 对象与 MLIR 渲染器每函数**重分配**的
-# scratch/常量表/别名表（约 35–45KB/函数，见 mlirlite 的 _MlirTablesInit）都落在
-# 自己的子池里，互不叠加；若所有测试共用一个池，这套"按函数重分配、不释放"的开销
-# 会跨测试累积，最终 "MLIR 渲染: 常量/别名表分配失败"。
-SUB_POOL_SIZE: t.CDefine = 2097136
+
+define POOL_SIZE = 83886080
+define SUB_POOL_SIZE = 2097136
 
 
-# 把 buf 中的 MLIR 文本落盘到 Test/MLIRLiteTest/output/<name>，供
-# mlir-opt / mlir-translate 离线验收（测试 exe 的 cwd 是仓库根，故用相对路径）。
-# 目录必须已存在：fileio.File(MODE.W) 在目录缺失时静默失败（f.closed 保持
-# True，StubMergerCollect.vp 有同类注释记录），故此处对 f.closed 显式告警，
-# 不静默吞掉失败。
-# path 缓冲取自 pool.alloc：缓冲随整个 pool 生命周期统一回收，故此处不调用 free
-# （pool 是 MemBuddy 伙伴分配器，支持 free，但本测试无需逐块回收）。
-# dump 序号：name 传 None 时用于自动命名（auto_NN.mlir），便于在各测试点无参调用。
 _DUMP_SEQ: int = 0
 
 
 def _dump_is_module(text: str) -> int:
-    """判断落盘文本是否为 MLIR **模块单元**（跳过空白与 // 注释行后以 module 开头）
-
-    非模块文本有三类，都不该进 mlir-opt 校验集：
-      1) 类型文本（如 `!llvm.func<…>`）：类型不是顶层 op，实测报
-         "type names with a '.' are reserved for dialect-defined names"；
-      2) 值文本（如 `%0`）：实测报 "expected '=' after SSA name"；
-      3) 裸函数（无 module 包裹）：父级不是 SymbolTable，父级内外的符号引用
-         （如 llvm.call 的 callee）无法解析。
-    这类统一落 .txt，使 output/*.mlir 成为纯净的 mlir-opt 校验集。
-    """
-    if text is None:
-        return 0
+    if text is None: return 0
     p: str = text
     while p[0] != '\0':
         ch: char = p[0]
@@ -61,28 +30,15 @@ def _dump_is_module(text: str) -> int:
                 p = p + 1
             continue
         break
-    if p[0] == '\0':
-        return 0
-    if string.strncmp(p, "module", 6) == 0:
-        return 1
+    if p[0] == '\0': return 0
+    if string.strncmp(p, "module", 6) == 0: return 1
     return 0
 
 
-def dump_mlir(pool: memhub.MemBuddy | t.CPtr, name: str, buf: str):
-    """把 buf 中的 MLIR 文本落盘到 Test/MLIRLiteTest/output/<name>
-
-    name 为 None 时按调用顺序自动命名 auto_NN.mlir。
-    **非模块文本自动改落 .txt**（见 _dump_is_module 的说明），避免把
-    "类型文本/值文本/裸函数"混进 mlir-opt 校验集造成假失败。
-    目录必须已存在：fileio.File(MODE.W) 在目录缺失时静默失败（f.closed 保持
-    True，StubMergerCollect.vp 有同类注释记录），故此处对 f.closed 显式告警，
-    不静默吞掉失败。
-    path/hdr 缓冲取自 pool.alloc：缓冲随整个 pool 生命周期统一回收，故此处不调用
-    free（pool 是 MemBuddy 伙伴分配器，支持 free，但本测试无需逐块回收）。
-    """
+def dump_mlir(pool: memhub.MemBuddy*, name: str, buf: str):
     global _DUMP_SEQ
     _DUMP_SEQ += 1
-    path: t.CChar | t.CPtr = pool.alloc(256)
+    path: str = pool.alloc(256)
     if path is None:
         stdio.printf("[mlir] WARN: alloc path failed\n")
         return
@@ -90,8 +46,6 @@ def dump_mlir(pool: memhub.MemBuddy | t.CPtr, name: str, buf: str):
         viperlib.snprintf(path, 256, "Test/MLIRLiteTest/output/auto_%02d.mlir", _DUMP_SEQ)
     else:
         viperlib.snprintf(path, 256, "Test/MLIRLiteTest/output/%s", name)
-    # 非模块文本改落 .txt：类型/值文本不是顶层 op，裸函数父级非 SymbolTable，
-    # 三者都会被 mlir-opt 拒绝；改扩展名后 output/*.mlir 即为纯净校验集。
     if _dump_is_module(buf) == 0:
         cut: sizet = string.strlen(path)
         d2: sizet = cut
@@ -100,20 +54,18 @@ def dump_mlir(pool: memhub.MemBuddy | t.CPtr, name: str, buf: str):
             if path[d2] == '.':
                 path[d2] = '\0'
                 break
-        ext_txt: t.CChar | t.CPtr = pool.alloc(8)
+        ext_txt: str = pool.alloc(8)
         if ext_txt is not None:
             string.strcpy(ext_txt, ".txt")
-            tmp_path: t.CChar | t.CPtr = pool.alloc(256)
+            tmp_path: str = pool.alloc(256)
             if tmp_path is not None:
-                # 经临时缓冲再拷回：避免 snprintf 目标与源同缓冲
                 viperlib.snprintf(tmp_path, 256, "%s%s", path, ext_txt)
                 string.strcpy(path, tmp_path)
-    f: rawptr[fileio.File] = fileio.File(path, fileio.MODE.W)
+    f: fileio.File = fileio.File(path, fileio.MODE.W)
     if f.closed:
         stdio.printf("[mlir] WARN: open failed: %s\n", path)
         return
-    # 首行写注释标明来源（MLIR 支持 // 注释），便于与测试用例对应
-    hdr: t.CChar | t.CPtr = pool.alloc(128)
+    hdr: str = pool.alloc(128)
     if hdr is not None:
         viperlib.snprintf(hdr, 128, "// dumped by MLIRLiteTest #%d\n", _DUMP_SEQ)
         f.write(hdr, string.strlen(hdr))
@@ -125,13 +77,13 @@ def dump_mlir(pool: memhub.MemBuddy | t.CPtr, name: str, buf: str):
 # ============================================================
 # 测试 1: TypePrint 类型打印（MLIR llvm 方言类型）
 # ============================================================
-def test_type_print(pool: memhub.MemBuddy | t.CPtr):
+def test_type_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 1: TypePrint (MLIR types)")
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    buf: t.CChar | t.CPtr = pool.alloc(256)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    buf: str = pool.alloc(256)
 
     # i32
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    ty_i32: mlirlite.LLVMType* = core.Int32()
     buf[0] = 0
     core.PrintType(buf, 256, ty_i32)
     testcheck.check(string.strcmp(buf, "i32") == 0,
@@ -139,7 +91,7 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "Int32 fail")
 
     # 不透明指针: Ptr(Int32) -> !llvm.ptr
-    ty_ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i32)
+    ty_ptr: mlirlite.LLVMType* = core.Ptr(ty_i32)
     buf[0] = 0
     core.PrintType(buf, 256, ty_ptr)
     testcheck.check(string.strcmp(buf, "!llvm.ptr") == 0,
@@ -147,7 +99,7 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "Ptr fail")
 
     # Void -> none
-    ty_void: mlirlite.LLVMType | t.CPtr = core.Void()
+    ty_void: mlirlite.LLVMType* = core.Void()
     buf[0] = 0
     core.PrintType(buf, 256, ty_void)
     testcheck.check(string.strcmp(buf, "none") == 0,
@@ -155,7 +107,7 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "Void fail")
 
     # [4 x i32] -> !llvm.array<4 x i32>
-    ty_arr: mlirlite.LLVMType | t.CPtr = core.Array(ty_i32, 4)
+    ty_arr: mlirlite.LLVMType* = core.Array(ty_i32, 4)
     buf[0] = 0
     core.PrintType(buf, 256, ty_arr)
     testcheck.check(string.strcmp(buf, "!llvm.array<4 x i32>") == 0,
@@ -163,9 +115,9 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "Array fail")
 
     # [2 x [3 x i8]] -> !llvm.array<2 x !llvm.array<3 x i8>>
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
-    ty_inner: mlirlite.LLVMType | t.CPtr = core.Array(ty_i8, 3)
-    ty_nested: mlirlite.LLVMType | t.CPtr = core.Array(ty_inner, 2)
+    ty_i8: mlirlite.LLVMType* = core.Int8()
+    ty_inner: mlirlite.LLVMType* = core.Array(ty_i8, 3)
+    ty_nested: mlirlite.LLVMType* = core.Array(ty_inner, 2)
     buf[0] = 0
     core.PrintType(buf, 256, ty_nested)
     testcheck.check(string.strcmp(buf, "!llvm.array<2 x !llvm.array<3 x i8>>") == 0,
@@ -173,12 +125,12 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "nested array fail")
 
     # {i32, i8*} -> !llvm.struct<(i32, !llvm.ptr)>
-    ty_i8ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
-    n1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
-    n2: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    head: mlirlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, n1)
+    ty_i8ptr: mlirlite.LLVMType* = core.Ptr(ty_i8)
+    n1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
+    n2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    head: mlirlite.ParamNode* = core.ParamListAppend(None, None, n1)
     core.ParamListAppend(head, n1, n2)
-    ty_struct: mlirlite.LLVMType | t.CPtr = core.Struct(head, 2)
+    ty_struct: mlirlite.LLVMType* = core.Struct(head, 2)
     buf[0] = 0
     core.PrintType(buf, 256, ty_struct)
     testcheck.check(string.strcmp(buf, "!llvm.struct<(i32, !llvm.ptr)>") == 0,
@@ -186,7 +138,7 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "struct fail")
 
     # 空结构体 -> !llvm.struct<()>
-    ty_empty: mlirlite.LLVMType | t.CPtr = core.Struct(None, 0)
+    ty_empty: mlirlite.LLVMType* = core.Struct(None, 0)
     buf[0] = 0
     core.PrintType(buf, 256, ty_empty)
     testcheck.check(string.strcmp(buf, "!llvm.struct<()>") == 0,
@@ -194,17 +146,17 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
                     "empty struct fail")
 
     # 函数类型 i32 (i32, i8*) -> !llvm.func<i32 (i32, !llvm.ptr)>
-    fn1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
-    fn2: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    fhead: mlirlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, fn1)
+    fn1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
+    fn2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    fhead: mlirlite.ParamNode* = core.ParamListAppend(None, None, fn1)
     core.ParamListAppend(fhead, fn1, fn2)
-    ty_func: mlirlite.LLVMType | t.CPtr = core.Func(ty_i32, fhead, 2)
+    ty_func: mlirlite.LLVMType* = core.Func(ty_i32, fhead, 2)
     buf[0] = 0
     core.PrintType(buf, 256, ty_func)
     dump_mlir(pool, "T01_types.mlir", buf)
     # 把实际值写进失败报文：断言失败时 FAIL 行本身就能看到真实形态
     # （避免"只看到 fail、看不到实际值"导致来回猜）
-    ft_msg: t.CChar | t.CPtr = pool.alloc(512)
+    ft_msg: str = pool.alloc(512)
     if ft_msg is not None:
         viperlib.snprintf(ft_msg, 512,
                           "func type fail: actual='%s' expected='!llvm.func<i32 (i32, !llvm.ptr)>'",
@@ -217,16 +169,16 @@ def test_type_print(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 2: ValuePrint 值打印（MLIR，仅供诊断）
 # ============================================================
-def test_value_print(pool: memhub.MemBuddy | t.CPtr):
+def test_value_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 2: ValuePrint (MLIR)")
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    buf: t.CChar | t.CPtr = pool.alloc(128)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    buf: str = pool.alloc(128)
 
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
     # 常量 42 -> "42 : i32"
-    val42: mlirlite.Value | t.CPtr = mcore.ConstInt32(42)
+    val42: mlirlite.Value* = mcore.ConstInt32(42)
     buf[0] = 0
     mcore.PrintValue(buf, 128, val42)
     testcheck.check(string.strcmp(buf, "42 : i32") == 0,
@@ -234,7 +186,7 @@ def test_value_print(pool: memhub.MemBuddy | t.CPtr):
                     "ConstInt fail")
 
     # SSA 值 -> "%0"（MLIR 操作数不带类型）
-    val_ssa: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%0")
+    val_ssa: mlirlite.Value* = mcore.SSAValue(ty_i32, "%0")
     buf[0] = 0
     mcore.PrintValue(buf, 128, val_ssa)
     dump_mlir(pool, "T02_value.mlir", buf)
@@ -250,31 +202,31 @@ def test_value_print(pool: memhub.MemBuddy | t.CPtr):
 #   llvm.return %0 : i32
 # }
 # ============================================================
-def test_build_add(pool: memhub.MemBuddy | t.CPtr):
+def test_build_add(pool: memhub.MemBuddy*):
     testcheck.section("Test 3: build_add function")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_add")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_add")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
 
     mcore.AddParam(func, ty_i32, "%a")
     mcore.AddParam(func, ty_i32, "%b")
 
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
 
-    v_a: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
-    v_b: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
+    v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
+    v_b: mlirlite.Value* = mcore.SSAValue(ty_i32, "%b")
 
-    v_c: mlirlite.Value | t.CPtr = mlirlite.build_add(builder, v_a, v_b)
+    v_c: mlirlite.Value* = mlirlite.build_add(builder, v_a, v_b)
     mlirlite.build_ret(builder, v_c)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -298,28 +250,28 @@ def test_build_add(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 4: if-else（max）
 # ============================================================
-def test_build_if_else(pool: memhub.MemBuddy | t.CPtr):
+def test_build_if_else(pool: memhub.MemBuddy*):
     testcheck.section("Test 4: build if-then-else (max)")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_max")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "max", ty_i32)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_max")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "max", ty_i32)
     mcore.AddParam(func, ty_i32, "%a")
     mcore.AddParam(func, ty_i32, "%b")
 
-    entry:    mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    then_blk: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "then")
-    else_blk: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "else")
+    entry:    mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    then_blk: mlirlite.BasicBlock* = mcore.CreateBlock(func, "then")
+    else_blk: mlirlite.BasicBlock* = mcore.CreateBlock(func, "else")
 
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
 
     mlirlite.position_at_end(builder, entry)
-    v_a: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
-    v_b: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
-    v_cond: mlirlite.Value | t.CPtr = mlirlite.build_icmp(builder, mlirlite.ICMP_SGT, v_a, v_b)
+    v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
+    v_b: mlirlite.Value* = mcore.SSAValue(ty_i32, "%b")
+    v_cond: mlirlite.Value* = mlirlite.build_icmp(builder, mlirlite.ICMP_SGT, v_a, v_b)
     mlirlite.build_cond_br(builder, v_cond, then_blk, else_blk)
 
     mlirlite.position_at_end(builder, then_blk)
@@ -328,7 +280,7 @@ def test_build_if_else(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.position_at_end(builder, else_blk)
     mlirlite.build_ret(builder, v_b)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -352,21 +304,21 @@ def test_build_if_else(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 5: void 函数
 # ============================================================
-def test_build_void(pool: memhub.MemBuddy | t.CPtr):
+def test_build_void(pool: memhub.MemBuddy*):
     testcheck.section("Test 5: void function")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_void: mlirlite.LLVMType | t.CPtr = core.Void()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_void: mlirlite.LLVMType* = core.Void()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_void")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "noop", ty_void)
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_void")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "noop", ty_void)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
     mlirlite.build_ret_void(builder)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -384,34 +336,34 @@ def test_build_void(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 6: 模块输出（module / declare vs define）
 # ============================================================
-def test_module_print(pool: memhub.MemBuddy | t.CPtr):
+def test_module_print(pool: memhub.MemBuddy*):
     testcheck.section("Test 6: ModulePrint")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_module")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_module")
     mlirlite.module_set_target(mod, "x86_64-pc-windows-gnu")
     mlirlite.module_set_datalayout(mod, "e-m:w-p270:32:32")
 
     # declare: llvm.func @extern_func(%x: i32) -> i32（无体）
-    func_decl: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "extern_func", ty_i32)
+    func_decl: mlirlite.Function* = mcore.CreateDeclare(mod, "extern_func", ty_i32)
     mcore.AddParam(func_decl, ty_i32, "%x")
 
     # define: llvm.func @add(%a: i32, %b: i32) -> i32 { … }
-    func_add: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    func_add: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
     mcore.AddParam(func_add, ty_i32, "%a")
     mcore.AddParam(func_add, ty_i32, "%b")
-    entry1: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func_add, "entry")
-    builder1: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func_add)
+    entry1: mlirlite.BasicBlock* = mcore.CreateBlock(func_add, "entry")
+    builder1: mlirlite.IRBuilder* = mcore.NewBuilder(func_add)
     mlirlite.position_at_end(builder1, entry1)
-    v_a1: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
-    v_b1: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
-    v_sum: mlirlite.Value | t.CPtr = mlirlite.build_add(builder1, v_a1, v_b1)
+    v_a1: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
+    v_b1: mlirlite.Value* = mcore.SSAValue(ty_i32, "%b")
+    v_sum: mlirlite.Value* = mlirlite.build_add(builder1, v_a1, v_b1)
     mlirlite.build_ret(builder1, v_sum)
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     dump_mlir(pool, None, buf)
@@ -438,26 +390,26 @@ def test_module_print(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 7: 常量物化（操作数 42 -> llvm.mlir.constant）
 # ============================================================
-def test_const_materialize(pool: memhub.MemBuddy | t.CPtr):
+def test_const_materialize(pool: memhub.MemBuddy*):
     testcheck.section("Test 7: constant materialization")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_const")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "const_test", ty_i32)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_const")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "const_test", ty_i32)
     mcore.AddParam(func, ty_i32, "%a")
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
 
-    v_a: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
-    v_42: mlirlite.Value | t.CPtr = mcore.ConstInt32(42)
-    v_sum: mlirlite.Value | t.CPtr = mlirlite.build_add(builder, v_a, v_42)
+    v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
+    v_42: mlirlite.Value* = mcore.ConstInt32(42)
+    v_sum: mlirlite.Value* = mlirlite.build_add(builder, v_a, v_42)
     mlirlite.build_ret(builder, v_sum)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -472,13 +424,13 @@ def test_const_materialize(pool: memhub.MemBuddy | t.CPtr):
                     "add line does not reference materialized constant")
 
     # 同 (类型,文本) 常量只物化一次：add 的两个操作数都是 42
-    func2: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "const_twice", ty_i32)
-    entry2: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func2, "entry")
-    builder2: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func2)
+    func2: mlirlite.Function* = mcore.CreateFunction(mod, "const_twice", ty_i32)
+    entry2: mlirlite.BasicBlock* = mcore.CreateBlock(func2, "entry")
+    builder2: mlirlite.IRBuilder* = mcore.NewBuilder(func2)
     mlirlite.position_at_end(builder2, entry2)
-    v_42b: mlirlite.Value | t.CPtr = mcore.ConstInt32(42)
-    v_42c: mlirlite.Value | t.CPtr = mcore.ConstInt32(42)
-    v_sum2: mlirlite.Value | t.CPtr = mlirlite.build_add(builder2, v_42b, v_42c)
+    v_42b: mlirlite.Value* = mcore.ConstInt32(42)
+    v_42c: mlirlite.Value* = mcore.ConstInt32(42)
+    v_sum2: mlirlite.Value* = mlirlite.build_add(builder2, v_42b, v_42c)
     mlirlite.build_ret(builder2, v_sum2)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func2)
@@ -490,20 +442,20 @@ def test_const_materialize(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 8: phi -> 块参数
 # ============================================================
-def test_phi_block_args(pool: memhub.MemBuddy | t.CPtr):
+def test_phi_block_args(pool: memhub.MemBuddy*):
     testcheck.section("Test 8: phi -> block arguments")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_merge")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "merge_test", ty_i32)
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    then_blk: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "then")
-    else_blk: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "else")
-    merge: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "merge")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_merge")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "merge_test", ty_i32)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    then_blk: mlirlite.BasicBlock* = mcore.CreateBlock(func, "then")
+    else_blk: mlirlite.BasicBlock* = mcore.CreateBlock(func, "else")
+    merge: mlirlite.BasicBlock* = mcore.CreateBlock(func, "merge")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
 
     # entry: br label %then
     mlirlite.position_at_end(builder, entry)
@@ -511,23 +463,23 @@ def test_phi_block_args(pool: memhub.MemBuddy | t.CPtr):
 
     # then: br label %merge
     mlirlite.position_at_end(builder, then_blk)
-    v_1: mlirlite.Value | t.CPtr = mcore.ConstInt32(1)
+    v_1: mlirlite.Value* = mcore.ConstInt32(1)
     mlirlite.build_br(builder, merge)
 
     # else: br label %merge
     mlirlite.position_at_end(builder, else_blk)
-    v_2: mlirlite.Value | t.CPtr = mcore.ConstInt32(2)
+    v_2: mlirlite.Value* = mcore.ConstInt32(2)
     mlirlite.build_br(builder, merge)
 
     # merge: %r = phi i32 [1, %then], [2, %else]; ret i32 %r
     mlirlite.position_at_end(builder, merge)
-    inc1: mlirlite.PhiIncoming | t.CPtr = mlirlite.new_phi_incoming(pool, v_1, then_blk)
-    inc2: mlirlite.PhiIncoming | t.CPtr = mlirlite.new_phi_incoming(pool, v_2, else_blk)
+    inc1: mlirlite.PhiIncoming* = mlirlite.new_phi_incoming(pool, v_1, then_blk)
+    inc2: mlirlite.PhiIncoming* = mlirlite.new_phi_incoming(pool, v_2, else_blk)
     inc1.Next = inc2
-    v_r: mlirlite.Value | t.CPtr = mlirlite.build_phi(builder, ty_i32, inc1, 2)
+    v_r: mlirlite.Value* = mlirlite.build_phi(builder, ty_i32, inc1, 2)
     mlirlite.build_ret(builder, v_r)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -548,44 +500,44 @@ def test_phi_block_args(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 9: 内存 / 调用 / 转换
 # ============================================================
-def test_mem_call_cast(pool: memhub.MemBuddy | t.CPtr):
+def test_mem_call_cast(pool: memhub.MemBuddy*):
     testcheck.section("Test 9: memory / call / cast")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
-    ty_i64: mlirlite.LLVMType | t.CPtr = core.Int64()
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
-    ty_i8ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
+    ty_i64: mlirlite.LLVMType* = core.Int64()
+    ty_i8: mlirlite.LLVMType* = core.Int8()
+    ty_i8ptr: mlirlite.LLVMType* = core.Ptr(ty_i8)
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_mem")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "mem_test", ty_i32)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_mem")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "mem_test", ty_i32)
     mcore.AddParam(func, ty_i8ptr, "%s")
     mcore.AddParam(func, ty_i32, "%n")
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
 
-    v_s: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i8ptr, "%s")
-    v_n: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%n")
+    v_s: mlirlite.Value* = mcore.SSAValue(ty_i8ptr, "%s")
+    v_n: mlirlite.Value* = mcore.SSAValue(ty_i32, "%n")
 
     # %0 = alloca i32 ; store i32 %n, !llvm.ptr %0 ; %1 = load i32, !llvm.ptr %0
-    v_slot: mlirlite.Value | t.CPtr = mlirlite.build_alloca(builder, ty_i32)
+    v_slot: mlirlite.Value* = mlirlite.build_alloca(builder, ty_i32)
     mlirlite.build_store(builder, v_n, v_slot, 0)
-    v_loaded: mlirlite.Value | t.CPtr = mlirlite.build_load(builder, ty_i32, v_slot, 0)
+    v_loaded: mlirlite.Value* = mlirlite.build_load(builder, ty_i32, v_slot, 0)
 
     # %2 = getelementptr i8, !llvm.ptr %s, i32 %1
-    v_gep: mlirlite.Value | t.CPtr = mlirlite.build_gep(builder, ty_i8, v_s, v_loaded)
+    v_gep: mlirlite.Value* = mlirlite.build_gep(builder, ty_i8, v_s, v_loaded)
 
     # %3 = zext i32 %1 to i64 ; %4 = ptrtoint !llvm.ptr %s to i64
-    v_zext: mlirlite.Value | t.CPtr = mlirlite.build_zext(builder, v_loaded, ty_i64)
-    v_p2i: mlirlite.Value | t.CPtr = mlirlite.build_ptrtoint(builder, v_s, ty_i64)
+    v_zext: mlirlite.Value* = mlirlite.build_zext(builder, v_loaded, ty_i64)
+    v_p2i: mlirlite.Value* = mlirlite.build_ptrtoint(builder, v_s, ty_i64)
 
     # %5 = call i32 @callee(i32 %1)
-    v_call: mlirlite.Value | t.CPtr = mlirlite.build_call(builder, "callee", v_loaded, 1, ty_i32, 0)
+    v_call: mlirlite.Value* = mlirlite.build_call(builder, "callee", v_loaded, 1, ty_i32, 0)
     mlirlite.build_ret(builder, v_call)
 
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, None, buf)
@@ -595,9 +547,9 @@ def test_mem_call_cast(pool: memhub.MemBuddy | t.CPtr):
     # 整模块另存：mlir-opt 要求被调符号在模块作用域内**有声明**；
     # 单函数文本不含 declare，会报
     #   'llvm.call' op 'callee' does not reference a symbol in the current scope
-    decl: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "callee", ty_i32)
+    decl: mlirlite.Function* = mcore.CreateDeclare(mod, "callee", ty_i32)
     mcore.AddParam(decl, ty_i32, "%x")
-    mbuf: t.CChar | t.CPtr = pool.alloc(65536)
+    mbuf: str = pool.alloc(65536)
     if mbuf is not None:
         mbuf[0] = 0
         mcore.PrintModule(mbuf, 65536, mod)
@@ -622,15 +574,15 @@ def test_mem_call_cast(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 10: 全局变量（字符串常量 / 整数 / 整型数组）
 # ============================================================
-def test_globals(pool: memhub.MemBuddy | t.CPtr):
+def test_globals(pool: memhub.MemBuddy*):
     testcheck.section("Test 10: Global Variables")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_void: mlirlite.LLVMType | t.CPtr = core.Void()
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_void: mlirlite.LLVMType* = core.Void()
+    ty_i8: mlirlite.LLVMType* = core.Int8()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_globals")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_globals")
     mlirlite.module_set_target(mod, "x86_64-pc-windows-gnu")
 
     # @.str = private unnamed_addr constant [6 x i8] c"hello\00"
@@ -641,19 +593,19 @@ def test_globals(pool: memhub.MemBuddy | t.CPtr):
 
     # @arr = [i8 1, i8 2] -> [1 : i8, 2 : i8]（元素带类型注解；dense<...> 对
     # !llvm.array 非法——dense 只接受 builtin shaped 类型，实测 mlir-opt 22.1.8）
-    ty_arr2: mlirlite.LLVMType | t.CPtr = core.Array(ty_i8, 2)
-    gv_arr: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "arr", ty_arr2)
-    init_arr: t.CChar | t.CPtr = pool.alloc(32)
+    ty_arr2: mlirlite.LLVMType* = core.Array(ty_i8, 2)
+    gv_arr: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "arr", ty_arr2)
+    init_arr: str = pool.alloc(32)
     string.strcpy(init_arr, "[i8 1, i8 2]")
     gv_arr.Initializer = init_arr
 
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "use_global", ty_void)
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "use_global", ty_void)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
     mlirlite.build_ret_void(builder)
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     dump_mlir(pool, None, buf)
@@ -682,30 +634,30 @@ def test_globals(pool: memhub.MemBuddy | t.CPtr):
 # ============================================================
 # 测试 11: SSA 验证（合法函数 0 错误）
 # ============================================================
-def test_verify_valid(pool: memhub.MemBuddy | t.CPtr):
+def test_verify_valid(pool: memhub.MemBuddy*):
     testcheck.section("Test 11: Verify valid function")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("verify_valid")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "add", ty_i32)
+    mod: mlirlite.LLVMModule* = mcore.NewModule("verify_valid")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "add", ty_i32)
     mcore.AddParam(func, ty_i32, "%a")
     mcore.AddParam(func, ty_i32, "%b")
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
-    builder: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(func)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
+    builder: mlirlite.IRBuilder* = mcore.NewBuilder(func)
     mlirlite.position_at_end(builder, entry)
-    v_a: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%a")
-    v_b: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%b")
-    v_c: mlirlite.Value | t.CPtr = mlirlite.build_add(builder, v_a, v_b)
+    v_a: mlirlite.Value* = mcore.SSAValue(ty_i32, "%a")
+    v_b: mlirlite.Value* = mcore.SSAValue(ty_i32, "%b")
+    v_c: mlirlite.Value* = mlirlite.build_add(builder, v_a, v_b)
     mlirlite.build_ret(builder, v_c)
 
-    result: mlirlite.VerifyResult | t.CPtr = mcore.NewVerifyResult(4096)
-    err_count: t.CInt = mcore.VerifyFunction(func, result)
+    result: mlirlite.VerifyResult* = mcore.NewVerifyResult(4096)
+    err_count: int = mcore.VerifyFunction(func, result)
 
     # 本测试原本没有渲染步骤；为落盘验收补一次 PrintFunction（不涉及断言）
-    buf: t.CChar | t.CPtr = pool.alloc(4096)
+    buf: str = pool.alloc(4096)
     buf[0] = 0
     mcore.PrintFunction(buf, 4096, func)
     dump_mlir(pool, "T11_verify.mlir", buf)
@@ -728,57 +680,57 @@ def test_verify_valid(pool: memhub.MemBuddy | t.CPtr):
 # 实测 22.1.8 报 "expected attribute value"）→ region + llvm.mlir.zero。
 # 断言依赖的形态（含整模块）均已用 mlir-opt 22.1.8 实测通过。
 # ============================================================
-def test_struct_global(pool: memhub.MemBuddy | t.CPtr):
+def test_struct_global(pool: memhub.MemBuddy*):
     testcheck.section("Test 12: struct/vtable global initializer (region)")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
-    ty_i8ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i8: mlirlite.LLVMType* = core.Int8()
+    ty_i8ptr: mlirlite.LLVMType* = core.Ptr(ty_i8)
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_struct_global")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_struct_global")
 
     # ---- ① vtable 结构体 { i8*, i8*, i8* } ----
     # Initializer 是 TPV 生成的 LLVM 语法聚合串：null + bitcast 符号引用
-    vt1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    vt2: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    vt3: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    vt_head: mlirlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, vt1)
+    vt1: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    vt2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    vt3: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    vt_head: mlirlite.ParamNode* = core.ParamListAppend(None, None, vt1)
     core.ParamListAppend(vt_head, vt1, vt2)
     core.ParamListAppend(vt_head, vt2, vt3)
-    ty_vt: mlirlite.LLVMType | t.CPtr = core.Struct(vt_head, 3)
+    ty_vt: mlirlite.LLVMType* = core.Struct(vt_head, 3)
 
-    gv_vt: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "vt", ty_vt)
-    init_vt: t.CChar | t.CPtr = pool.alloc(256)
+    gv_vt: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "vt", ty_vt)
+    init_vt: str = pool.alloc(256)
     string.strcpy(init_vt,
                   "{ i8* null, i8* bitcast (i8* (i8*)* @\"m0\" to i8*), i8* bitcast (i8* (i8*)* @m1 to i8*) }")
     gv_vt.Initializer = init_vt
     # IsConstant=1 + linkage 默认 external ⇒ 初值非空时**不输出** external 关键字
     mcore.GlobalSetConstant(gv_vt, 1)
     # 声明被引用的方法符号，使模块自洽（mlir-opt 要求 addressof 目标可解析）
-    d_m0: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "m0", ty_i8ptr)
+    d_m0: mlirlite.Function* = mcore.CreateDeclare(mod, "m0", ty_i8ptr)
     mcore.AddParam(d_m0, ty_i8ptr, "%self")
-    d_m1: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "m1", ty_i8ptr)
+    d_m1: mlirlite.Function* = mcore.CreateDeclare(mod, "m1", ty_i8ptr)
     mcore.AddParam(d_m1, ty_i8ptr, "%self")
 
     # ---- ③ 引号重加分支: LLVM 裸名 @9m（数字开头）→ MLIR 需 @"9m" ----
-    vq1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    ty_vtq: mlirlite.LLVMType | t.CPtr = core.Struct(vq1, 1)
-    gv_vtq: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "vtq", ty_vtq)
-    init_vtq: t.CChar | t.CPtr = pool.alloc(128)
+    vq1: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    ty_vtq: mlirlite.LLVMType* = core.Struct(vq1, 1)
+    gv_vtq: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "vtq", ty_vtq)
+    init_vtq: str = pool.alloc(128)
     string.strcpy(init_vtq, "{ i8* bitcast (i8* (i8*)* @9m to i8*) }")
     gv_vtq.Initializer = init_vtq
     mcore.GlobalSetConstant(gv_vtq, 1)
     mcore.GlobalSetLinkage(gv_vtq, "internal")
-    d_9m: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "9m", ty_i8ptr)
+    d_9m: mlirlite.Function* = mcore.CreateDeclare(mod, "9m", ty_i8ptr)
     mcore.AddParam(d_9m, ty_i8ptr, "%self")
 
     # ---- ② 指针数组 + GEP 常量表达式 ----
     # @s0 = [3 x i8]（供 GEP 常量表达式指向）
     mcore.CreateGlobalString(mod, "s0", "ab")
-    ty_arr2: mlirlite.LLVMType | t.CPtr = core.Array(ty_i8ptr, 2)
-    gv_arr: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "arr", ty_arr2)
-    init_arr: t.CChar | t.CPtr = pool.alloc(256)
+    ty_arr2: mlirlite.LLVMType* = core.Array(ty_i8ptr, 2)
+    gv_arr: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "arr", ty_arr2)
+    init_arr: str = pool.alloc(256)
     string.strcpy(init_arr,
                   "[i8* getelementptr inbounds ([3 x i8], [3 x i8]* @s0, i32 0, i32 0), i8* null]")
     gv_arr.Initializer = init_arr
@@ -786,8 +738,8 @@ def test_struct_global(pool: memhub.MemBuddy | t.CPtr):
 
     # ---- ②' 根级裸 GEP（TPV `_build_string_ptr_initializer` 的指针全局形态） ----
     # 初值无类型前缀，直接是 getelementptr 常量表达式
-    gv_sp: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "sp", ty_i8ptr)
-    init_sp: t.CChar | t.CPtr = pool.alloc(192)
+    gv_sp: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "sp", ty_i8ptr)
+    init_sp: str = pool.alloc(192)
     string.strcpy(init_sp,
                   "getelementptr inbounds ([3 x i8], [3 x i8]* @s0, i32 0, i32 0)")
     gv_sp.Initializer = init_sp
@@ -798,20 +750,20 @@ def test_struct_global(pool: memhub.MemBuddy | t.CPtr):
     # `@名() : <顶层类型> { <llvm.mlir.zero>; llvm.return }`。
     # TPV 侧真实存在这类写法（FuncGenMixin / CallGenVt / TranslatorGenMixin /
     # ExprGenConst 均设 Initializer = "null" 或 "zeroinitializer"）。
-    gv_pn: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "pnull", ty_i8ptr)
-    init_pn: t.CChar | t.CPtr = pool.alloc(16)
+    gv_pn: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "pnull", ty_i8ptr)
+    init_pn: str = pool.alloc(16)
     string.strcpy(init_pn, "null")
     gv_pn.Initializer = init_pn
 
     # 整型数组 + 裸 zeroinitializer：顶层类型取自 gv.Ty（此处 !llvm.array<2 x i32>）
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
-    ty_arr_i32: mlirlite.LLVMType | t.CPtr = core.Array(ty_i32, 2)
-    gv_za: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "zarr", ty_arr_i32)
-    init_za: t.CChar | t.CPtr = pool.alloc(24)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
+    ty_arr_i32: mlirlite.LLVMType* = core.Array(ty_i32, 2)
+    gv_za: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "zarr", ty_arr_i32)
+    init_za: str = pool.alloc(24)
     string.strcpy(init_za, "zeroinitializer")
     gv_za.Initializer = init_za
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     testcheck.info(buf)
@@ -905,33 +857,33 @@ def test_struct_global(pool: memhub.MemBuddy | t.CPtr):
 #   ③ inline_asm → `llvm.inline_asm has_side_effects [asm_dialect = intel] "…", "…" %x : (i32) -> i32`
 #      （LLVM 的裸 `inteldialect` 与 `"…"(%x)` 词法均实测被拒）
 # ============================================================
-def test_alloca_align_switch_asm(pool: memhub.MemBuddy | t.CPtr):
+def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     testcheck.section("Test 13: alloca align / switch / inline_asm")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
-    ty_void: mlirlite.LLVMType | t.CPtr = core.Void()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
+    ty_void: mlirlite.LLVMType* = core.Void()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_align_switch_asm")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_align_switch_asm")
 
     # ---- ① alloca 对齐 + ③ inline_asm（builder 形态 + TPV 注入形态）----
-    f1: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "align_asm", ty_i32)
+    f1: mlirlite.Function* = mcore.CreateFunction(mod, "align_asm", ty_i32)
     mcore.AddParam(f1, ty_i32, "%x")
-    e1: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f1, "entry")
-    b1: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(f1)
+    e1: mlirlite.BasicBlock* = mcore.CreateBlock(f1, "entry")
+    b1: mlirlite.IRBuilder* = mcore.NewBuilder(f1)
     mlirlite.position_at_end(b1, e1)
 
     # %0 = alloca i32, align 16
-    v_slot: mlirlite.Value | t.CPtr = mlirlite.build_alloca_aligned(b1, ty_i32, 16)
+    v_slot: mlirlite.Value* = mlirlite.build_alloca_aligned(b1, ty_i32, 16)
 
     # call none asm sideeffect "nop", ""()（无返回值形态）
     mlirlite.build_inline_asm(b1, ty_void, "nop", "", 1)
 
     # %1 = call i32 asm sideeffect "mov $0, $1", "=r,r"()（有返回值形态）
-    v_asm: mlirlite.Value | t.CPtr = mlirlite.build_inline_asm(b1, ty_i32, "mov $0, $1", "=r,r", 1)
+    v_asm: mlirlite.Value* = mlirlite.build_inline_asm(b1, ty_i32, "mov $0, $1", "=r,r", 1)
 
-    v_x: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%x")
+    v_x: mlirlite.Value* = mcore.SSAValue(ty_i32, "%x")
     mlirlite.build_store(b1, v_x, v_slot, 0)
 
     # TPV CallGenCBuiltin 的注入形态（inteldialect + 带类型的输入操作数）
@@ -941,20 +893,20 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.build_ret(b1, v_asm)
 
     # ---- ② switch：3 case + default（不带 phi）----
-    f2: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "sw", ty_i32)
+    f2: mlirlite.Function* = mcore.CreateFunction(mod, "sw", ty_i32)
     mcore.AddParam(f2, ty_i32, "%v")
-    e2: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f2, "entry")
-    c0: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f2, "case0")
-    c1: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f2, "case1")
-    c2: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f2, "case2")
-    dflt: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f2, "default")
-    b2: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(f2)
+    e2: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "entry")
+    c0: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "case0")
+    c1: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "case1")
+    c2: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "case2")
+    dflt: mlirlite.BasicBlock* = mcore.CreateBlock(f2, "default")
+    b2: mlirlite.IRBuilder* = mcore.NewBuilder(f2)
 
     mlirlite.position_at_end(b2, e2)
-    v_v: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%v")
-    sc0: mlirlite.SwitchCase | t.CPtr = mlirlite.new_switch_case(pool, mcore.ConstInt32(0), c0)
-    sc1: mlirlite.SwitchCase | t.CPtr = mlirlite.new_switch_case(pool, mcore.ConstInt32(1), c1)
-    sc2: mlirlite.SwitchCase | t.CPtr = mlirlite.new_switch_case(pool, mcore.ConstInt32(2), c2)
+    v_v: mlirlite.Value* = mcore.SSAValue(ty_i32, "%v")
+    sc0: mlirlite.SwitchCase* = mlirlite.new_switch_case(pool, mcore.ConstInt32(0), c0)
+    sc1: mlirlite.SwitchCase* = mlirlite.new_switch_case(pool, mcore.ConstInt32(1), c1)
+    sc2: mlirlite.SwitchCase* = mlirlite.new_switch_case(pool, mcore.ConstInt32(2), c2)
     sc0.Next = sc1
     sc1.Next = sc2
     mlirlite.build_switch(b2, v_v, dflt, sc0, 3)
@@ -969,31 +921,31 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.build_ret(b2, v_v)
 
     # ---- ②' switch：case 与 default 目标块带 phi ⇒ 块实参 ----
-    f3: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "sw_phi", ty_i32)
+    f3: mlirlite.Function* = mcore.CreateFunction(mod, "sw_phi", ty_i32)
     mcore.AddParam(f3, ty_i32, "%v")
-    e3: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f3, "entry")
-    sk: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f3, "scase")
-    sd: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f3, "sdef")
-    b3: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(f3)
+    e3: mlirlite.BasicBlock* = mcore.CreateBlock(f3, "entry")
+    sk: mlirlite.BasicBlock* = mcore.CreateBlock(f3, "scase")
+    sd: mlirlite.BasicBlock* = mcore.CreateBlock(f3, "sdef")
+    b3: mlirlite.IRBuilder* = mcore.NewBuilder(f3)
 
     mlirlite.position_at_end(b3, e3)
-    v_v3: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%v")
-    skc: mlirlite.SwitchCase | t.CPtr = mlirlite.new_switch_case(pool, mcore.ConstInt32(0), sk)
+    v_v3: mlirlite.Value* = mcore.SSAValue(ty_i32, "%v")
+    skc: mlirlite.SwitchCase* = mlirlite.new_switch_case(pool, mcore.ConstInt32(0), sk)
     mlirlite.build_switch(b3, v_v3, sd, skc, 1)
 
     # scase: %p0 = phi i32 [1, %entry]; ret i32 %p0
     mlirlite.position_at_end(b3, sk)
-    in1: mlirlite.PhiIncoming | t.CPtr = mlirlite.new_phi_incoming(pool, mcore.ConstInt32(1), e3)
-    v_p0: mlirlite.Value | t.CPtr = mlirlite.build_phi(b3, ty_i32, in1, 1)
+    in1: mlirlite.PhiIncoming* = mlirlite.new_phi_incoming(pool, mcore.ConstInt32(1), e3)
+    v_p0: mlirlite.Value* = mlirlite.build_phi(b3, ty_i32, in1, 1)
     mlirlite.build_ret(b3, v_p0)
 
     # sdef: %p1 = phi i32 [2, %entry]; ret i32 %p1
     mlirlite.position_at_end(b3, sd)
-    in2: mlirlite.PhiIncoming | t.CPtr = mlirlite.new_phi_incoming(pool, mcore.ConstInt32(2), e3)
-    v_p1: mlirlite.Value | t.CPtr = mlirlite.build_phi(b3, ty_i32, in2, 1)
+    in2: mlirlite.PhiIncoming* = mlirlite.new_phi_incoming(pool, mcore.ConstInt32(2), e3)
+    v_p1: mlirlite.Value* = mlirlite.build_phi(b3, ty_i32, in2, 1)
     mlirlite.build_ret(b3, v_p1)
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     testcheck.info(buf)
@@ -1063,60 +1015,60 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy | t.CPtr):
 #   ⑤ 全局属性字典 → `…("ab\00") {section = "data", alignment = 16 : i64} : !llvm.array<3 x i8>`
 #      （字典必须在**类型之前**；`unnamed_addr` 是**关键字**，不能进字典）
 # ============================================================
-def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy | t.CPtr):
+def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy*):
     testcheck.section("Test 14: vararg / va_arg / cmpxchg / global attrs")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
-    ty_i32ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i32)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
+    ty_i8: mlirlite.LLVMType* = core.Int8()
+    ty_i32ptr: mlirlite.LLVMType* = core.Ptr(ty_i32)
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_vararg_vaarg_cmpxchg")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_vararg_vaarg_cmpxchg")
 
     # ---- ① 变参函数声明: llvm.func @printf(%p: !llvm.ptr, ...) -> i32 ----
-    f_printf: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "printf", ty_i32)
+    f_printf: mlirlite.Function* = mcore.CreateDeclare(mod, "printf", ty_i32)
     mcore.AddParam(f_printf, ty_i32ptr, "%p")
     f_printf.IsVarArg = 1
 
     # ---- ③ va_arg: %0 = "llvm.va_arg"(%ap) : (!llvm.ptr) -> i32 ----
-    f_va: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "va_reader", ty_i32)
+    f_va: mlirlite.Function* = mcore.CreateFunction(mod, "va_reader", ty_i32)
     mcore.AddParam(f_va, ty_i32ptr, "%ap")
-    e_va: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f_va, "entry")
-    b_va: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(f_va)
+    e_va: mlirlite.BasicBlock* = mcore.CreateBlock(f_va, "entry")
+    b_va: mlirlite.IRBuilder* = mcore.NewBuilder(f_va)
     mlirlite.position_at_end(b_va, e_va)
-    v_ap: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32ptr, "%ap")
-    v_arg: mlirlite.Value | t.CPtr = mlirlite.build_va_arg(b_va, v_ap, ty_i32)
+    v_ap: mlirlite.Value* = mcore.SSAValue(ty_i32ptr, "%ap")
+    v_arg: mlirlite.Value* = mlirlite.build_va_arg(b_va, v_ap, ty_i32)
     mlirlite.build_ret(b_va, v_arg)
 
     # ---- ② 变参调用 + ④ cmpxchg（builder 的**单结果**形态）----
-    f_cc: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "vcall_cmpx", ty_i32)
+    f_cc: mlirlite.Function* = mcore.CreateFunction(mod, "vcall_cmpx", ty_i32)
     mcore.AddParam(f_cc, ty_i32ptr, "%p")
     mcore.AddParam(f_cc, ty_i32, "%n")
-    e_cc: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f_cc, "entry")
-    b_cc: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(f_cc)
+    e_cc: mlirlite.BasicBlock* = mcore.CreateBlock(f_cc, "entry")
+    b_cc: mlirlite.IRBuilder* = mcore.NewBuilder(f_cc)
     mlirlite.position_at_end(b_cc, e_cc)
-    v_p: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32ptr, "%p")
-    v_n: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%n")
+    v_p: mlirlite.Value* = mcore.SSAValue(ty_i32ptr, "%p")
+    v_n: mlirlite.Value* = mcore.SSAValue(ty_i32, "%n")
 
     # %0 = cmpxchg !llvm.ptr %p, i32 %n, i32 %n acq_rel monotonic
     #   → %0 = llvm.cmpxchg … + 两条 extractvalue；`%0` 绑定到 [0]（旧值）
-    v_old: mlirlite.Value | t.CPtr = mlirlite.build_cmpxchg(b_cc, v_p, v_n, v_n,
+    v_old: mlirlite.Value* = mlirlite.build_cmpxchg(b_cc, v_p, v_n, v_n,
                                                            mlirlite.ATOMIC_ORDER_ACQ_REL,
                                                            mlirlite.ATOMIC_ORDER_MONOTONIC)
     # %1 = call i32 (i8*, i32, ...) @printf(i8* %p, i32 %n)
     #   → %1 = llvm.call @printf(%p, %n) vararg(!llvm.func<i32 (!llvm.ptr, i32, ...)>)
     #          : (!llvm.ptr, i32) -> i32
     mlirlite.value_set_next(v_p, v_n)
-    v_call: mlirlite.Value | t.CPtr = mlirlite.build_call(b_cc, "printf", v_p, 2, ty_i32, 1)
+    v_call: mlirlite.Value* = mlirlite.build_call(b_cc, "printf", v_p, 2, ty_i32, 1)
     # ret 用 cmpxchg 结果 ⇒ 断言别名绑定生效（文本里应是 %_0_v = extractvalue[0]）
     mlirlite.build_ret(b_cc, v_old)
 
     # ---- ④' cmpxchg 双结果前缀 `%a, %b = cmpxchg …`（两名字各绑一条 extractvalue）----
-    f_cc2: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "cmpx2", ty_i32)
+    f_cc2: mlirlite.Function* = mcore.CreateFunction(mod, "cmpx2", ty_i32)
     mcore.AddParam(f_cc2, ty_i32ptr, "%p")
     mcore.AddParam(f_cc2, ty_i32, "%n")
-    e_cc2: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(f_cc2, "entry")
+    e_cc2: mlirlite.BasicBlock* = mcore.CreateBlock(f_cc2, "entry")
     mlirlite.block_append_text(pool, e_cc2,
         "%a, %b = cmpxchg !llvm.ptr %p, i32 %n, i32 %n acq_rel monotonic")
     # %b = 成功位 [1]；%a = 旧值 [0]
@@ -1124,24 +1076,24 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.block_append_text(pool, e_cc2, "ret i32 %a")
 
     # ---- ⑤ 全局属性字典：section/alignment 在**类型之前**；unnamed_addr 作关键字 ----
-    ty_arr3: mlirlite.LLVMType | t.CPtr = core.Array(ty_i8, 3)
-    init_s: t.CChar | t.CPtr = pool.alloc(32)
+    ty_arr3: mlirlite.LLVMType* = core.Array(ty_i8, 3)
+    init_s: str = pool.alloc(32)
     string.strcpy(init_s, "c\"ab\\00\"")
 
-    gv_s: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "s", ty_arr3)
+    gv_s: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "s", ty_arr3)
     gv_s.Initializer = init_s
     mlirlite.global_set_linkage(gv_s, "internal")
     mlirlite.global_set_constant(gv_s, 1)
     mlirlite.global_set_section(gv_s, "data")
     gv_s.Align = 16
 
-    gv_t: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "t", ty_arr3)
+    gv_t: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "t", ty_arr3)
     gv_t.Initializer = init_s
     mlirlite.global_set_linkage(gv_t, "internal")
     mlirlite.global_set_constant(gv_t, 1)
     mlirlite.global_set_unnamed_addr(gv_t, 1)
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     testcheck.info(buf)
@@ -1237,34 +1189,34 @@ def test_vararg_vaarg_cmpxchg(pool: memhub.MemBuddy | t.CPtr):
 # 降级（--mlir-to-llvmir）可得 MLIR 自动生成的定义行：
 #   %aa11bb22cc33dd44.Cls = type { i32, ptr }
 # ============================================================
-def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
+def test_named_struct(pool: memhub.MemBuddy*):
     testcheck.section("Test 15: named struct type")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
-    ty_i8: mlirlite.LLVMType | t.CPtr = core.Int8()
-    ty_i8ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_i8)
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
+    ty_i8: mlirlite.LLVMType* = core.Int8()
+    ty_i8ptr: mlirlite.LLVMType* = core.Ptr(ty_i8)
 
     # 具名结构体 %"aa11bb22cc33dd44.Cls" = type { i32, i8* }（sha1 风格前缀 + '.'）
-    ns1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
-    ns2: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8ptr)
-    ns_head: mlirlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, ns1)
+    ns1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
+    ns2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
+    ns_head: mlirlite.ParamNode* = core.ParamListAppend(None, None, ns1)
     core.ParamListAppend(ns_head, ns1, ns2)
-    ty_named: mlirlite.LLVMType | t.CPtr = core.Struct(ns_head, 2, "aa11bb22cc33dd44.Cls")
-    ty_named_ptr: mlirlite.LLVMType | t.CPtr = core.Ptr(ty_named)
+    ty_named: mlirlite.LLVMType* = core.Struct(ns_head, 2, "aa11bb22cc33dd44.Cls")
+    ty_named_ptr: mlirlite.LLVMType* = core.Ptr(ty_named)
 
     # packed 具名结构体 %"aa11bb22cc33dd44.Packed" = type <{ i32, i8 }>
     # MLIR 侧（实测 mlir-opt / mlir-translate 22.1.8）:
     #   !llvm.struct<"aa11bb22cc33dd44.Packed", packed (i32, i8)> → 降级 type <{ i32, i8 }>
-    pk1: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i32)
-    pk2: mlirlite.ParamNode | t.CPtr = core.NewParamNode(ty_i8)
-    pk_head: mlirlite.ParamNode | t.CPtr = core.ParamListAppend(None, None, pk1)
+    pk1: mlirlite.ParamNode* = core.NewParamNode(ty_i32)
+    pk2: mlirlite.ParamNode* = core.NewParamNode(ty_i8)
+    pk_head: mlirlite.ParamNode* = core.ParamListAppend(None, None, pk1)
     core.ParamListAppend(pk_head, pk1, pk2)
-    ty_packed: mlirlite.LLVMType | t.CPtr = core.Struct(pk_head, 2, "aa11bb22cc33dd44.Packed")
+    ty_packed: mlirlite.LLVMType* = core.Struct(pk_head, 2, "aa11bb22cc33dd44.Packed")
 
     # ---- 类型文本：按值 = 内联具名形态；指针 = 不透明 !llvm.ptr ----
-    tbuf: t.CChar | t.CPtr = pool.alloc(256)
+    tbuf: str = pool.alloc(256)
     tbuf[0] = 0
     core.PrintType(tbuf, 256, ty_named)
     testcheck.check(string.strstr(tbuf, "!llvm.struct<\"aa11bb22cc33dd44.Cls\", (i32, !llvm.ptr)>") is not None,
@@ -1280,7 +1232,7 @@ def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
                     "Ptr(具名结构体) -> '!llvm.ptr'（不透明指针，不回退为指针类型）",
                     "named struct pointer must stay opaque !llvm.ptr")
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_named_struct")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_named_struct")
     # 真实流程：具名结构体经 module_add_named_type 登记（打印期查表用）
     mlirlite.module_add_named_type(mod, pool, ty_named)
     # packed 标记唯一设置点（须在 add_named_type 之后设；打印期由登记表携带）
@@ -1288,17 +1240,17 @@ def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.module_set_named_type_packed(mod, pool, ty_packed, 1)
 
     # ---- ① 按值全局（类型使用处内联具名体）+ ② 指向它的指针全局 ----
-    gv_v: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "g_cls", ty_named)
-    gv_p: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "g_cls_p", ty_named_ptr)
+    gv_v: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_cls", ty_named)
+    gv_p: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_cls_p", ty_named_ptr)
     # ③ packed 按值全局
-    gv_pk: mlirlite.GlobalVariable | t.CPtr = mcore.NewGlobal(mod, "g_packed", ty_packed)
+    gv_pk: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "g_packed", ty_packed)
 
     # ---- ① 按值形参 + ② 指针形参 ----
-    fn: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "use_named", ty_i32)
+    fn: mlirlite.Function* = mcore.CreateFunction(mod, "use_named", ty_i32)
     mcore.AddParam(fn, ty_named, "%v")
     mcore.AddParam(fn, ty_named_ptr, "%p")
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(fn, "entry")
-    b: mlirlite.IRBuilder | t.CPtr = mcore.NewBuilder(fn)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(fn, "entry")
+    b: mlirlite.IRBuilder* = mcore.NewBuilder(fn)
     mlirlite.position_at_end(b, entry)
 
     # ---- ④ 中间文本里的"只有名字"形态（手工 / TPV 注入）----
@@ -1307,14 +1259,14 @@ def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
     mlirlite.block_append_text(pool, entry, "%1 = load i32, %\"aa11bb22cc33dd44.Cls\"* %0")
     # ⑤ packed 具名结构体的文本形态（同一登记表槽位带 packed 标记）
     mlirlite.block_append_text(pool, entry, "%2 = alloca %\"aa11bb22cc33dd44.Packed\"")
-    v_1: mlirlite.Value | t.CPtr = mcore.SSAValue(ty_i32, "%1")
+    v_1: mlirlite.Value* = mcore.SSAValue(ty_i32, "%1")
     mlirlite.build_ret(b, v_1)
 
     # ---- ⑥ 按值 packed 形参：独立声明函数，不改动 use_named 的既有断言 ----
-    fn_pk: mlirlite.Function | t.CPtr = mcore.CreateDeclare(mod, "use_packed", ty_i32)
+    fn_pk: mlirlite.Function* = mcore.CreateDeclare(mod, "use_packed", ty_i32)
     mcore.AddParam(fn_pk, ty_packed, "%pk")
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     testcheck.info(buf)
@@ -1392,16 +1344,16 @@ def test_named_struct(pool: memhub.MemBuddy | t.CPtr):
 #   %2 = extractvalue { i32, i32 } %1, 0
 #   %3 = extractvalue { i32, i32 } %1, 1
 # ============================================================
-def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
+def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     testcheck.section("Test 16: extractvalue (multi-result inline asm)")
 
-    core: mlirlite.LLVMTypeCore | t.CPtr = mlirlite.LLVMTypeCore(pool)
-    mcore: mlirlite.LLVMModuleCore | t.CPtr = mlirlite.LLVMModuleCore(pool)
-    ty_i32: mlirlite.LLVMType | t.CPtr = core.Int32()
+    core: mlirlite.LLVMTypeCore* = mlirlite.LLVMTypeCore(pool)
+    mcore: mlirlite.LLVMModuleCore* = mlirlite.LLVMModuleCore(pool)
+    ty_i32: mlirlite.LLVMType* = core.Int32()
 
-    mod: mlirlite.LLVMModule | t.CPtr = mcore.NewModule("test_extractvalue_multi_asm")
-    func: mlirlite.Function | t.CPtr = mcore.CreateFunction(mod, "multi_asm", ty_i32)
-    entry: mlirlite.BasicBlock | t.CPtr = mcore.CreateBlock(func, "entry")
+    mod: mlirlite.LLVMModule* = mcore.NewModule("test_extractvalue_multi_asm")
+    func: mlirlite.Function* = mcore.CreateFunction(mod, "multi_asm", ty_i32)
+    entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
     # ① TPV 真实形态：多结果内联汇编 + 两条 extractvalue（单索引）
     mlirlite.block_append_text(pool, entry,
@@ -1418,7 +1370,7 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
     # 引用 %a（保证 extractvalue 结果被真实使用）
     mlirlite.block_append_text(pool, entry, "ret i32 %a")
 
-    buf: t.CChar | t.CPtr = pool.alloc(65536)
+    buf: str = pool.alloc(65536)
     buf[0] = 0
     mcore.PrintModule(buf, 65536, mod)
     testcheck.info(buf)
@@ -1457,7 +1409,7 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy | t.CPtr):
                     "extractvalue result not referenced")
 
 
-def _sub_arena(main_pool: memhub.MemBuddy | t.CPtr) -> rawptr:
+def _sub_arena(main_pool: memhub.MemBuddy*) -> rawptr:
     """从主池切一块子池 arena（返回**裸指针**，由调用方在自己帧内构造 MemBuddy）
 
     为什么只返回裸指针、不返回构造好的 MemBuddy*：Viper 中无 __new__ 的类实例是
@@ -1482,14 +1434,14 @@ def main() -> int:
     if pool_mem is None:
         stdio.printf("FAIL: malloc for pool failed\n")
         return 1
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(pool_mem, POOL_SIZE)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(pool_mem, POOL_SIZE)
     if pool is None:
         stdio.printf("FAIL: memhub.MemBuddy init failed\n")
         return 1
 
     # 子池必须在 **main 的帧内** 构造：见 _sub_arena 注释（MemBuddy 实例是栈值，
     # 其指针不能跨函数返回）。每个测试一块，互不叠加。
-    sub: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
+    sub: memhub.MemBuddy* = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)
     test_type_print(sub)
 
     sub = memhub.MemBuddy(_sub_arena(pool), SUB_POOL_SIZE)

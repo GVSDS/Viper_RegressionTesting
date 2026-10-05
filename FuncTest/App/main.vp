@@ -1,73 +1,53 @@
-import t
-import stdio
 import testcheck
+# import w32.win32memory
+import stdlib
 
-# 测试基本函数调用
-def add(a: t.CInt, b: t.CInt) -> t.CInt:
-    return a + b
 
-def sub(a: t.CInt, b: t.CInt) -> t.CInt:
-    return a - b
+def add(a: int, b: int) -> int: return a + b
+def sub(a: int, b: int) -> int: return a - b
+def multi_args(a: int, b: int, c: int, d: int) -> int: return a + b + c + d
 
-# 测试多参数
-def multi_args(a: t.CInt, b: t.CInt, c: t.CInt, d: t.CInt) -> t.CInt:
-    return a + b + c + d
-
-# 测试递归
-def factorial(n: t.CInt) -> t.CInt:
-    if n <= 1:
-        return 1
+def factorial(n: int) -> int:
+    if n <= 1: return 1
     return n * factorial(n - 1)
 
-# 测试尾递归式斐波那契
-def fib(n: t.CInt) -> t.CInt:
-    if n <= 0:
-        return 0
-    if n == 1:
-        return 1
+def fib(n: int) -> int:
+    if n <= 0: return 0
+    if n == 1: return 1
     return fib(n - 1) + fib(n - 2)
 
-# 测试指针参数
-def add_via_ptr(p: t.CInt | t.CPtr, val: t.CInt):
+def add_via_ptr(p: int*, val: int):
     p[0] = p[0] + val
 
-# 测试 u64 返回值
-def make_u64() -> t.CUInt64T:
-    return t.CUInt64T(0xDEADBEEF)
+def make_u64() -> uint64: return 0xDEADBEEF
 
-# 测试 bool 返回值
-def is_even(n: t.CInt) -> t.CBool:
-    return n % 2 == 0
+def is_even(n: int) -> bool: return n % 2 == 0
 
 def test_basic_call():
     testcheck.section("Test 1: basic function call")
-    r: t.CInt = add(10, 20)
+    r: int = add(10, 20)
     testcheck.check(r == 30, "add(10,20)=30", "add(10,20) expect 30")
 
 def test_multi_args():
     testcheck.section("Test 2: multi args")
-    r: t.CInt = multi_args(1, 2, 3, 4)
+    r: int = multi_args(1, 2, 3, 4)
     testcheck.check(r == 10, "multi_args(1,2,3,4)=10", "multi_args(1,2,3,4) expect 10")
 
 def test_recursion():
     testcheck.section("Test 3: recursion (factorial)")
-    r: t.CInt = factorial(10)
-    # 10! = 3628800
+    r: int = factorial(10)
     testcheck.check(r == 3628800, "factorial(10)=3628800", "factorial(10) expect 3628800")
 
 def test_fibonacci():
     testcheck.section("Test 4: fibonacci")
-    r: t.CInt = fib(10)
-    # fib(10) = 55
+    r: int = fib(10)
     testcheck.check(r == 55, "fib(10)=55", "fib(10) expect 55")
 
 def test_ptr_param():
     testcheck.section("Test 5: pointer parameter")
-    x: t.CInt = 10
-    # 需要取 x 的地址
-    import w32.win32memory
-    buf: t.CInt | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
-    if t.CUInt64T(buf) == 0:
+    # buf: int* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    buf: int* = stdlib.malloc(int.__sizeof__())
+    if buf is None:
         testcheck.info("SKIP: VirtualAlloc returned NULL")
         return
     buf[0] = 10
@@ -76,24 +56,21 @@ def test_ptr_param():
 
 def test_u64_return():
     testcheck.section("Test 6: u64 return")
-    r: t.CUInt64T = make_u64()
-    testcheck.check(r == t.CUInt64T(0xDEADBEEF), "u64 return (0xdeadbeef)", "u64 return expect 0xdeadbeef")
+    r: uint64 = make_u64()
+    testcheck.check(r == 0xDEADBEEF, "u64 return (0xdeadbeef)", "u64 return expect 0xdeadbeef")
 
 def test_bool_return():
     testcheck.section("Test 7: bool return")
-    r1: t.CBool = is_even(4)
-    r2: t.CBool = is_even(7)
+    r1: bool = is_even(4)
+    r2: bool = is_even(7)
     testcheck.check(r1 and not r2, "bool return (is_even(4)=1, is_even(7)=0)", "bool return expect is_even(4)=1, is_even(7)=0")
 
 def test_nested_call():
     testcheck.section("Test 8: nested function call")
-    r: t.CInt = add(factorial(3), sub(10, 3))
-    # 3! = 6, 10-3 = 7, 6+7 = 13
+    r: int = add(factorial(3), sub(10, 3))
     testcheck.check(r == 13, "nested call (add(factorial(3), sub(10,3))=13)", "nested call expect 13")
 
-import w32.win32memory
-
-export def main() -> t.CInt:
+export def main() -> int:
     testcheck.begin("FuncTest: 函数调用基准测试")
     test_basic_call()
     test_multi_args()

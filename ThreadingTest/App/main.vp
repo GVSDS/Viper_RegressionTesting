@@ -56,7 +56,6 @@ def _increment_worker(arg: t.CPtr) -> t.CPtr:
 def _lock_worker(arg: t.CPtr) -> t.CPtr:
     lk: vthreading.Lock | t.CPtr = (vthreading.Lock | t.CPtr)(arg)
     global _shared_count
-    i: t.CInt
     for i in range(LOCK_ITER):
         lk.acquire()
         _shared_count += 1
