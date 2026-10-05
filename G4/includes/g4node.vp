@@ -19,9 +19,9 @@ import memhub
 class G4Node(GSListNode[G4Node]):
     Ty: t.CPtr             # 模拟 Value.Ty
     Name: t.CPtr           # 模拟 Value.Name
-    IsConst: t.CInt        # 模拟 Value.IsConst
-    IntVal: t.CInt64T      # 模拟 Value.IntVal
-    FloatVal: t.CDouble    # 模拟 Value.FloatVal
+    IsConst: int        # 模拟 Value.IsConst
+    IntVal: int64      # 模拟 Value.IntVal
+    FloatVal: double    # 模拟 Value.FloatVal
 
     def __init__(self):
         self.Ty = None

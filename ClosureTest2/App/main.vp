@@ -7,8 +7,8 @@ import testcheck
 # ============================================================
 def test_nonlocal_conditional():
     testcheck.section("Test 1: nonlocal in conditional branches")
-    x: t.CInt = 0
-    def modify(flag: t.CInt):
+    x: int = 0
+    def modify(flag: int):
         nonlocal x
         if flag:
             x += 10
@@ -24,12 +24,12 @@ def test_nonlocal_conditional():
 # ============================================================
 def test_nonlocal_multi_var():
     testcheck.section("Test 2: multiple nonlocal variables")
-    a: t.CInt = 1
-    b: t.CInt = 2
-    c_val: t.CInt = 3
+    a: int = 1
+    b: int = 2
+    c_val: int = 3
     def swap_add():
         nonlocal a, b, c_val
-        tmp: t.CInt = a
+        tmp: int = a
         a = b
         b = c_val
         c_val = tmp
@@ -39,13 +39,13 @@ def test_nonlocal_multi_var():
 # ============================================================
 # Test 3: global 在多个函数中交叉修改
 # ============================================================
-g_counter: t.CInt = 0
+g_counter: int = 0
 
 def inc_global():
     global g_counter
     g_counter += 1
 
-def add_global(n: t.CInt):
+def add_global(n: int):
     global g_counter
     g_counter += n
 
@@ -64,13 +64,13 @@ def test_global_cross_functions():
 # ============================================================
 def test_nested_ref_capture():
     testcheck.section("Test 4: nested function ref capture")
-    arr: t.CArray[t.CInt, 4] = [0]
+    arr: t.CArray[int, 4] = [0]
     def fill():
         nonlocal arr
         for i in range(4):
             arr[i] = (i + 1) * 10
     fill()
-    total: t.CInt = arr[0] + arr[1] + arr[2] + arr[3]
+    total: int = arr[0] + arr[1] + arr[2] + arr[3]
     testcheck.check(total == 100, "ref capture (total == 100)", "ref capture (expect 100)")
 
 # ============================================================
@@ -78,11 +78,11 @@ def test_nested_ref_capture():
 # ============================================================
 def test_lambda_capture_then_modify():
     testcheck.section("Test 5: lambda capture then modify")
-    x: t.CInt = 10
+    x: int = 10
     f = lambda: x
-    r1: t.CInt = f()
+    r1: int = f()
     x = 20
-    r2: t.CInt = f()
+    r2: int = f()
     testcheck.check(r1 == 10 and r2 == 10, "lambda value capture (before==10 after==10)", "lambda value capture (expect 10 10)")
 
 # ============================================================
@@ -90,9 +90,9 @@ def test_lambda_capture_then_modify():
 # ============================================================
 def test_nonlocal_loop_accumulate():
     testcheck.section("Test 6: nonlocal with loop accumulate")
-    sum_val: t.CInt = 0
-    count: t.CInt = 0
-    def add_numbers(n: t.CInt):
+    sum_val: int = 0
+    count: int = 0
+    def add_numbers(n: int):
         nonlocal sum_val, count
         for i in range(1, n + 1):
             sum_val += i
@@ -106,9 +106,9 @@ def test_nonlocal_loop_accumulate():
 # ============================================================
 def test_deep_nested_vars():
     testcheck.section("Test 7: deep nested different vars")
-    a: t.CInt = 0
-    b: t.CInt = 0
-    c_val: t.CInt = 0
+    a: int = 0
+    b: int = 0
+    c_val: int = 0
     def level1():
         nonlocal a
         a += 1
@@ -127,14 +127,14 @@ def test_deep_nested_vars():
 # ============================================================
 # Test 8: global + nonlocal 在同一嵌套函数中
 # ============================================================
-g_state: t.CInt = 0
+g_state: int = 0
 
 def test_global_nonlocal_same_func():
     testcheck.section("Test 8: global+nonlocal in same nested func")
     global g_state
     g_state = 0
-    local_state: t.CInt = 0
-    def worker(n: t.CInt):
+    local_state: int = 0
+    def worker(n: int):
         nonlocal local_state
         global g_state
         for i in range(n):
@@ -148,10 +148,10 @@ def test_global_nonlocal_same_func():
 # ============================================================
 def test_lambda_default_and_capture():
     testcheck.section("Test 9: lambda with arg and capture")
-    base: t.CInt = 100
+    base: int = 100
     multiply = lambda x: base * x
-    r1: t.CInt = multiply(3)
-    r2: t.CInt = multiply(5)
+    r1: int = multiply(3)
+    r2: int = multiply(5)
     testcheck.check(r1 == 300 and r2 == 500, "lambda arg+capture (100*3==300 100*5==500)", "lambda arg+capture (expect 300 500)")
 
 # ============================================================
@@ -159,8 +159,8 @@ def test_lambda_default_and_capture():
 # ============================================================
 def test_nested_accumulate():
     testcheck.section("Test 10: nested function accumulate")
-    total: t.CInt = 0
-    def add_val(n: t.CInt):
+    total: int = 0
+    def add_val(n: int):
         nonlocal total
         total += n
     add_val(10)
@@ -173,10 +173,10 @@ def test_nested_accumulate():
 # ============================================================
 def test_nonlocal_while():
     testcheck.section("Test 11: nonlocal in while loop")
-    result: t.CInt = 0
-    def countdown(n: t.CInt):
+    result: int = 0
+    def countdown(n: int):
         nonlocal result
-        i: t.CInt = n
+        i: int = n
         while i > 0:
             result += i
             i -= 1
@@ -187,15 +187,15 @@ def test_nonlocal_while():
 # Test 12: 嵌套函数修改结构体字段
 # ============================================================
 class Point:
-    x: t.CInt
-    y: t.CInt
+    x: int
+    y: int
 
 def test_nested_modify_struct():
     testcheck.section("Test 12: nested modify struct")
     p: Point = Point()
     p.x = 0
     p.y = 0
-    def translate(dx: t.CInt, dy: t.CInt):
+    def translate(dx: int, dy: int):
         nonlocal p
         p.x += dx
         p.y += dy
@@ -203,7 +203,7 @@ def test_nested_modify_struct():
     translate(5, 15)
     testcheck.check(p.x == 15 and p.y == 35, "nested struct (x==15 y==35)", "nested struct (expect 15 35)")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ClosureTest2: Advanced Closure/Lambda/Global/Nonlocal")
     test_nonlocal_conditional()
     test_nonlocal_multi_var()

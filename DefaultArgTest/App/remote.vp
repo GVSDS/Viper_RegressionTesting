@@ -2,12 +2,12 @@ import t
 
 
 # 跨模块：单个尾随默认值（对照 includes/json/__writer.vp 的 write 形态）
-def one(x: int, cap: t.CSizeT = 4096) -> t.CSizeT:
+def one(x: int, cap: sizet = 4096) -> sizet:
     return cap
 
 
 # 跨模块：4 参、最后一个有默认值（与 json.write(pool, val, pretty, cap=4096) 同形）
-def write(a: int, b: int, pretty: bool, cap: t.CSizeT = 4096) -> t.CSizeT:
+def write(a: int, b: int, pretty: bool, cap: sizet = 4096) -> sizet:
     return cap
 
 

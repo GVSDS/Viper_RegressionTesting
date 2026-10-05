@@ -44,7 +44,7 @@ def main() -> CInt | CExport:
 
     # 直接字段读取: b.__mbuddy__ (应返回 NULL)
     b_buddy: memhub.MemBuddy | t.CPtr = b.__mbuddy__
-    if t.CInt(b_buddy) == 0:
+    if int(b_buddy) == 0:
         stdio.printf("mbuddy OK: b.__mbuddy__ is NULL (no pollution)\n")
     else:
         stdio.printf("mbuddy FAIL: b.__mbuddy__ polluted!\n")
@@ -109,7 +109,7 @@ def main() -> CInt | CExport:
     s1: str = "a,b,c"
     s1.__mbuddy__ = bd
     parts = s1.split(',')
-    n1: t.CSizeT = parts.__len__()
+    n1: sizet = parts.__len__()
     stdio.printf("split('a,b,c', ',') len=%lu\n", n1)
     testcheck.check(n1 == 3, "split len OK (3)", "split len FAILED expect 3")
     p0: str = parts[0]
@@ -125,7 +125,7 @@ def main() -> CInt | CExport:
     s2: str = "hello"
     s2.__mbuddy__ = bd
     parts2 = s2.split(',')
-    n2: t.CSizeT = parts2.__len__()
+    n2: sizet = parts2.__len__()
     stdio.printf("split('hello', ',') len=%lu\n", n2)
     testcheck.check(n2 == 1, "no-delim len OK (1)", "no-delim len FAILED expect 1")
     h0: str = parts2.get(0)
@@ -136,7 +136,7 @@ def main() -> CInt | CExport:
     s3: str = "a,,b"
     s3.__mbuddy__ = bd
     parts3 = s3.split(',')
-    n3: t.CSizeT = parts3.__len__()
+    n3: sizet = parts3.__len__()
     stdio.printf("split('a,,b', ',') len=%lu\n", n3)
     testcheck.check(n3 == 3, "consecutive len OK (3)", "consecutive len FAILED expect 3")
     e0: str = parts3.get(0)
@@ -152,7 +152,7 @@ def main() -> CInt | CExport:
     s4: str = ""
     s4.__mbuddy__ = bd
     parts4 = s4.split(',')
-    n4: t.CSizeT = parts4.__len__()
+    n4: sizet = parts4.__len__()
     stdio.printf("split('', ',') len=%lu\n", n4)
     testcheck.check(n4 == 1, "empty len OK (1)", "empty len FAILED expect 1")
 
@@ -161,7 +161,7 @@ def main() -> CInt | CExport:
     s5: str = "hello world foo"
     s5.__mbuddy__ = bd
     parts5 = s5.split(' ')
-    n5: t.CSizeT = parts5.__len__()
+    n5: sizet = parts5.__len__()
     stdio.printf("split('hello world foo', ' ') len=%lu\n", n5)
     testcheck.check(n5 == 3, "space len OK (3)", "space len FAILED expect 3")
     w0: str = parts5[0]
@@ -177,7 +177,7 @@ def main() -> CInt | CExport:
     s6: str = "a::b::c"
     s6.__mbuddy__ = bd
     parts6 = s6.split("::")
-    n6: t.CSizeT = parts6.__len__()
+    n6: sizet = parts6.__len__()
     stdio.printf("split('a::b::c', '::') len=%lu\n", n6)
     testcheck.check(n6 == 3, "multi-colon len OK (3)", "multi-colon len FAILED expect 3")
     m0: str = parts6[0]
@@ -193,7 +193,7 @@ def main() -> CInt | CExport:
     s7: str = "hello, world, foo"
     s7.__mbuddy__ = bd
     parts7 = s7.split(", ")
-    n7: t.CSizeT = parts7.__len__()
+    n7: sizet = parts7.__len__()
     stdio.printf("split('hello, world, foo', ', ') len=%lu\n", n7)
     testcheck.check(n7 == 3, "comma-space len OK (3)", "comma-space len FAILED expect 3")
     cs0: str = parts7[0]
@@ -209,7 +209,7 @@ def main() -> CInt | CExport:
     s8: str = "::a::b::"
     s8.__mbuddy__ = bd
     parts8 = s8.split("::")
-    n8: t.CSizeT = parts8.__len__()
+    n8: sizet = parts8.__len__()
     stdio.printf("split('::a::b::', '::') len=%lu\n", n8)
     testcheck.check(n8 == 4, "edge len OK (4)", "edge len FAILED expect 4")
     ed0: str = parts8[0]
@@ -232,7 +232,7 @@ def main() -> CInt | CExport:
 
         # 验证 __mbuddy__ 已自动注入（非 NULL）
         w_buddy: memhub.MemBuddy | t.CPtr = w_str.__mbuddy__
-        testcheck.check(t.CInt(w_buddy) != 0, "with inject OK: __mbuddy__ auto-injected", "with inject FAIL: __mbuddy__ is NULL")
+        testcheck.check(int(w_buddy) != 0, "with inject OK: __mbuddy__ auto-injected", "with inject FAIL: __mbuddy__ is NULL")
 
         # upper() 不需要手动设置 __mbuddy__
         w_upper: str = w_str.upper()
@@ -247,14 +247,14 @@ def main() -> CInt | CExport:
         # split() 不需要手动设置 __mbuddy__
         w_split_str: str = "x,y,z"
         w_parts = w_split_str.split(',')
-        w_n: t.CSizeT = len(w_parts)
+        w_n: sizet = len(w_parts)
         stdio.printf("with split('x,y,z') len=%lu\n", w_n)
         testcheck.check(w_n == 3, "with split len OK (3)", "with split len FAILED")
 
         # 验证多个 str 变量都获得注入
         w_str2: str = "Multiple"
         w_buddy2: memhub.MemBuddy | t.CPtr = w_str2.__mbuddy__
-        testcheck.check(t.CInt(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
+        testcheck.check(int(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
 
         test_s: str = "www.gvsds.com"
         list_s: list[str] | t.CPtr = test_s.split('.')

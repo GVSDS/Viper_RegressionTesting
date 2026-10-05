@@ -10,7 +10,7 @@ import w32.fileio
 from w32.fileio import File, FileW, MODE, FRESULT, SEEK_SET, SEEK_CUR, SEEK_END
 
 
-BUF_SIZE: t.CDefine = 4096
+define BUF_SIZE = 4096
 
 
 def fileio_main():
@@ -42,13 +42,13 @@ def fileio_main():
     i: CInt = 0
     ch: bytes = write_buf
     while i < BUF_SIZE:
-        if CInt(c.Deref(ch)) == 0:
+        if CInt(*ch) == 0:
             break
         write_len = write_len + 1
         i = i + 1
         ch = ch + 1
 
-    result: BOOL = w32.win32file.WriteFile(hFile, write_buf, write_len, c.Addr(bytes_written), None)
+    result: BOOL = w32.win32file.WriteFile(hFile, write_buf, write_len, &bytes_written, None)
     if result == 0:
         print("WriteFile failed")
     else:
@@ -73,7 +73,7 @@ def fileio_main():
         return
 
     read_len: ULONG = 0
-    result = w32.win32file.ReadFile(hFile, read_buf, BUF_SIZE - 1, c.Addr(read_len), None)
+    result = w32.win32file.ReadFile(hFile, read_buf, BUF_SIZE - 1, &read_len, None)
     if result == 0:
         print("ReadFile failed")
     else:
@@ -335,7 +335,7 @@ def fileio_chinese_test():
         print("[chinese] T2: create failed")
     else:
         # u"你好世界\n" = 5 WCHARs = 10 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw2.handle, u"你好世界\n", 10, c.Addr(bytes_written), None)
+        w32.win32file.WriteFile(fw2.handle, u"你好世界\n", 10, &bytes_written, None)
         viperlib.snprintf(buf, 256, "[chinese] T2: wrote %d WCHAR bytes", bytes_written)
         print(buf)
         fw2.close()
@@ -357,7 +357,7 @@ def fileio_chinese_test():
     else:
         fw3.write_str("ASCII line\n")
         # u"中文行\n" = 4 WCHARs = 8 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw3.handle, u"中文行\n", 8, c.Addr(bytes_written), None)
+        w32.win32file.WriteFile(fw3.handle, u"中文行\n", 8, &bytes_written, None)
         fw3.seek(0, SEEK_SET)
         n: LONG = fw3.read_all(buf, 512)
         viperlib.snprintf(buf, 256, "[chinese] T3: total %d bytes", n)
@@ -374,7 +374,7 @@ def fileio_chinese_test():
         print("[chinese] T4: create failed")
     else:
         # u"你好，世界！\n" = 7 WCHARs = 14 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw4.handle, u"你好，世界！\n", 14, c.Addr(bytes_written), None)
+        w32.win32file.WriteFile(fw4.handle, u"你好，世界！\n", 14, &bytes_written, None)
         viperlib.snprintf(buf, 256, "[chinese] T4: wrote %d WCHAR bytes", bytes_written)
         print(buf)
         fw4.close()
@@ -386,7 +386,7 @@ def fileio_chinese_test():
         # Print wide content to console using WriteConsoleW
         chars_written: ULONG = 0
         hOut: w32.win32base.HANDLE = w32.win32file.GetStdHandle(w32.win32file.STD_OUTPUT_HANDLE)
-        w32.win32console.WriteConsoleW(hOut, u"你好，世界！\n", 7, c.Addr(chars_written), None)
+        w32.win32console.WriteConsoleW(hOut, u"你好，世界！\n", 7, &chars_written, None)
         fr4.close()
 
         w32.win32file.DeleteFileW(u"控制台测试.txt")

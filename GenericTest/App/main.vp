@@ -10,8 +10,8 @@ def add[T](a: T, b: T) -> T:
 
 def test_generic_add():
     testcheck.section("Test 1: generic add")
-    r1: t.CInt = add(3, 5)
-    r2: t.CInt = add(100, 200)
+    r1: int = add(3, 5)
+    r2: int = add(100, 200)
     testcheck.check(r1 == 8 and r2 == 300, "generic add (3+5=8, 100+200=300)", "generic add expect 8 and 300")
 
 # ============================================================
@@ -22,7 +22,7 @@ def combine[T1, T2](a: T1, b: T2) -> T1:
 
 def test_generic_combine():
     testcheck.section("Test 2: generic combine")
-    r: t.CInt = combine(10, 20)
+    r: int = combine(10, 20)
     testcheck.check(r == 30, "generic combine (10+T1(20)=30)", "generic combine expect 30")
 
 # ============================================================
@@ -35,8 +35,8 @@ def max_val[T](a: T, b: T) -> T:
 
 def test_generic_max():
     testcheck.section("Test 3: generic max")
-    r1: t.CInt = max_val(10, 20)
-    r2: t.CInt = max_val(50, 30)
+    r1: int = max_val(10, 20)
+    r2: int = max_val(50, 30)
     testcheck.check(r1 == 20 and r2 == 50, "generic max (max(10,20)=20, max(50,30)=50)", "generic max expect 20 and 50")
 
 # ============================================================
@@ -57,7 +57,7 @@ class Box[T]():
 def test_generic_box():
     testcheck.section("Test 4: generic Box[T]")
     b = Box(42)
-    v: t.CInt = b.get()
+    v: int = b.get()
     testcheck.check(v == 42, "Box[int] (get=42)", "Box[int] expect 42")
 
 # ============================================================
@@ -71,13 +71,13 @@ class Pair[T1, T2]():
         self.first = T1(a)
         self.second = T2(b)
 
-    def sum_as_int(self) -> t.CInt:
-        return t.CInt(self.first) + t.CInt(self.second)
+    def sum_as_int(self) -> int:
+        return int(self.first) + int(self.second)
 
 def test_generic_pair():
     testcheck.section("Test 5: generic Pair[T1,T2]")
     p = Pair(10, 20)
-    r: t.CInt = p.sum_as_int()
+    r: int = p.sum_as_int()
     testcheck.check(r == 30, "Pair[int,int] (sum=30)", "Pair[int,int] expect 30")
 
 # ============================================================
@@ -85,10 +85,10 @@ def test_generic_pair():
 # ============================================================
 def test_fixed_array():
     testcheck.section("Test 6: list[T, N] fixed array")
-    arr: t.CArray[t.CInt, 5] = [0]
+    arr: t.CArray[int, 5] = [0]
     for i in range(5):
         arr[i] = i * 10
-    total: t.CInt = 0
+    total: int = 0
     for i in range(5):
         total += arr[i]
     # 0+10+20+30+40 = 100
@@ -99,7 +99,7 @@ def test_fixed_array():
 # ============================================================
 def test_char_array():
     testcheck.section("Test 7: list[t.CChar, N] char array")
-    buf: t.CArray[t.CChar, 32] = [0]
+    buf: t.CArray[char, 32] = [0]
     buf[0] = 72   # H
     buf[1] = 105  # i
     buf[2] = 0
@@ -113,8 +113,8 @@ def identity[T](x: T) -> T:
 
 def test_generic_identity():
     testcheck.section("Test 8: generic identity")
-    r1: t.CInt = identity(42)
-    r2: t.CInt = identity(0)
+    r1: int = identity(42)
+    r2: int = identity(0)
     testcheck.check(r1 == 42 and r2 == 0, "identity (42=42, 0=0)", "identity expect 42 and 0")
 
 # ============================================================
@@ -125,7 +125,7 @@ def double_val[T](x: T) -> T:
 
 def test_generic_nested():
     testcheck.section("Test 9: generic nested call")
-    r: t.CInt = double_val(21)
+    r: int = double_val(21)
     testcheck.check(r == 42, "generic nested (double(21)=42)", "generic nested expect 42")
 
 # ============================================================
@@ -149,10 +149,10 @@ def test_generic_counter():
     c.increment()
     c.increment()
     c.increment()
-    r: t.CInt = c.get_count()
+    r: int = c.get_count()
     testcheck.check(r == 3, "Counter[int] (count=3)", "Counter[int] expect 3")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("GenericTest: 泛型测试")
     test_generic_add()
     test_generic_combine()

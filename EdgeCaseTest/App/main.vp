@@ -32,8 +32,8 @@ enum Status:
 # Test 3: from t import CUnion as un; class X(un)
 # ============================================================
 union Data:
-    i_val: t.CInt
-    f_val: t.CFloat
+    i_val: int
+    f_val: float
 
 
 # ============================================================
@@ -50,16 +50,16 @@ renum Opt:
 # （注：检测已修复，但成员继承仍需父类先处理）
 # ============================================================
 class Parent:
-    a: t.CInt
+    a: int
 
-    def get_a(self) -> t.CInt:
+    def get_a(self) -> int:
         return self.a
 
 
 class Child(Parent):
-    b: t.CInt
+    b: int
 
-    def get_sum(self) -> t.CInt:
+    def get_sum(self) -> int:
         return self.a + self.b
 
 
@@ -67,23 +67,23 @@ class Child(Parent):
 # Test 6: 多层继承 A -> B -> C，CVTable 向上传播
 # ============================================================
 class Base:
-    x: t.CInt
+    x: int
 
-    def base_val(self) -> t.CInt:
+    def base_val(self) -> int:
         return self.x
 
 
 class Mid(Base):
-    y: t.CInt
+    y: int
 
-    def mid_val(self) -> t.CInt:
+    def mid_val(self) -> int:
         return self.y
 
 
 class Leaf(Mid):
-    z: t.CInt
+    z: int
 
-    def leaf_val(self) -> t.CInt:
+    def leaf_val(self) -> int:
         return self.z
 
 
@@ -97,9 +97,9 @@ val: myint = 42
 # Test 8: BigEndian 字节序
 # ============================================================
 class NetHeader:
-    magic: t.CInt | t.BigEndian
+    magic: int | t.BigEndian
     length: t.CShort | t.BigEndian
-    normal: t.CInt
+    normal: int
 
 
 # ============================================================
@@ -114,17 +114,17 @@ class NetHeader:
 # Test 10: import t as tt; class X(tt.CStruct)
 # ============================================================
 class TtPoint:
-    x: t.CInt
-    y: t.CInt
+    x: int
+    y: int
 
 
 # ============================================================
 # Test 11: import t as tt; @tt.Object 装饰器
 # ============================================================
 class TtObject:
-    val: t.CInt
+    val: int
 
-    def get_val(self) -> t.CInt:
+    def get_val(self) -> int:
         return self.val
 
 
@@ -132,37 +132,37 @@ class TtObject:
 # Test 12: from t import CStruct as cs; class X(cs)
 # ============================================================
 class CsPoint:
-    x: t.CInt
-    y: t.CInt
+    x: int
+    y: int
 
 
 # ============================================================
 # Test 13: import t as tt; class X(tt.CUnion)
 # ============================================================
 union TtUnion:
-    a: t.CInt
-    b: t.CFloat
+    a: int
+    b: float
 
 
 # ============================================================
 # Test 14: @tt.Object on class without methods (should fail?)
 # ============================================================
 class TtEmptyObject:
-    val: t.CInt
+    val: int
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("EdgeCaseTest: 类型别名与边界情况测试")
 
     # Test 1: CEnum alias
     testcheck.section("Test 1: CEnum alias")
-    c: t.CInt = Color.Green
+    c: int = Color.Green
     stdio.printf("Test1 CEnum alias: %d\n", c)
     testcheck.ok("CEnum alias (Color.Green=1)")
 
     # Test 2: module alias + CEnum
     testcheck.section("Test 2: module alias + CEnum")
-    s: t.CInt = Status.Error
+    s: int = Status.Error
     stdio.printf("Test2 t as tt.CEnum: %d\n", s)
     testcheck.ok("t as tt.CEnum (Status.Error=1)")
 

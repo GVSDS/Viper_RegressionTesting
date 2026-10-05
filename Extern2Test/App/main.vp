@@ -15,11 +15,11 @@ import testcheck
 
 # Test 1: t.CExtern | t.CExport - 外部声明函数（pass 体）
 # 声明一个外部函数，翻译器应生成 declare 而非 define
-def ExternalDecl(x: t.CInt) -> t.CInt | t.CExtern | t.CExport: pass
+def ExternalDecl(x: int) -> int | t.CExtern | t.CExport: pass
 
 
 # Test 2: t.State - 状态声明（等价于 CExtern | CExport）
-def StateDecl(x: t.CInt) -> t.CInt | t.State: pass
+def StateDecl(x: int) -> int | t.State: pass
 
 
 # Test 3: t.State 返回 void
@@ -35,7 +35,7 @@ def test_extern_decl():
     testcheck.check(True, "StateVoidDecl declared (not called)", "expect declared once")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("Extern2Test: minimal repro - extern redefinition")
     test_extern_decl()
     return testcheck.end()

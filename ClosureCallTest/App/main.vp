@@ -33,7 +33,7 @@ def test_closure_call():
     testcheck.check(v == 1, "f() first call = 1", "expect 1")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ClosureCallTest: t.CPtr function pointer call")
     test_closure_call()
     return testcheck.end()

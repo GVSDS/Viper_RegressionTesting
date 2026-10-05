@@ -3,7 +3,7 @@ import testcheck
 import fileiotest
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("FileIoTest: Win32 FileIO 测试")
     testcheck.section("Win32 FileIO")
     fileiotest.fileio_main()

@@ -25,7 +25,7 @@ def main() -> CInt | CExport:
     d.set_int("alpha", 10)
     d.set_int("beta", 20)
     d.set_int("gamma", 30)
-    n: t.CSizeT = len(d)
+    n: sizet = len(d)
     stdio.printf("len=%lu\n", n)
     testcheck.check(n == 3, "dict len OK (3)", "dict len FAILED")
 
@@ -38,10 +38,10 @@ def main() -> CInt | CExport:
     stdio.printf("p2=%p\n", p2)
     p3: t.CPtr = d["gamma"]
     stdio.printf("p3=%p\n", p3)
-    v1: int = c.Deref((int | t.CPtr)(p1))
+    v1: int = *(int | t.CPtr)(p1)
     stdio.printf("v1=%d\n", v1)
-    v2: int = c.Deref((int | t.CPtr)(p2))
-    v3: int = c.Deref((int | t.CPtr)(p3))
+    v2: int = *(int | t.CPtr)(p2)
+    v3: int = *(int | t.CPtr)(p3)
     stdio.printf("alpha=%d beta=%d gamma=%d\n", v1, v2, v3)
     testcheck.check(v1 == 10, "dict[alpha]==10 OK", "dict[alpha] FAILED")
     testcheck.check(v2 == 20, "dict[beta]==20 OK", "dict[beta] FAILED")
@@ -51,7 +51,7 @@ def main() -> CInt | CExport:
     testcheck.section("Test 2: 更新已有键")
     d.set_int("beta", 99)
     p2b: t.CPtr = d["beta"]
-    v2b: int = c.Deref((int | t.CPtr)(p2b))
+    v2b: int = *(int | t.CPtr)(p2b)
     stdio.printf("beta(updated)=%d\n", v2b)
     testcheck.check(v2b == 99, "dict update OK", "dict update FAILED")
     testcheck.check(len(d) == 3, "dict len still 3 OK", "dict len changed FAILED")
@@ -62,14 +62,14 @@ def main() -> CInt | CExport:
     testcheck.check(gv == None, "dict get missing OK (None)", "dict get missing FAILED")
 
     gp: t.CPtr = d.get("alpha", None)
-    ga: int = c.Deref((int | t.CPtr)(gp))
+    ga: int = *(int | t.CPtr)(gp)
     stdio.printf("get(alpha)=%d\n", ga)
     testcheck.check(ga == 10, "dict get existing OK", "dict get existing FAILED")
 
     # === Test 4: contains ===
     testcheck.section("Test 4: contains")
-    has_alpha: t.CInt = d.contains("alpha")
-    has_missing: t.CInt = d.contains("missing")
+    has_alpha: int = d.contains("alpha")
+    has_missing: int = d.contains("missing")
     stdio.printf("contains(alpha)=%d contains(missing)=%d\n", has_alpha, has_missing)
     testcheck.check(has_alpha == 1, "contains alpha OK", "contains alpha FAILED")
     testcheck.check(has_missing == 0, "not contains missing OK", "contains missing FAILED")
@@ -79,7 +79,7 @@ def main() -> CInt | CExport:
     iter_count: int = 0
     for key in d:
         kp: t.CPtr = d[key]
-        val: int = c.Deref((int | t.CPtr)(kp))
+        val: int = *(int | t.CPtr)(kp)
         stdio.printf("dict[%s]=%d\n", key, val)
         iter_count += 1
     testcheck.check(iter_count == 3, "dict iter OK (3)", "dict iter FAILED")
@@ -90,7 +90,7 @@ def main() -> CInt | CExport:
     d2.set_str("name", "Alice")
     d2.set_str("city", "Beijing")
     d2.set_str("lang", "TransPyC")
-    n2: t.CSizeT = len(d2)
+    n2: sizet = len(d2)
     stdio.printf("d2 len=%lu\n", n2)
     testcheck.check(n2 == 3, "dict set_str len OK (3)", "dict set_str len FAILED")
 
@@ -125,7 +125,7 @@ def main() -> CInt | CExport:
         stdio.sprintf(key_buf, "key%d", i)
         d3.set_int(key_buf, i * 100)
         i += 1
-    n3: t.CSizeT = len(d3)
+    n3: sizet = len(d3)
     stdio.printf("d3 len=%lu (after 20 inserts)\n", n3)
     testcheck.check(n3 == 20, "dict expand OK (20)", "dict expand FAILED")
 
@@ -133,14 +133,14 @@ def main() -> CInt | CExport:
     k5: str = stdlib.malloc(16)
     stdio.sprintf(k5, "key5")
     p5: t.CPtr = d3[k5]
-    v5: int = c.Deref((int | t.CPtr)(p5))
+    v5: int = *(int | t.CPtr)(p5)
     stdio.printf("d3[key5]=%d\n", v5)
     testcheck.check(v5 == 500, "dict expand key5 OK", "dict expand key5 FAILED")
 
     k15: str = stdlib.malloc(16)
     stdio.sprintf(k15, "key15")
     p15: t.CPtr = d3[k15]
-    v15: int = c.Deref((int | t.CPtr)(p15))
+    v15: int = *(int | t.CPtr)(p15)
     stdio.printf("d3[key15]=%d\n", v15)
     testcheck.check(v15 == 1500, "dict expand key15 OK", "dict expand key15 FAILED")
 
@@ -165,9 +165,9 @@ def main() -> CInt | CExport:
     xp: t.CPtr = jd2["x"]
     yp: t.CPtr = jd2["y"]
     zp: t.CPtr = jd2["z"]
-    xv: int = c.Deref((int | t.CPtr)(xp))
-    yv: int = c.Deref((int | t.CPtr)(yp))
-    zv: int = c.Deref((int | t.CPtr)(zp))
+    xv: int = *(int | t.CPtr)(xp)
+    yv: int = *(int | t.CPtr)(yp)
+    zv: int = *(int | t.CPtr)(zp)
     stdio.printf("loads: x=%d y=%d z=%d\n", xv, yv, zv)
     testcheck.check(xv == 1, "loads x OK", "loads x FAILED")
     testcheck.check(yv == 2, "loads y OK", "loads y FAILED")
@@ -194,8 +194,8 @@ def main() -> CInt | CExport:
     rt2.loads(pool, rt_str)
     rta_p: t.CPtr = rt2["a"]
     rtb_p: t.CPtr = rt2["b"]
-    rta: int = c.Deref((int | t.CPtr)(rta_p))
-    rtb: int = c.Deref((int | t.CPtr)(rtb_p))
+    rta: int = *(int | t.CPtr)(rta_p)
+    rtb: int = *(int | t.CPtr)(rtb_p)
     stdio.printf("round-trip: a=%d b=%d\n", rta, rtb)
     testcheck.check(rta == 1, "round-trip a OK", "round-trip a FAILED")
     testcheck.check(rtb == 2, "round-trip b OK", "round-trip b FAILED")
@@ -211,17 +211,17 @@ def main() -> CInt | CExport:
     sub: dict* = outer["sub"]
     sa_p: t.CPtr = sub["a"]
     sb_p: t.CPtr = sub["b"]
-    sa: int = c.Deref((int | t.CPtr)(sa_p))
-    sb: int = c.Deref((int | t.CPtr)(sb_p))
+    sa: int = *(int | t.CPtr)(sa_p)
+    sb: int = *(int | t.CPtr)(sb_p)
     stdio.printf("nested: sub.a=%d sub.b=%d\n", sa, sb)
     testcheck.check(sa == 1, "nested sub.a OK", "nested sub.a FAILED")
     testcheck.check(sb == 2, "nested sub.b OK", "nested sub.b FAILED")
 
     # === Test 14: get_vtype 类型标签 ===
     testcheck.section("Test 14: get_vtype 类型标签")
-    vt1: t.CInt = d.get_vtype("alpha")
-    vt2: t.CInt = d2.get_vtype("name")
-    vt3: t.CInt = outer.get_vtype("sub")
+    vt1: int = d.get_vtype("alpha")
+    vt2: int = d2.get_vtype("name")
+    vt3: int = outer.get_vtype("sub")
     stdio.printf("vtype(alpha)=%d vtype(name)=%d vtype(sub)=%d\n", vt1, vt2, vt3)
     testcheck.check(vt1 == 1, "vtype int OK", "vtype int FAILED")
     testcheck.check(vt2 == 4, "vtype str OK", "vtype str FAILED")

@@ -5,7 +5,7 @@ import test
 import testcheck
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("LoopMathTest: While/数学/跨模块宏测试")
 
     testcheck.section("Cross-module macros")

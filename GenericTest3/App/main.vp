@@ -11,7 +11,7 @@ def double[T](x: int) -> int:
 
 def test_explicit_type_arg():
     testcheck.section("Test 1: explicit type arg xxx[T](x)")
-    r: t.CInt = double[t.CInt](21)
+    r: int = double[int](21)
     testcheck.check(r == 42, "double[t.CInt](21) = 42", "expect 42")
 
 # ============================================================
@@ -22,8 +22,8 @@ def identity[T](x: int) -> int:
 
 def test_identity_explicit():
     testcheck.section("Test 2: identity[T](x)")
-    r1: t.CInt = identity[t.CInt](10)
-    r2: t.CInt = identity[t.CInt](20)
+    r1: int = identity[int](10)
+    r2: int = identity[int](20)
     testcheck.check(r1 == 10 and r2 == 20, "identity[t.CInt](10)=10 (20)=20", "expect 10 20")
 
 # ============================================================
@@ -34,7 +34,7 @@ def add_one[T](x: T) -> T:
 
 def test_add_one_explicit():
     testcheck.section("Test 3: add_one[T](x) with T param")
-    r: t.CInt = add_one[t.CInt](41)
+    r: int = add_one[int](41)
     testcheck.check(r == 42, "add_one[t.CInt](41) = 42", "expect 42")
 
 # ============================================================
@@ -43,12 +43,12 @@ def test_add_one_explicit():
 def test_mixed_inference_explicit():
     testcheck.section("Test 4: mixed inference and explicit")
     # 自动推导
-    r1: t.CInt = add_one(99)
+    r1: int = add_one(99)
     # 手动传
-    r2: t.CInt = add_one[t.CInt](99)
+    r2: int = add_one[int](99)
     testcheck.check(r1 == 100 and r2 == 100, "add_one(99)=100 add_one[t.CInt](99)=100", "expect 100 100")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("GenericTest3: 手动传类型参数 xxx[T](x)")
     test_explicit_type_arg()
     test_identity_explicit()

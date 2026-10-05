@@ -7,7 +7,7 @@ import memhub
 
 
 # 多态测试: 通过 MemManager 基类指针调用, 验证 vtable 分派到正确子类
-def test_polymorphic(mgr: memhub.MemManager | t.CPtr, size: t.CSizeT) -> t.CInt:
+def test_polymorphic(mgr: memhub.MemManager | t.CPtr, size: sizet) -> int:
     p: t.CPtr = mgr.alloc(size)
     if p is None:
         return 0
@@ -16,12 +16,12 @@ def test_polymorphic(mgr: memhub.MemManager | t.CPtr, size: t.CSizeT) -> t.CInt:
 
 
 # 测试 calloc 多态: calloc 是 MemManager 具体方法, 内部调 self.alloc (虚函数)
-def test_calloc_polymorphic(mgr: memhub.MemManager | t.CPtr) -> t.CInt:
+def test_calloc_polymorphic(mgr: memhub.MemManager | t.CPtr) -> int:
     p: t.CPtr = mgr.calloc(4, 8)
     if p is None:
         return 0
     # 验证清零: 读第一个字节应为 0
-    first_byte: t.CUInt8T = t.CUInt8T(c.Deref(t.CUInt64T(p, t.CPtr)))
+    first_byte: uint8 = uint8(*uint64(p, t.CPtr))
     if first_byte != 0:
         return 0
     return 1
@@ -42,11 +42,11 @@ def main() -> int:
     testcheck.check(p1 is not None, "MemPool alloc 100", "FAIL")
     p2: t.CPtr = pool.alloc(200)
     testcheck.check(p2 is not None, "MemPool alloc 200", "FAIL")
-    testcheck.check(t.CUInt64T(p1) != t.CUInt64T(p2), "MemPool different ptrs", "FAIL")
+    testcheck.check(uint64(p1) != uint64(p2), "MemPool different ptrs", "FAIL")
     pool.reset()
     p3: t.CPtr = pool.alloc(100)
     testcheck.check(p3 is not None, "MemPool alloc after reset", "FAIL")
-    testcheck.check(t.CUInt64T(p3) == t.CUInt64T(p1), "MemPool reset reuses addr", "FAIL")
+    testcheck.check(uint64(p3) == uint64(p1), "MemPool reset reuses addr", "FAIL")
 
     # ========== MemSlab (fixed block) ==========
     testcheck.section("MemSlab (fixed block)")
@@ -60,7 +60,7 @@ def main() -> int:
     slab.free(s1)
     s4: t.CPtr = slab.alloc(32)
     testcheck.check(s4 is not None, "MemSlab alloc after free", "FAIL")
-    testcheck.check(t.CUInt64T(s4) == t.CUInt64T(s1), "MemSlab free reuse addr", "FAIL")
+    testcheck.check(uint64(s4) == uint64(s1), "MemSlab free reuse addr", "FAIL")
 
     # ========== MemBuddy (buddy system) ==========
     testcheck.section("MemBuddy (buddy system)")
@@ -78,17 +78,17 @@ def main() -> int:
 
     # ========== 多态分派 (核心测试) ==========
     testcheck.section("polymorphic dispatch")
-    r1: t.CInt = test_polymorphic(pool, 50)
+    r1: int = test_polymorphic(pool, 50)
     testcheck.check(r1 == 1, "vtable: MemPool.alloc/free via MemManager", "FAIL")
-    r2: t.CInt = test_polymorphic(slab, 32)
+    r2: int = test_polymorphic(slab, 32)
     testcheck.check(r2 == 1, "vtable: MemSlab.alloc/free via MemManager", "FAIL")
-    r3: t.CInt = test_polymorphic(buddy, 50)
+    r3: int = test_polymorphic(buddy, 50)
     testcheck.check(r3 == 1, "vtable: MemBuddy.alloc/free via MemManager", "FAIL")
 
     # calloc 多态 (具体方法调虚函数)
-    rc1: t.CInt = test_calloc_polymorphic(pool)
+    rc1: int = test_calloc_polymorphic(pool)
     testcheck.check(rc1 == 1, "vtable: calloc dispatches MemPool.alloc", "FAIL")
-    rc2: t.CInt = test_calloc_polymorphic(buddy)
+    rc2: int = test_calloc_polymorphic(buddy)
     testcheck.check(rc2 == 1, "vtable: calloc dispatches MemBuddy.alloc", "FAIL")
 
     stdlib.free(arena1)

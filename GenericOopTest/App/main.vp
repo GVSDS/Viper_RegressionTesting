@@ -119,15 +119,15 @@ def main() -> CInt | CExport:
     # === 新语法类型强转 (t1|t2)(x) ===
     testcheck.section("新语法类型强转 (t1|t2)(x)")
     val_i64: CUInt64T = CUInt64T(42)
-    val_i32 = (t.CInt)(val_i64)
+    val_i32 = (int)(val_i64)
     print(val_i32)
 
     ptr_raw = stdlib.malloc(8)
-    ptr_typed = (t.CInt | t.CPtr)(ptr_raw)
+    ptr_typed = (int | t.CPtr)(ptr_raw)
     viperlib.snprintf(buf, 256, "cast ptr=%p", ptr_typed)
     print(buf)
 
-    val_f = (t.CDouble)(42)
+    val_f = (double)(42)
     viperlib.snprintf(buf, 256, "cast float=%.1f", val_f)
     print(buf)
     testcheck.ok("新语法类型强转测试完成")

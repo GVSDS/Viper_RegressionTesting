@@ -4,7 +4,7 @@ import logic_test
 import testcheck
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("LogicFlowTest: For/While/Match/控制流测试")
 
     testcheck.section("For Range Basic Test (stop=5)")

@@ -33,7 +33,7 @@ def main() -> CInt | CExport:
 
     # === Test 2: __len__ ===
     testcheck.section("Test 2: __len__")
-    n: t.CSizeT = nums.__len__()
+    n: sizet = nums.__len__()
     stdio.printf("len=%lu\n", n)
     testcheck.check(n == 3, "__len__ OK (3)", "__len__ FAILED expect 3")
 
@@ -49,13 +49,13 @@ def main() -> CInt | CExport:
     popped: CInt = nums.pop()
     stdio.printf("popped=%d\n", popped)
     testcheck.check(popped == 30, "pop OK (30)", "pop FAILED expect 30")
-    n2: t.CSizeT = nums.__len__()
+    n2: sizet = nums.__len__()
     testcheck.check(n2 == 2, "pop len OK (2)", "pop len FAILED expect 2")
 
     # === Test 5: clear ===
     testcheck.section("Test 5: clear")
     nums.clear()
-    n3: t.CSizeT = nums.__len__()
+    n3: sizet = nums.__len__()
     testcheck.check(n3 == 0, "clear OK (0)", "clear FAILED expect 0")
 
     # === Test 6: 容量增长 (append 超过初始容量 8) ===
@@ -64,7 +64,7 @@ def main() -> CInt | CExport:
     i: CInt
     for i in range(20):
         nums2.append(i * 5)
-    n4: t.CSizeT = nums2.__len__()
+    n4: sizet = nums2.__len__()
     stdio.printf("after 20 appends: len=%lu\n", n4)
     testcheck.check(n4 == 20, "grow len OK (20)", "grow len FAILED")
     ok: CInt = 1

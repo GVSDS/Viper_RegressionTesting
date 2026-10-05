@@ -24,141 +24,141 @@ extern def Py_DecRef(op: PyObject | t.CPtr)
 # ============================================================
 extern def Py_Initialize()
 extern def Py_Finalize()
-extern def Py_InitializeEx(initsigs: t.CInt)
-extern def Py_FinalizeEx() -> t.CInt
-extern def Py_IsInitialized() -> t.CInt
+extern def Py_InitializeEx(initsigs: int)
+extern def Py_FinalizeEx() -> int
+extern def Py_IsInitialized() -> int
 
 
 # ============================================================
 # PyConfig
 # ============================================================
 class PySTATUS:
-    func: t.CConst | str
-    err_msg: t.CConst | str
-    exitcode: t.CInt
+    func: const str
+    err_msg: const str
+    exitcode: int
 
 class PyPreConfig:
-    _config_version: t.CInt
-    _config_init: t.CInt
-    parse_argv: t.CInt
-    isolated: t.CInt
-    use_environment: t.CInt
-    utf8_mode: t.CInt
-    coerce_c_locale: t.CInt
-    C_locale_warnings: t.CInt
-    allocator: t.CInt
-    dev_mode: t.CInt
+    _config_version: int
+    _config_init: int
+    parse_argv: int
+    isolated: int
+    use_environment: int
+    utf8_mode: int
+    coerce_c_locale: int
+    C_locale_warnings: int
+    allocator: int
+    dev_mode: int
 
 class PyWideStringList:
-    length: t.CSizeT
+    length: sizet
     items: t.CPtr
 
 class PyConfig:
-    _config_version: t.CInt
-    _config_init: t.CInt
-    isolated: t.CInt
-    use_environment: t.CInt
-    dev_mode: t.CInt
-    install_signal_handlers: t.CInt
-    use_hash_seed: t.CInt
+    _config_version: int
+    _config_init: int
+    isolated: int
+    use_environment: int
+    dev_mode: int
+    install_signal_handlers: int
+    use_hash_seed: int
     hash_seed: t.CUnsignedLong
-    faulthandler: t.CInt
-    tracemalloc: t.CInt
-    import_time: t.CInt
-    show_ref_count: t.CInt
-    dump_refs: t.CInt
-    dump_refs_file: t.CConst | str
-    malloc_stats: t.CInt
-    filesystem_errors: t.CInt
-    pycache_prefix: t.CConst | str
-    parse_argv: t.CInt
+    faulthandler: int
+    tracemalloc: int
+    import_time: int
+    show_ref_count: int
+    dump_refs: int
+    dump_refs_file: const str
+    malloc_stats: int
+    filesystem_errors: int
+    pycache_prefix: const str
+    parse_argv: int
     argv: PyWideStringList
-    program_name: t.CConst | str
+    program_name: const str
     xoptions: PyWideStringList
     warnoptions: PyWideStringList
-    site_import: t.CInt
-    bytes_warning: t.CInt
-    warn_default_encoding: t.CInt
-    inspect: t.CInt
-    interactive: t.CInt
-    optimization_level: t.CInt
-    parser_debug: t.CInt
-    verbose: t.CInt
-    quiet: t.CInt
-    home: t.CConst | str
-    pythonpath_env: t.CConst | str
+    site_import: int
+    bytes_warning: int
+    warn_default_encoding: int
+    inspect: int
+    interactive: int
+    optimization_level: int
+    parser_debug: int
+    verbose: int
+    quiet: int
+    home: const str
+    pythonpath_env: const str
     module_search_paths: PyWideStringList
-    module_search_paths_set: t.CInt
-    executable: t.CConst | str
-    base_executable: t.CConst | str
-    prefix: t.CConst | str
-    base_prefix: t.CConst | str
-    exec_prefix: t.CConst | str
-    base_exec_prefix: t.CConst | str
-    platlibdir: t.CConst | str
-    stdio_filename: t.CConst | str
+    module_search_paths_set: int
+    executable: const str
+    base_executable: const str
+    prefix: const str
+    base_prefix: const str
+    exec_prefix: const str
+    base_exec_prefix: const str
+    platlibdir: const str
+    stdio_filename: const str
 
 extern def PyConfig_InitPythonConfig(config: PyConfig | t.CPtr)
 extern def PyConfig_InitIsolatedConfig(config: PyConfig | t.CPtr)
 extern def PyConfig_Clear(config: PyConfig | t.CPtr)
 extern def PyConfig_Read(config: PyConfig | t.CPtr) -> PySTATUS
 extern def Py_InitializeFromConfig(config: PyConfig | t.CPtr) -> PySTATUS
-extern def Py_DecodeLocale(s: t.CConst | str) -> str
-extern def PyStatus_Exception(status: PySTATUS) -> t.CInt
+extern def Py_DecodeLocale(s: const str) -> str
+extern def PyStatus_Exception(status: PySTATUS) -> int
 
 
 # ============================================================
 # 整数操作 (PyLong)
 # ============================================================
-extern def PyLong_FromLong(v: t.CInt) -> PyObject | t.CPtr
+extern def PyLong_FromLong(v: int) -> PyObject | t.CPtr
 extern def PyLong_FromUnsignedLong(v: t.CUnsignedLong) -> PyObject | t.CPtr
 extern def PyLong_FromLongLong(v: t.CLong) -> PyObject | t.CPtr
 extern def PyLong_FromUnsignedLongLong(v: t.CUnsignedLong) -> PyObject | t.CPtr
 extern def PyLong_FromSsize_t(v: t.CPtrDiffT) -> PyObject | t.CPtr
-extern def PyLong_FromSize_t(v: t.CSizeT) -> PyObject | t.CPtr
-extern def PyLong_FromDouble(v: t.CDouble) -> PyObject | t.CPtr
-extern def PyLong_AsLong(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyLong_FromSize_t(v: sizet) -> PyObject | t.CPtr
+extern def PyLong_FromDouble(v: double) -> PyObject | t.CPtr
+extern def PyLong_AsLong(obj: PyObject | t.CPtr) -> int
 extern def PyLong_AsUnsignedLong(obj: PyObject | t.CPtr) -> t.CUnsignedLong
 extern def PyLong_AsLongLong(obj: PyObject | t.CPtr) -> t.CLong
 extern def PyLong_AsUnsignedLongLong(obj: PyObject | t.CPtr) -> t.CUnsignedLong
-extern def PyLong_AsDouble(obj: PyObject | t.CPtr) -> t.CDouble
+extern def PyLong_AsDouble(obj: PyObject | t.CPtr) -> double
 extern def PyLong_AsSsize_t(obj: PyObject | t.CPtr) -> t.CPtrDiffT
-extern def PyLong_AsSize_t(obj: PyObject | t.CPtr) -> t.CSizeT
+extern def PyLong_AsSize_t(obj: PyObject | t.CPtr) -> sizet
 
 
 # ============================================================
 # 浮点数操作 (PyFloat)
 # ============================================================
-extern def PyFloat_FromDouble(v: t.CDouble) -> PyObject | t.CPtr
-extern def PyFloat_AsDouble(obj: PyObject | t.CPtr) -> t.CDouble
+extern def PyFloat_FromDouble(v: double) -> PyObject | t.CPtr
+extern def PyFloat_AsDouble(obj: PyObject | t.CPtr) -> double
 extern def PyFloat_FromString(s: PyObject | t.CPtr) -> PyObject | t.CPtr
 
 
 # ============================================================
 # 字符串操作 (PyUnicode / PyBytes)
 # ============================================================
-extern def PyUnicode_FromString(u: t.CConst | str) -> PyObject | t.CPtr
-extern def PyUnicode_FromStringAndSize(u: t.CConst | str, size: t.CSizeT) -> PyObject | t.CPtr
-extern def PyUnicode_FromFormat(fmt: t.CConst | str) -> PyObject | t.CPtr
+extern def PyUnicode_FromString(u: const str) -> PyObject | t.CPtr
+extern def PyUnicode_FromStringAndSize(u: const str, size: sizet) -> PyObject | t.CPtr
+extern def PyUnicode_FromFormat(fmt: const str) -> PyObject | t.CPtr
 extern def PyUnicode_AsUTF8(obj: PyObject | t.CPtr) -> str
 extern def PyUnicode_AsUTF8AndSize(obj: PyObject | t.CPtr, size: t.CPtrDiffT | t.CPtr) -> str
-extern def PyUnicode_AsWideChar(obj: PyObject | t.CPtr, wbuf: t.CPtr, bufsize: t.CSizeT) -> t.CSizeT
+extern def PyUnicode_AsWideChar(obj: PyObject | t.CPtr, wbuf: t.CPtr, bufsize: sizet) -> sizet
 extern def PyUnicode_GetLength(obj: PyObject | t.CPtr) -> t.CPtrDiffT
-extern def PyUnicode_ReadChar(obj: PyObject | t.CPtr, idx: t.CSizeT) -> t.CUInt32T
-extern def PyUnicode_WriteChar(obj: PyObject | t.CPtr, idx: t.CSizeT, ch: t.CUInt32T) -> t.CInt
-extern def PyUnicode_Compare(l: PyObject | t.CPtr, r: PyObject | t.CPtr) -> t.CInt
+extern def PyUnicode_ReadChar(obj: PyObject | t.CPtr, idx: sizet) -> uint32
+extern def PyUnicode_WriteChar(obj: PyObject | t.CPtr, idx: sizet, ch: uint32) -> int
+extern def PyUnicode_Compare(l: PyObject | t.CPtr, r: PyObject | t.CPtr) -> int
 extern def PyUnicode_Concat(l: PyObject | t.CPtr, r: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyUnicode_Contains(container: PyObject | t.CPtr, element: PyObject | t.CPtr) -> t.CInt
+extern def PyUnicode_Contains(container: PyObject | t.CPtr, element: PyObject | t.CPtr) -> int
 extern def PyUnicode_Format(fmt: PyObject | t.CPtr, args: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyUnicode_InternInPlace(s: PyObject | t.CPtr | t.CPtr): pass
-extern def PyUnicode_InternFromString(u: t.CConst | str) -> PyObject | t.CPtr
+extern def PyUnicode_InternFromString(u: const str) -> PyObject | t.CPtr
 
-extern def PyBytes_FromString(v: t.CConst | str) -> PyObject | t.CPtr
-extern def PyBytes_FromStringAndSize(v: t.CConst | str, size: t.CSizeT) -> PyObject | t.CPtr
+extern def PyBytes_FromString(v: const str) -> PyObject | t.CPtr
+extern def PyBytes_FromStringAndSize(v: const str, size: sizet) -> PyObject | t.CPtr
 extern def PyBytes_AsString(obj: PyObject | t.CPtr) -> str
-extern def PyBytes_Size(obj: PyObject | t.CPtr) -> t.CSizeT
+extern def PyBytes_Size(obj: PyObject | t.CPtr) -> sizet
 extern def PyBytes_FromObject(o: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyBytes_FromFormat(fmt: t.CConst | str) -> PyObject | t.CPtr
+extern def PyBytes_FromFormat(fmt: const str) -> PyObject | t.CPtr
 
 
 # ============================================================
@@ -174,28 +174,28 @@ Py_None: PyObject | t.CPtr | t.State
 # ============================================================
 # 列表操作 (PyList)
 # ============================================================
-extern def PyList_New(len: t.CSizeT) -> PyObject | t.CPtr
-extern def PyList_Size(lst: PyObject | t.CPtr) -> t.CSizeT
-extern def PyList_GetItem(lst: PyObject | t.CPtr, idx: t.CSizeT) -> PyObject | t.CPtr
-extern def PyList_SetItem(lst: PyObject | t.CPtr, idx: t.CSizeT, item: PyObject | t.CPtr) -> t.CInt
-extern def PyList_Insert(lst: PyObject | t.CPtr, idx: t.CSizeT, item: PyObject | t.CPtr) -> t.CInt
-extern def PyList_Append(lst: PyObject | t.CPtr, item: PyObject | t.CPtr) -> t.CInt
-extern def PyList_GetSlice(lst: PyObject | t.CPtr, lo: t.CSizeT, hi: t.CSizeT) -> PyObject | t.CPtr
-extern def PyList_SetSlice(lst: PyObject | t.CPtr, lo: t.CSizeT, hi: t.CSizeT, items: PyObject | t.CPtr) -> t.CInt
-extern def PyList_Sort(lst: PyObject | t.CPtr) -> t.CInt
-extern def PyList_Reverse(lst: PyObject | t.CPtr) -> t.CInt
+extern def PyList_New(len: sizet) -> PyObject | t.CPtr
+extern def PyList_Size(lst: PyObject | t.CPtr) -> sizet
+extern def PyList_GetItem(lst: PyObject | t.CPtr, idx: sizet) -> PyObject | t.CPtr
+extern def PyList_SetItem(lst: PyObject | t.CPtr, idx: sizet, item: PyObject | t.CPtr) -> int
+extern def PyList_Insert(lst: PyObject | t.CPtr, idx: sizet, item: PyObject | t.CPtr) -> int
+extern def PyList_Append(lst: PyObject | t.CPtr, item: PyObject | t.CPtr) -> int
+extern def PyList_GetSlice(lst: PyObject | t.CPtr, lo: sizet, hi: sizet) -> PyObject | t.CPtr
+extern def PyList_SetSlice(lst: PyObject | t.CPtr, lo: sizet, hi: sizet, items: PyObject | t.CPtr) -> int
+extern def PyList_Sort(lst: PyObject | t.CPtr) -> int
+extern def PyList_Reverse(lst: PyObject | t.CPtr) -> int
 extern def PyList_AsTuple(lst: PyObject | t.CPtr) -> PyObject | t.CPtr
 
 
 # ============================================================
 # 元组操作 (PyTuple)
 # ============================================================
-extern def PyTuple_New(len: t.CSizeT) -> PyObject | t.CPtr
-extern def PyTuple_Size(tup: PyObject | t.CPtr) -> t.CSizeT
-extern def PyTuple_GetItem(tup: PyObject | t.CPtr, idx: t.CSizeT) -> PyObject | t.CPtr
-extern def PyTuple_SetItem(tup: PyObject | t.CPtr, idx: t.CSizeT, item: PyObject | t.CPtr) -> t.CInt
-extern def PyTuple_GetSlice(tup: PyObject | t.CPtr, lo: t.CSizeT, hi: t.CSizeT) -> PyObject | t.CPtr
-extern def PyTuple_Pack(n: t.CSizeT) -> PyObject | t.CPtr
+extern def PyTuple_New(len: sizet) -> PyObject | t.CPtr
+extern def PyTuple_Size(tup: PyObject | t.CPtr) -> sizet
+extern def PyTuple_GetItem(tup: PyObject | t.CPtr, idx: sizet) -> PyObject | t.CPtr
+extern def PyTuple_SetItem(tup: PyObject | t.CPtr, idx: sizet, item: PyObject | t.CPtr) -> int
+extern def PyTuple_GetSlice(tup: PyObject | t.CPtr, lo: sizet, hi: sizet) -> PyObject | t.CPtr
+extern def PyTuple_Pack(n: sizet) -> PyObject | t.CPtr
 
 
 # ============================================================
@@ -203,21 +203,21 @@ extern def PyTuple_Pack(n: t.CSizeT) -> PyObject | t.CPtr
 # ============================================================
 extern def PyDict_New() -> PyObject | t.CPtr
 extern def PyDict_GetItem(d: PyObject | t.CPtr, key: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyDict_GetItemString(d: PyObject | t.CPtr, key: t.CConst | str) -> PyObject | t.CPtr
-extern def PyDict_SetItem(d: PyObject | t.CPtr, key: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CInt
-extern def PyDict_SetItemString(d: PyObject | t.CPtr, key: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
-extern def PyDict_DelItem(d: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PyDict_DelItemString(d: PyObject | t.CPtr, key: t.CConst | str) -> t.CInt
-extern def PyDict_Size(d: PyObject | t.CPtr) -> t.CSizeT
+extern def PyDict_GetItemString(d: PyObject | t.CPtr, key: const str) -> PyObject | t.CPtr
+extern def PyDict_SetItem(d: PyObject | t.CPtr, key: PyObject | t.CPtr, val: PyObject | t.CPtr) -> int
+extern def PyDict_SetItemString(d: PyObject | t.CPtr, key: const str, val: PyObject | t.CPtr) -> int
+extern def PyDict_DelItem(d: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PyDict_DelItemString(d: PyObject | t.CPtr, key: const str) -> int
+extern def PyDict_Size(d: PyObject | t.CPtr) -> sizet
 extern def PyDict_Keys(d: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyDict_Values(d: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyDict_Items(d: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyDict_Copy(d: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyDict_Clear(d: PyObject | t.CPtr): pass
-extern def PyDict_Contains(d: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PyDict_Next(d: PyObject | t.CPtr, pos: t.CPtrDiffT | t.CPtr, key: PyObject | t.CPtr | t.CPtr, val: PyObject | t.CPtr | t.CPtr) -> t.CInt
-extern def PyDict_Merge(d: PyObject | t.CPtr, other: PyObject | t.CPtr, override: t.CInt) -> t.CInt
-extern def PyDict_Update(d: PyObject | t.CPtr, other: PyObject | t.CPtr) -> t.CInt
+extern def PyDict_Contains(d: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PyDict_Next(d: PyObject | t.CPtr, pos: t.CPtrDiffT | t.CPtr, key: PyObject | t.CPtr | t.CPtr, val: PyObject | t.CPtr | t.CPtr) -> int
+extern def PyDict_Merge(d: PyObject | t.CPtr, other: PyObject | t.CPtr, override: int) -> int
+extern def PyDict_Update(d: PyObject | t.CPtr, other: PyObject | t.CPtr) -> int
 
 
 # ============================================================
@@ -226,29 +226,29 @@ extern def PyDict_Update(d: PyObject | t.CPtr, other: PyObject | t.CPtr) -> t.CI
 extern def PyObject_Str(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_Repr(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_Type(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyObject_IsInstance(obj: PyObject | t.CPtr, cls: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_IsSubclass(obj: PyObject | t.CPtr, cls: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_HasAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_HasAttrString(obj: PyObject | t.CPtr, name: t.CConst | str) -> t.CInt
+extern def PyObject_IsInstance(obj: PyObject | t.CPtr, cls: PyObject | t.CPtr) -> int
+extern def PyObject_IsSubclass(obj: PyObject | t.CPtr, cls: PyObject | t.CPtr) -> int
+extern def PyObject_HasAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr) -> int
+extern def PyObject_HasAttrString(obj: PyObject | t.CPtr, name: const str) -> int
 extern def PyObject_GetAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyObject_GetAttrString(obj: PyObject | t.CPtr, name: t.CConst | str) -> PyObject | t.CPtr
-extern def PyObject_SetAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_SetAttrString(obj: PyObject | t.CPtr, name: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_DelAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_DelAttrString(obj: PyObject | t.CPtr, name: t.CConst | str) -> t.CInt
+extern def PyObject_GetAttrString(obj: PyObject | t.CPtr, name: const str) -> PyObject | t.CPtr
+extern def PyObject_SetAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr, val: PyObject | t.CPtr) -> int
+extern def PyObject_SetAttrString(obj: PyObject | t.CPtr, name: const str, val: PyObject | t.CPtr) -> int
+extern def PyObject_DelAttr(obj: PyObject | t.CPtr, name: PyObject | t.CPtr) -> int
+extern def PyObject_DelAttrString(obj: PyObject | t.CPtr, name: const str) -> int
 extern def PyObject_Call(callable: PyObject | t.CPtr, args: PyObject | t.CPtr, kwargs: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_CallObject(callable: PyObject | t.CPtr, args: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_CallNoArgs(callable: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_CallOneArg(callable: PyObject | t.CPtr, arg: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyObject_IsTrue(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_Not(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_RichCompare(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr, opid: t.CInt) -> PyObject | t.CPtr
-extern def PyObject_RichCompareBool(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr, opid: t.CInt) -> t.CInt
+extern def PyObject_IsTrue(obj: PyObject | t.CPtr) -> int
+extern def PyObject_Not(obj: PyObject | t.CPtr) -> int
+extern def PyObject_RichCompare(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr, opid: int) -> PyObject | t.CPtr
+extern def PyObject_RichCompareBool(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr, opid: int) -> int
 extern def PyObject_Hash(obj: PyObject | t.CPtr) -> t.CLong
-extern def PyObject_Length(obj: PyObject | t.CPtr) -> t.CSizeT
+extern def PyObject_Length(obj: PyObject | t.CPtr) -> sizet
 extern def PyObject_GetItem(obj: PyObject | t.CPtr, key: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyObject_SetItem(obj: PyObject | t.CPtr, key: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CInt
-extern def PyObject_DelItem(obj: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
+extern def PyObject_SetItem(obj: PyObject | t.CPtr, key: PyObject | t.CPtr, val: PyObject | t.CPtr) -> int
+extern def PyObject_DelItem(obj: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
 extern def PyObject_Dir(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyObject_GetIter(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyIter_Next(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
@@ -257,45 +257,45 @@ extern def PyIter_Next(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 # ============================================================
 # 比较常量
 # ============================================================
-Py_LT: t.CInt | t.State
-Py_LE: t.CInt | t.State
-Py_EQ: t.CInt | t.State
-Py_NE: t.CInt | t.State
-Py_GT: t.CInt | t.State
-Py_GE: t.CInt | t.State
+Py_LT: int | t.State
+Py_LE: int | t.State
+Py_EQ: int | t.State
+Py_NE: int | t.State
+Py_GT: int | t.State
+Py_GE: int | t.State
 
 
 # ============================================================
 # 模块操作
 # ============================================================
-extern def PyImport_ImportModule(name: t.CConst | str) -> PyObject | t.CPtr
+extern def PyImport_ImportModule(name: const str) -> PyObject | t.CPtr
 extern def PyImport_Import(name: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyImport_ImportModuleLevelObject(name: PyObject | t.CPtr, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, fromlist: PyObject | t.CPtr, level: t.CInt) -> PyObject | t.CPtr
+extern def PyImport_ImportModuleLevelObject(name: PyObject | t.CPtr, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, fromlist: PyObject | t.CPtr, level: int) -> PyObject | t.CPtr
 extern def PyImport_ReloadModule(mod: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyImport_AddModule(name: t.CConst | str) -> PyObject | t.CPtr
+extern def PyImport_AddModule(name: const str) -> PyObject | t.CPtr
 extern def PyImport_GetModuleDict() -> PyObject | t.CPtr
-extern def PyImport_ImportModuleEx(name: t.CConst | str, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, fromlist: PyObject | t.CPtr) -> PyObject | t.CPtr
+extern def PyImport_ImportModuleEx(name: const str, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, fromlist: PyObject | t.CPtr) -> PyObject | t.CPtr
 
 
 # ============================================================
 # 模块创建
 # ============================================================
 class PyMethodDef:
-    ml_name: t.CConst | str
+    ml_name: const str
     ml_meth: t.CPtr
-    ml_flags: t.CInt
-    ml_doc: t.CConst | str
+    ml_flags: int
+    ml_doc: const str
 
 class PyModuleDef_Base:
     ob_base: PyObject
     m_init: t.CPtr
-    m_index: t.CSizeT
+    m_index: sizet
     m_copy: PyObject | t.CPtr
 
 class PyModuleDef:
     m_base: PyModuleDef_Base
-    m_name: t.CConst | str
-    m_doc: t.CConst | str
+    m_name: const str
+    m_doc: const str
     m_size: t.CPtrDiffT
     m_methods: PyMethodDef | t.CPtr
     m_slots: t.CPtr
@@ -304,28 +304,28 @@ class PyModuleDef:
     m_free: t.CPtr
 
 extern def PyModule_Create(mod: PyModuleDef | t.CPtr) -> PyObject | t.CPtr
-extern def PyModule_Create2(mod: PyModuleDef | t.CPtr, ver: t.CInt) -> PyObject | t.CPtr
+extern def PyModule_Create2(mod: PyModuleDef | t.CPtr, ver: int) -> PyObject | t.CPtr
 extern def PyModule_GetName(mod: PyObject | t.CPtr) -> str
 extern def PyModule_GetDict(mod: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyModule_GetFilenameObject(mod: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyModule_AddObject(mod: PyObject | t.CPtr, name: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
-extern def PyModule_AddObjectRef(mod: PyObject | t.CPtr, name: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
-extern def PyModule_AddIntConstant(mod: PyObject | t.CPtr, name: t.CConst | str, val: t.CLong) -> t.CInt
-extern def PyModule_AddStringConstant(mod: PyObject | t.CPtr, name: t.CConst | str, val: t.CConst | str) -> t.CInt
+extern def PyModule_AddObject(mod: PyObject | t.CPtr, name: const str, val: PyObject | t.CPtr) -> int
+extern def PyModule_AddObjectRef(mod: PyObject | t.CPtr, name: const str, val: PyObject | t.CPtr) -> int
+extern def PyModule_AddIntConstant(mod: PyObject | t.CPtr, name: const str, val: t.CLong) -> int
+extern def PyModule_AddStringConstant(mod: PyObject | t.CPtr, name: const str, val: const str) -> int
 
 
 # ============================================================
 # GIL 管理
 # ============================================================
-extern def PyGILState_Ensure() -> t.CInt
-extern def PyGILState_Release(state: t.CInt): pass
+extern def PyGILState_Ensure() -> int
+extern def PyGILState_Release(state: int): pass
 extern def PyEval_SaveThread() -> t.CPtr
 extern def PyEval_RestoreThread(tstate: t.CPtr): pass
 extern def PyEval_AcquireThread(tstate: t.CPtr): pass
 extern def PyEval_ReleaseThread(tstate: t.CPtr): pass
 extern def PyEval_AcquireLock(): pass
 extern def PyEval_ReleaseLock(): pass
-extern def PyEval_ThreadsInitialized() -> t.CInt
+extern def PyEval_ThreadsInitialized() -> int
 extern def PyEval_InitThreads(): pass
 
 
@@ -337,13 +337,13 @@ extern def PyErr_Clear(): pass
 extern def PyErr_Fetch(tp: PyObject | t.CPtr | t.CPtr, val: PyObject | t.CPtr | t.CPtr, tb: PyObject | t.CPtr | t.CPtr): pass
 extern def PyErr_Restore(tp: PyObject | t.CPtr, val: PyObject | t.CPtr, tb: PyObject | t.CPtr): pass
 extern def PyErr_NormalizeException(tp: PyObject | t.CPtr | t.CPtr, val: PyObject | t.CPtr | t.CPtr, tb: PyObject | t.CPtr | t.CPtr): pass
-extern def PyErr_SetString(tp: PyObject | t.CPtr, msg: t.CConst | str): pass
+extern def PyErr_SetString(tp: PyObject | t.CPtr, msg: const str): pass
 extern def PyErr_SetObject(tp: PyObject | t.CPtr, val: PyObject | t.CPtr): pass
 extern def PyErr_BadArgument() -> t.CPtr | t.State: pass
 extern def PyErr_NoMemory() -> t.CPtr | t.State: pass
 extern def PyErr_Print(): pass
-extern def PyErr_ExceptionMatches(exc: PyObject | t.CPtr) -> t.CInt | t.State: pass
-extern def PyErr_GivenExceptionMatches(given: PyObject | t.CPtr, exc: PyObject | t.CPtr) -> t.CInt | t.State: pass
+extern def PyErr_ExceptionMatches(exc: PyObject | t.CPtr) -> int | t.State: pass
+extern def PyErr_GivenExceptionMatches(given: PyObject | t.CPtr, exc: PyObject | t.CPtr) -> int | t.State: pass
 
 
 # ============================================================
@@ -376,103 +376,103 @@ PyExc_NotADirectoryError: PyObject | t.CPtr | t.State
 # ============================================================
 # 内置函数
 # ============================================================
-extern def Py_BuildValue(fmt: t.CConst | str) -> PyObject | t.CPtr
-extern def Py_VaBuildValue(fmt: t.CConst | str, va: t.CPtr) -> PyObject | t.CPtr
+extern def Py_BuildValue(fmt: const str) -> PyObject | t.CPtr
+extern def Py_VaBuildValue(fmt: const str, va: t.CPtr) -> PyObject | t.CPtr
 
 
 # ============================================================
 # 类型检查
 # ============================================================
-extern def PyLong_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyFloat_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyUnicode_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyBytes_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyList_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyTuple_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyDict_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyBool_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyNone_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyLong_Check(obj: PyObject | t.CPtr) -> int
+extern def PyFloat_Check(obj: PyObject | t.CPtr) -> int
+extern def PyUnicode_Check(obj: PyObject | t.CPtr) -> int
+extern def PyBytes_Check(obj: PyObject | t.CPtr) -> int
+extern def PyList_Check(obj: PyObject | t.CPtr) -> int
+extern def PyTuple_Check(obj: PyObject | t.CPtr) -> int
+extern def PyDict_Check(obj: PyObject | t.CPtr) -> int
+extern def PyBool_Check(obj: PyObject | t.CPtr) -> int
+extern def PyNone_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
 # 内存管理
 # ============================================================
-extern def PyMem_Malloc(size: t.CSizeT) -> t.CPtr
-extern def PyMem_Realloc(ptr: t.CPtr, size: t.CSizeT) -> t.CPtr
+extern def PyMem_Malloc(size: sizet) -> t.CPtr
+extern def PyMem_Realloc(ptr: t.CPtr, size: sizet) -> t.CPtr
 extern def PyMem_Free(ptr: t.CPtr)
-extern def PyMem_Calloc(nelem: t.CSizeT, elsize: t.CSizeT) -> t.CPtr
-extern def PyObject_Malloc(size: t.CSizeT) -> t.CPtr
-extern def PyObject_Realloc(ptr: t.CPtr, size: t.CSizeT) -> t.CPtr
+extern def PyMem_Calloc(nelem: sizet, elsize: sizet) -> t.CPtr
+extern def PyObject_Malloc(size: sizet) -> t.CPtr
+extern def PyObject_Realloc(ptr: t.CPtr, size: sizet) -> t.CPtr
 extern def PyObject_Free(ptr: t.CPtr)
-extern def PyObject_Calloc(nelem: t.CSizeT, elsize: t.CSizeT) -> t.CPtr
+extern def PyObject_Calloc(nelem: sizet, elsize: sizet) -> t.CPtr
 extern def PyObject_Init(obj: PyObject | t.CPtr, tp: t.CPtr) -> PyObject | t.CPtr
-extern def PyObject_InitVar(obj: PyObject | t.CPtr, tp: t.CPtr, size: t.CSizeT) -> PyObject | t.CPtr
+extern def PyObject_InitVar(obj: PyObject | t.CPtr, tp: t.CPtr, size: sizet) -> PyObject | t.CPtr
 
 
 # ============================================================
 # 文件操作
 # ============================================================
-extern def PyFile_FromString(filename: t.CConst | str, mode: t.CConst | str) -> PyObject | t.CPtr
+extern def PyFile_FromString(filename: const str, mode: const str) -> PyObject | t.CPtr
 extern def PyFile_AsFile(file: PyObject | t.CPtr) -> t.CPtr
-extern def PyFile_WriteObject(obj: PyObject | t.CPtr, file: PyObject | t.CPtr, flags: t.CInt) -> t.CInt
-extern def PyFile_WriteString(s: t.CConst | str, file: PyObject | t.CPtr) -> t.CInt
+extern def PyFile_WriteObject(obj: PyObject | t.CPtr, file: PyObject | t.CPtr, flags: int) -> int
+extern def PyFile_WriteString(s: const str, file: PyObject | t.CPtr) -> int
 
 
 # ============================================================
 # 编译/执行
 # ============================================================
-extern def Py_CompileString(s: t.CConst | str, filename: t.CConst | str, start: t.CInt) -> PyObject | t.CPtr
+extern def Py_CompileString(s: const str, filename: const str, start: int) -> PyObject | t.CPtr
 extern def PyEval_EvalCode(code: PyObject | t.CPtr, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyEval_EvalCodeEx(code: PyObject | t.CPtr, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, args: PyObject | t.CPtr | t.CPtr, argc: t.CInt, kws: PyObject | t.CPtr | t.CPtr, kwc: t.CInt, defs: PyObject | t.CPtr | t.CPtr, defc: t.CInt, kwdefs: PyObject | t.CPtr, closure: PyObject | t.CPtr) -> PyObject | t.CPtr: pass
+extern def PyEval_EvalCodeEx(code: PyObject | t.CPtr, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr, args: PyObject | t.CPtr | t.CPtr, argc: int, kws: PyObject | t.CPtr | t.CPtr, kwc: int, defs: PyObject | t.CPtr | t.CPtr, defc: int, kwdefs: PyObject | t.CPtr, closure: PyObject | t.CPtr) -> PyObject | t.CPtr: pass
 extern def PyEval_EvalFrame(frame: t.CPtr) -> PyObject | t.CPtr: pass
 extern def PyEval_CallObject(callable: PyObject | t.CPtr, args: PyObject | t.CPtr) -> PyObject | t.CPtr: pass
-extern def PyEval_CallFunction(callable: PyObject | t.CPtr, fmt: t.CConst | str) -> PyObject | t.CPtr: pass
-extern def PyEval_CallMethod(obj: PyObject | t.CPtr, method: t.CConst | str, fmt: t.CConst | str) -> PyObject | t.CPtr: pass
+extern def PyEval_CallFunction(callable: PyObject | t.CPtr, fmt: const str) -> PyObject | t.CPtr: pass
+extern def PyEval_CallMethod(obj: PyObject | t.CPtr, method: const str, fmt: const str) -> PyObject | t.CPtr: pass
 
 
 # ============================================================
 # PyRun
 # ============================================================
-extern def PyRun_SimpleString(cmd: t.CConst | str) -> t.CInt
-extern def PyRun_SimpleFile(fp: t.CPtr, filename: t.CConst | str) -> t.CInt
-extern def PyRun_AnyFile(fp: t.CPtr, filename: t.CConst | str) -> t.CInt
-extern def PyRun_String(s: t.CConst | str, start: t.CInt, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyRun_File(fp: t.CPtr, filename: t.CConst | str, start: t.CInt, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr) -> PyObject | t.CPtr
+extern def PyRun_SimpleString(cmd: const str) -> int
+extern def PyRun_SimpleFile(fp: t.CPtr, filename: const str) -> int
+extern def PyRun_AnyFile(fp: t.CPtr, filename: const str) -> int
+extern def PyRun_String(s: const str, start: int, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr) -> PyObject | t.CPtr
+extern def PyRun_File(fp: t.CPtr, filename: const str, start: int, globs: PyObject | t.CPtr, locs: PyObject | t.CPtr) -> PyObject | t.CPtr
 
-Py_single_input: t.CInt | t.State
-Py_file_input: t.CInt | t.State
-Py_eval_input: t.CInt | t.State
+Py_single_input: int | t.State
+Py_file_input: int | t.State
+Py_eval_input: int | t.State
 
 
 # ============================================================
 # Capsule
 # ============================================================
-extern def PyCapsule_New(ptr: t.CPtr, name: t.CConst | str, dtor: t.CPtr) -> PyObject | t.CPtr
-extern def PyCapsule_GetPointer(cap: PyObject | t.CPtr, name: t.CConst | str) -> t.CPtr
+extern def PyCapsule_New(ptr: t.CPtr, name: const str, dtor: t.CPtr) -> PyObject | t.CPtr
+extern def PyCapsule_GetPointer(cap: PyObject | t.CPtr, name: const str) -> t.CPtr
 extern def PyCapsule_GetName(cap: PyObject | t.CPtr) -> str
-extern def PyCapsule_IsValid(cap: PyObject | t.CPtr, name: t.CConst | str) -> t.CInt
-extern def PyCapsule_SetPointer(cap: PyObject | t.CPtr, ptr: t.CPtr) -> t.CInt
-extern def PyCapsule_SetName(cap: PyObject | t.CPtr, name: t.CConst | str) -> t.CInt
-extern def PyCapsule_SetDestructor(cap: PyObject | t.CPtr, dtor: t.CPtr) -> t.CInt
+extern def PyCapsule_IsValid(cap: PyObject | t.CPtr, name: const str) -> int
+extern def PyCapsule_SetPointer(cap: PyObject | t.CPtr, ptr: t.CPtr) -> int
+extern def PyCapsule_SetName(cap: PyObject | t.CPtr, name: const str) -> int
+extern def PyCapsule_SetDestructor(cap: PyObject | t.CPtr, dtor: t.CPtr) -> int
 
 
 # ============================================================
 # 序列操作
 # ============================================================
-extern def PySequence_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PySequence_Size(obj: PyObject | t.CPtr) -> t.CSizeT
-extern def PySequence_Length(obj: PyObject | t.CPtr) -> t.CSizeT
+extern def PySequence_Check(obj: PyObject | t.CPtr) -> int
+extern def PySequence_Size(obj: PyObject | t.CPtr) -> sizet
+extern def PySequence_Length(obj: PyObject | t.CPtr) -> sizet
 extern def PySequence_Concat(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PySequence_Repeat(obj: PyObject | t.CPtr, count: t.CSizeT) -> PyObject | t.CPtr
-extern def PySequence_GetItem(obj: PyObject | t.CPtr, idx: t.CSizeT) -> PyObject | t.CPtr
-extern def PySequence_SetItem(obj: PyObject | t.CPtr, idx: t.CSizeT, val: PyObject | t.CPtr) -> t.CInt
-extern def PySequence_DelItem(obj: PyObject | t.CPtr, idx: t.CSizeT) -> t.CInt
-extern def PySequence_GetSlice(obj: PyObject | t.CPtr, start: t.CSizeT, end: t.CSizeT) -> PyObject | t.CPtr
-extern def PySequence_SetSlice(obj: PyObject | t.CPtr, start: t.CSizeT, end: t.CSizeT, val: PyObject | t.CPtr) -> t.CInt
-extern def PySequence_DelSlice(obj: PyObject | t.CPtr, start: t.CSizeT, end: t.CSizeT) -> t.CInt
-extern def PySequence_Contains(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CInt
-extern def PySequence_Index(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CSizeT
-extern def PySequence_Count(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> t.CSizeT
+extern def PySequence_Repeat(obj: PyObject | t.CPtr, count: sizet) -> PyObject | t.CPtr
+extern def PySequence_GetItem(obj: PyObject | t.CPtr, idx: sizet) -> PyObject | t.CPtr
+extern def PySequence_SetItem(obj: PyObject | t.CPtr, idx: sizet, val: PyObject | t.CPtr) -> int
+extern def PySequence_DelItem(obj: PyObject | t.CPtr, idx: sizet) -> int
+extern def PySequence_GetSlice(obj: PyObject | t.CPtr, start: sizet, end: sizet) -> PyObject | t.CPtr
+extern def PySequence_SetSlice(obj: PyObject | t.CPtr, start: sizet, end: sizet, val: PyObject | t.CPtr) -> int
+extern def PySequence_DelSlice(obj: PyObject | t.CPtr, start: sizet, end: sizet) -> int
+extern def PySequence_Contains(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> int
+extern def PySequence_Index(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> sizet
+extern def PySequence_Count(obj: PyObject | t.CPtr, val: PyObject | t.CPtr) -> sizet
 extern def PySequence_List(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PySequence_Tuple(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 
@@ -480,13 +480,13 @@ extern def PySequence_Tuple(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 # ============================================================
 # 映射操作
 # ============================================================
-extern def PyMapping_Check(obj: PyObject | t.CPtr) -> t.CInt
-extern def PyMapping_Size(obj: PyObject | t.CPtr) -> t.CSizeT
-extern def PyMapping_Length(obj: PyObject | t.CPtr) -> t.CSizeT
-extern def PyMapping_HasKey(obj: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PyMapping_HasKeyString(obj: PyObject | t.CPtr, key: t.CConst | str) -> t.CInt
-extern def PyMapping_GetItemString(obj: PyObject | t.CPtr, key: t.CConst | str) -> PyObject | t.CPtr
-extern def PyMapping_SetItemString(obj: PyObject | t.CPtr, key: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
+extern def PyMapping_Check(obj: PyObject | t.CPtr) -> int
+extern def PyMapping_Size(obj: PyObject | t.CPtr) -> sizet
+extern def PyMapping_Length(obj: PyObject | t.CPtr) -> sizet
+extern def PyMapping_HasKey(obj: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PyMapping_HasKeyString(obj: PyObject | t.CPtr, key: const str) -> int
+extern def PyMapping_GetItemString(obj: PyObject | t.CPtr, key: const str) -> PyObject | t.CPtr
+extern def PyMapping_SetItemString(obj: PyObject | t.CPtr, key: const str, val: PyObject | t.CPtr) -> int
 extern def PyMapping_Keys(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyMapping_Values(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyMapping_Items(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
@@ -515,7 +515,7 @@ extern def PyNumber_Or(o1: PyObject | t.CPtr, o2: PyObject | t.CPtr) -> PyObject
 extern def PyNumber_Index(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyNumber_Long(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyNumber_Float(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyNumber_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyNumber_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
@@ -523,71 +523,71 @@ extern def PyNumber_Check(obj: PyObject | t.CPtr) -> t.CInt
 # ============================================================
 extern def PyWeakref_NewRef(obj: PyObject | t.CPtr, cb: PyObject | t.CPtr) -> PyObject | t.CPtr
 extern def PyWeakref_GetObject(ref: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyWeakref_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyWeakref_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
 # 属性描述符
 # ============================================================
 class PyGetSetDef:
-    name: t.CConst | str
+    name: const str
     get: t.CPtr
     set: t.CPtr
-    doc: t.CConst | str
+    doc: const str
     closure: t.CPtr
 
 class PyMemberDef:
-    name: t.CConst | str
-    type: t.CInt
+    name: const str
+    type: int
     offset: t.CPtrDiffT
-    flags: t.CInt
-    doc: t.CConst | str
+    flags: int
+    doc: const str
 
 
 # ============================================================
 # sys 模块
 # ============================================================
-extern def PySys_GetObject(name: t.CConst | str) -> PyObject | t.CPtr
-extern def PySys_SetObject(name: t.CConst | str, val: PyObject | t.CPtr) -> t.CInt
+extern def PySys_GetObject(name: const str) -> PyObject | t.CPtr
+extern def PySys_SetObject(name: const str, val: PyObject | t.CPtr) -> int
 extern def PySys_ResetWarnOptions(): pass
 extern def PySys_AddWarnOption(s: PyObject | t.CPtr): pass
 extern def PySYS_AddXOption(s: PyObject | t.CPtr): pass
-extern def PySys_WriteStdout(fmt: t.CConst | str): pass
-extern def PySys_WriteStderr(fmt: t.CConst | str): pass
-extern def PySys_FormatStdout(fmt: t.CConst | str): pass
-extern def PySys_FormatStderr(fmt: t.CConst | str): pass
+extern def PySys_WriteStdout(fmt: const str): pass
+extern def PySys_WriteStderr(fmt: const str): pass
+extern def PySys_FormatStdout(fmt: const str): pass
+extern def PySys_FormatStderr(fmt: const str): pass
 
 
 # ============================================================
 # 内存视图
 # ============================================================
 extern def PyMemoryView_FromObject(obj: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyMemoryView_GetContiguous(obj: PyObject | t.CPtr, btype: t.CInt, order: t.CChar) -> PyObject | t.CPtr
-extern def PyMemoryView_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyMemoryView_GetContiguous(obj: PyObject | t.CPtr, btype: int, order: char) -> PyObject | t.CPtr
+extern def PyMemoryView_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
 # set / frozenset
 # ============================================================
 extern def PySet_New(iterable: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PySet_Add(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PySet_Discard(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PySet_Contains(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> t.CInt
-extern def PySet_Size(s: PyObject | t.CPtr) -> t.CSizeT
+extern def PySet_Add(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PySet_Discard(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PySet_Contains(s: PyObject | t.CPtr, key: PyObject | t.CPtr) -> int
+extern def PySet_Size(s: PyObject | t.CPtr) -> sizet
 extern def PySet_Clear(s: PyObject | t.CPtr): pass
-extern def PySet_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PySet_Check(obj: PyObject | t.CPtr) -> int
 extern def PyFrozenSet_New(iterable: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PyFrozenSet_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PyFrozenSet_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
 # slice
 # ============================================================
 extern def PySlice_New(start: PyObject | t.CPtr, stop: PyObject | t.CPtr, step: PyObject | t.CPtr) -> PyObject | t.CPtr
-extern def PySlice_GetIndicesEx(sl: PyObject | t.CPtr, length: t.CSizeT, start: t.CSizeT | t.CPtr, stop: t.CSizeT | t.CPtr, step: t.CSizeT | t.CPtr, slicelen: t.CSizeT | t.CPtr) -> t.CInt
+extern def PySlice_GetIndicesEx(sl: PyObject | t.CPtr, length: sizet, start: sizet | t.CPtr, stop: sizet | t.CPtr, step: sizet | t.CPtr, slicelen: sizet | t.CPtr) -> int
 extern def PySlice_Unpack(sl: PyObject | t.CPtr, start: t.CPtrDiffT | t.CPtr, stop: t.CPtrDiffT | t.CPtr, step: t.CPtrDiffT | t.CPtr): pass
-extern def PySlice_AdjustIndices(length: t.CSizeT, start: t.CPtrDiffT | t.CPtr, stop: t.CPtrDiffT | t.CPtr, step: t.CPtrDiffT) -> t.CSizeT
-extern def PySlice_Check(obj: PyObject | t.CPtr) -> t.CInt
+extern def PySlice_AdjustIndices(length: sizet, start: t.CPtrDiffT | t.CPtr, stop: t.CPtrDiffT | t.CPtr, step: t.CPtrDiffT) -> sizet
+extern def PySlice_Check(obj: PyObject | t.CPtr) -> int
 
 
 # ============================================================
@@ -645,7 +645,7 @@ class PyFloatObj:
         return t.CPtr(malloc(PyFloatObj.__sizeof__()))
 
     @staticmethod
-    def from_double(val: t.CDouble) -> 'PyFloatObj' | t.CPtr:
+    def from_double(val: double) -> 'PyFloatObj' | t.CPtr:
         obj: PyFloatObj | t.CPtr = PyFloatObj()
         obj.ptr = PyFloat_FromDouble(val)
         return obj
@@ -675,7 +675,7 @@ class PyFloatObj:
         res.ptr = PyNumber_Negative(self.ptr)
         return res
 
-    def to_double(self) -> t.CDouble:
+    def to_double(self) -> double:
         return PyFloat_AsDouble(self.ptr)
 
     def __str__(self) -> PyObject | t.CPtr:
@@ -693,7 +693,7 @@ class PyUnicodeObj:
         return t.CPtr(malloc(PyUnicodeObj.__sizeof__()))
 
     @staticmethod
-    def from_string(s: t.CChar | t.CPtr) -> 'PyUnicodeObj' | t.CPtr:
+    def from_string(s: char | t.CPtr) -> 'PyUnicodeObj' | t.CPtr:
         obj: PyUnicodeObj | t.CPtr = PyUnicodeObj()
         obj.ptr = PyUnicode_FromString(s)
         return obj
@@ -706,7 +706,7 @@ class PyUnicodeObj:
     def __len__(self) -> t.CPtrDiffT:
         return PyUnicode_GetLength(self.ptr)
 
-    def as_utf8(self) -> t.CChar | t.CPtr:
+    def as_utf8(self) -> char | t.CPtr:
         return PyUnicode_AsUTF8(self.ptr)
 
     def __str__(self) -> PyObject | t.CPtr:
@@ -729,16 +729,16 @@ class PyListObj:
         obj.ptr = PyList_New(0)
         return obj
 
-    def __getitem__(self, idx: t.CSizeT) -> PyObject | t.CPtr:
+    def __getitem__(self, idx: sizet) -> PyObject | t.CPtr:
         return PyList_GetItem(self.ptr, idx)
 
-    def __setitem__(self, idx: t.CSizeT, val: PyObject | t.CPtr):
+    def __setitem__(self, idx: sizet, val: PyObject | t.CPtr):
         PyList_SetItem(self.ptr, idx, val)
 
-    def __len__(self) -> t.CSizeT:
+    def __len__(self) -> sizet:
         return PyList_Size(self.ptr)
 
-    def append(self, item: PyObject | t.CPtr) -> t.CInt:
+    def append(self, item: PyObject | t.CPtr) -> int:
         return PyList_Append(self.ptr, item)
 
     def dec_ref(self):
@@ -764,13 +764,13 @@ class PyDictObj:
     def __setitem__(self, key: PyObject | t.CPtr, val: PyObject | t.CPtr):
         PyDict_SetItem(self.ptr, key, val)
 
-    def __len__(self) -> t.CSizeT:
+    def __len__(self) -> sizet:
         return PyDict_Size(self.ptr)
 
-    def get_string(self, key: t.CChar | t.CPtr) -> PyObject | t.CPtr:
+    def get_string(self, key: char | t.CPtr) -> PyObject | t.CPtr:
         return PyDict_GetItemString(self.ptr, key)
 
-    def set_string(self, key: t.CChar | t.CPtr, val: PyObject | t.CPtr):
+    def set_string(self, key: char | t.CPtr, val: PyObject | t.CPtr):
         PyDict_SetItemString(self.ptr, key, val)
 
     def dec_ref(self):

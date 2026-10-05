@@ -3,7 +3,7 @@ import testcheck
 import enumtest
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("EnumTest: 枚举类型测试")
     testcheck.section("Enum")
     enumtest.enum_main()

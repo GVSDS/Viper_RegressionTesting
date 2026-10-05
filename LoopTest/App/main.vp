@@ -4,7 +4,7 @@ import testcheck
 
 def test_for_loop():
     testcheck.section("Test 1: for loop")
-    sum_val: t.CInt = 0
+    sum_val: int = 0
     for i in range(10):
         sum_val += i
     # 0+1+2+...+9 = 45
@@ -12,8 +12,8 @@ def test_for_loop():
 
 def test_while_loop():
     testcheck.section("Test 2: while loop")
-    n: t.CInt = 100
-    count: t.CInt = 0
+    n: int = 100
+    count: int = 0
     while n > 1:
         if n % 2 == 0:
             n = n // 2
@@ -25,7 +25,7 @@ def test_while_loop():
 
 def test_nested_loop():
     testcheck.section("Test 3: nested loop")
-    count: t.CInt = 0
+    count: int = 0
     for i in range(5):
         for j in range(5):
             if i < j:
@@ -35,7 +35,7 @@ def test_nested_loop():
 
 def test_break():
     testcheck.section("Test 4: break")
-    found: t.CInt = -1
+    found: int = -1
     for i in range(100):
         if i * i > 50:
             found = i
@@ -45,7 +45,7 @@ def test_break():
 
 def test_continue():
     testcheck.section("Test 5: continue")
-    sum_val: t.CInt = 0
+    sum_val: int = 0
     for i in range(20):
         if i % 3 == 0:
             continue
@@ -55,7 +55,7 @@ def test_continue():
 
 def test_range_step():
     testcheck.section("Test 6: range with step")
-    sum_val: t.CInt = 0
+    sum_val: int = 0
     for i in range(0, 20, 3):
         sum_val += i
     # 0+3+6+9+12+15+18 = 63
@@ -63,13 +63,13 @@ def test_range_step():
 
 def test_loop_u64():
     testcheck.section("Test 7: loop with u64 counter")
-    total: t.CUInt64T = 0
+    total: uint64 = 0
     for i in range(100):
-        total += t.CUInt64T(i)
+        total += uint64(i)
     # 0+1+2+...+99 = 4950
     testcheck.check(total == 4950, "u64 loop (total=4950)", "u64 loop (expect 4950)")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("LoopTest: 循环与控制流基准测试")
     test_for_loop()
     test_while_loop()

@@ -5,26 +5,26 @@ import c
 # Test: class with inline list[struct, N] field
 
 class Inner:
-    code: t.CUnsignedInt
-    bits: t.CInt
+    code: uint
+    bits: int
 
 class Container:
     items: t.CArray[Inner, 10]
-    count: t.CInt
+    count: int
 
     def __init__(self):
         self.count = 0
 
     def fill(self):
         for i in range(10):
-            self.items[i].code = t.CUnsignedInt(i * 100)
+            self.items[i].code = uint(i * 100)
             self.items[i].bits = i
             self.count += 1
 
     def check(self):
-        ok: t.CInt = 1
+        ok: int = 1
         for i in range(10):
-            if self.items[i].code != t.CUnsignedInt(i * 100):
+            if self.items[i].code != uint(i * 100):
                 stdio.printf("FAIL: items[%d].code=%u expect %d\n", i, self.items[i].code, i * 100)
                 ok = 0
             if self.items[i].bits != i:
@@ -35,7 +35,7 @@ class Container:
         else:
             stdio.printf("FAIL: inline list[struct, N] in Container\n")
 
-def inline_array_test() -> t.CInt:
+def inline_array_test() -> int:
     stdio.printf("=== InlineArrayTest ===\n")
     c1 = Container()
     c1.fill()

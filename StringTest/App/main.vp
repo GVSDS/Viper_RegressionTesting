@@ -6,74 +6,74 @@ import w32.win32memory
 
 def test_strlen():
     testcheck.section("Test 1: strlen")
-    s: t.CChar | t.CPtr = "Hello, World!"
-    length: t.CUInt64T = string.strlen(s)
+    s: char | t.CPtr = "Hello, World!"
+    length: uint64 = string.strlen(s)
     testcheck.check(length == 13, "strlen (len=13)", "strlen (expect 13)")
 
 def test_strcpy():
     testcheck.section("Test 2: strcpy")
-    buf: t.CChar | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
-    if t.CUInt64T(buf) == 0:
+    buf: char | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
     string.strcpy(buf, "test string")
-    cmp_result: t.CInt = string.strcmp(buf, "test string")
+    cmp_result: int = string.strcmp(buf, "test string")
     testcheck.check(cmp_result == 0, "strcpy (result=test string)", "strcpy (cmp mismatch)")
 
 def test_strcat():
     testcheck.section("Test 3: strcat (via memcpy)")
-    buf: t.CChar | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
-    if t.CUInt64T(buf) == 0:
+    buf: char | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
     # 手动拼接: 先拷贝 "Hello"，再拷贝 " World"
-    hello: t.CChar | t.CPtr = "Hello"
-    world: t.CChar | t.CPtr = " World"
+    hello: char | t.CPtr = "Hello"
+    world: char | t.CPtr = " World"
     string.memcpy(buf, hello, 5)
-    string.memcpy(t.CPtr(t.CUInt64T(buf) + 5), world, 6)
-    cmp_result: t.CInt = string.strcmp(buf, "Hello World")
+    string.memcpy(t.CPtr(uint64(buf) + 5), world, 6)
+    cmp_result: int = string.strcmp(buf, "Hello World")
     testcheck.check(cmp_result == 0, "strcat via memcpy", "strcat via memcpy (cmp mismatch)")
 
 def test_strcmp():
     testcheck.section("Test 4: strcmp")
-    r1: t.CInt = string.strcmp("abc", "abc")
-    r2: t.CInt = string.strcmp("abc", "abd")
-    r3: t.CInt = string.strcmp("abd", "abc")
+    r1: int = string.strcmp("abc", "abc")
+    r2: int = string.strcmp("abc", "abd")
+    r3: int = string.strcmp("abd", "abc")
     testcheck.check(r1 == 0 and r2 < 0 and r3 > 0, "strcmp (eq=0 lt<0 gt>0)", "strcmp (expect eq=0 lt<0 gt>0)")
 
 def test_strncpy():
     testcheck.section("Test 5: strncpy")
-    buf: t.CChar | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
-    if t.CUInt64T(buf) == 0:
+    buf: char | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
     string.strncpy(buf, "ABCDEFGHIJ", 5)
-    cmp_result: t.CInt = string.strcmp(buf, "ABCDE")
+    cmp_result: int = string.strcmp(buf, "ABCDE")
     testcheck.check(cmp_result == 0, "strncpy (result=ABCDE)", "strncpy (cmp mismatch)")
 
 def test_char_access():
     testcheck.section("Test 6: char access")
-    s: t.CChar | t.CPtr = "ABCDE"
-    val: t.CUInt8T = s[2]  # 'C' = 67
+    s: char | t.CPtr = "ABCDE"
+    val: uint8 = s[2]  # 'C' = 67
     testcheck.check(val == 67, "char access (s[2]=67='C')", "char access (s[2] expect 67)")
 
 def test_snprintf():
     testcheck.section("Test 7: snprintf")
-    buf: t.CChar | t.CPtr = w32.win32memory.VirtualAlloc(None, 128, 12288, 4)
-    if t.CUInt64T(buf) == 0:
+    buf: char | t.CPtr = w32.win32memory.VirtualAlloc(None, 128, 12288, 4)
+    if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 128)
     stdio.snprintf(buf, 128, "value=%d hex=0x%x str=%s", 42, 255, "test")
-    cmp_result: t.CInt = string.strcmp(buf, "value=42 hex=0xff str=test")
+    cmp_result: int = string.strcmp(buf, "value=42 hex=0xff str=test")
     testcheck.check(cmp_result == 0, "snprintf (result=value=42 hex=0xff str=test)", "snprintf (result mismatch)")
 
 import w32.win32memory
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("StringTest: 字符串操作基准测试")
     test_strlen()
     test_strcpy()

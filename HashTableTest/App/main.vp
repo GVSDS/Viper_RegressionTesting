@@ -26,7 +26,7 @@ def main() -> CInt | CExport:
     ht.set_int("alpha", 10)
     ht.set_int("beta", 20)
     ht.set_int("gamma", 30)
-    n: t.CSizeT = len(ht)
+    n: sizet = len(ht)
     stdio.printf("len=%lu\n", n)
     testcheck.check(n == 3, "ht len OK (3)", "ht len FAILED")
 
@@ -34,11 +34,11 @@ def main() -> CInt | CExport:
     # 须给出有元素类型的指针：c.Deref 的宽度只认 pointee 类型，i8*（t.CPtr）恒读
     # 1 字节，不再按赋值目标注解反推 4 字节。
     p1: t.CPtr = ht["alpha"]
-    v1: int = c.Deref((int | t.CPtr)(p1))
+    v1: int = *(int | t.CPtr)(p1)
     p2: t.CPtr = ht["beta"]
-    v2: int = c.Deref((int | t.CPtr)(p2))
+    v2: int = *(int | t.CPtr)(p2)
     p3: t.CPtr = ht["gamma"]
-    v3: int = c.Deref((int | t.CPtr)(p3))
+    v3: int = *(int | t.CPtr)(p3)
     stdio.printf("alpha=%d beta=%d gamma=%d\n", v1, v2, v3)
     testcheck.check(v1 == 10, "ht[alpha]==10 OK", "ht[alpha] FAILED")
     testcheck.check(v2 == 20, "ht[beta]==20 OK", "ht[beta] FAILED")
@@ -48,7 +48,7 @@ def main() -> CInt | CExport:
     testcheck.section("Test 2: 更新已有键")
     ht.set_int("beta", 99)
     p2b: t.CPtr = ht["beta"]
-    v2b: int = c.Deref((int | t.CPtr)(p2b))
+    v2b: int = *(int | t.CPtr)(p2b)
     stdio.printf("beta(updated)=%d\n", v2b)
     testcheck.check(v2b == 99, "ht update OK", "ht update FAILED")
     testcheck.check(len(ht) == 3, "ht len still 3 OK", "ht len changed FAILED")
@@ -58,36 +58,36 @@ def main() -> CInt | CExport:
     gv: t.CPtr = ht.get("missing", None)
     testcheck.check(gv == None, "ht get missing OK (None)", "ht get missing FAILED")
     gp: t.CPtr = ht.get("alpha", None)
-    ga: int = c.Deref((int | t.CPtr)(gp))
+    ga: int = *(int | t.CPtr)(gp)
     stdio.printf("get(alpha)=%d\n", ga)
     testcheck.check(ga == 10, "ht get existing OK", "ht get existing FAILED")
 
     # === Test 4: contains ===
     testcheck.section("Test 4: contains (in)")
-    has_alpha: t.CInt = "alpha" in ht
-    has_missing: t.CInt = "missing" in ht
+    has_alpha: int = "alpha" in ht
+    has_missing: int = "missing" in ht
     stdio.printf("contains(alpha)=%d contains(missing)=%d\n", has_alpha, has_missing)
     testcheck.check(has_alpha == 1, "contains alpha OK", "contains alpha FAILED")
     testcheck.check(has_missing == 0, "not contains missing OK", "contains missing FAILED")
 
     # === Test 5: 删除 ===
     testcheck.section("Test 5: 删除 (del)")
-    deleted: t.CInt = ht.__delitem__("beta")
+    deleted: int = ht.__delitem__("beta")
     stdio.printf("del beta=%d\n", deleted)
     testcheck.check(deleted == 1, "del beta OK", "del beta FAILED")
     testcheck.check(len(ht) == 2, "ht len 2 after del OK", "ht len after del FAILED")
-    has_beta: t.CInt = "beta" in ht
+    has_beta: int = "beta" in ht
     testcheck.check(has_beta == 0, "beta gone OK", "beta still exists FAILED")
 
     # 删除不存在的 key
-    del_missing: t.CInt = ht.__delitem__("nokey")
+    del_missing: int = ht.__delitem__("nokey")
     testcheck.check(del_missing == 0, "del missing returns 0 OK", "del missing FAILED")
 
     # === Test 6: 删除后重新插入 ===
     testcheck.section("Test 6: 删除后重新插入")
     ht.set_int("beta", 555)
     p2c: t.CPtr = ht["beta"]
-    v2c: int = c.Deref((int | t.CPtr)(p2c))
+    v2c: int = *(int | t.CPtr)(p2c)
     stdio.printf("beta(re-inserted)=%d\n", v2c)
     testcheck.check(v2c == 555, "ht re-insert beta OK", "ht re-insert beta FAILED")
     testcheck.check(len(ht) == 3, "ht len 3 after re-insert OK", "ht len after re-insert FAILED")
@@ -97,7 +97,7 @@ def main() -> CInt | CExport:
     iter_count: int = 0
     for key in ht:
         kp: t.CPtr = ht[key]
-        val: int = c.Deref((int | t.CPtr)(kp))
+        val: int = *(int | t.CPtr)(kp)
         stdio.printf("ht[%s]=%d\n", key, val)
         iter_count += 1
     testcheck.check(iter_count == 3, "ht iter OK (3)", "ht iter FAILED")
@@ -108,7 +108,7 @@ def main() -> CInt | CExport:
     ht2.set_str("name", "Alice")
     ht2.set_str("city", "Beijing")
     ht2.set_str("lang", "TransPyC")
-    n2: t.CSizeT = len(ht2)
+    n2: sizet = len(ht2)
     stdio.printf("ht2 len=%lu\n", n2)
     testcheck.check(n2 == 3, "ht set_str len OK (3)", "ht set_str len FAILED")
 
@@ -133,7 +133,7 @@ def main() -> CInt | CExport:
         stdio.sprintf(key_buf, "key%d", i)
         ht3.set_int(key_buf, i * 100)
         i += 1
-    n3: t.CSizeT = len(ht3)
+    n3: sizet = len(ht3)
     stdio.printf("ht3 len=%lu (after 50 inserts)\n", n3)
     testcheck.check(n3 == 50, "ht expand OK (50)", "ht expand FAILED")
 
@@ -141,21 +141,21 @@ def main() -> CInt | CExport:
     k5: str = stdlib.malloc(16)
     stdio.sprintf(k5, "key5")
     p5: t.CPtr = ht3[k5]
-    v5: int = c.Deref((int | t.CPtr)(p5))
+    v5: int = *(int | t.CPtr)(p5)
     stdio.printf("ht3[key5]=%d\n", v5)
     testcheck.check(v5 == 500, "ht expand key5 OK", "ht expand key5 FAILED")
 
     k25: str = stdlib.malloc(16)
     stdio.sprintf(k25, "key25")
     p25: t.CPtr = ht3[k25]
-    v25: int = c.Deref((int | t.CPtr)(p25))
+    v25: int = *(int | t.CPtr)(p25)
     stdio.printf("ht3[key25]=%d\n", v25)
     testcheck.check(v25 == 2500, "ht expand key25 OK", "ht expand key25 FAILED")
 
     k49: str = stdlib.malloc(16)
     stdio.sprintf(k49, "key49")
     p49: t.CPtr = ht3[k49]
-    v49: int = c.Deref((int | t.CPtr)(p49))
+    v49: int = *(int | t.CPtr)(p49)
     stdio.printf("ht3[key49]=%d\n", v49)
     testcheck.check(v49 == 4900, "ht expand key49 OK", "ht expand key49 FAILED")
 
@@ -175,7 +175,7 @@ def main() -> CInt | CExport:
         stdio.sprintf(del_buf, "key%d", j)
         del ht3[del_buf]
         j += 1
-    n3b: t.CSizeT = len(ht3)
+    n3b: sizet = len(ht3)
     stdio.printf("ht3 len=%lu (after 25 deletes)\n", n3b)
     testcheck.check(n3b == 25, "ht after del OK (25)", "ht after del FAILED")
 
@@ -183,14 +183,14 @@ def main() -> CInt | CExport:
     k30: str = stdlib.malloc(16)
     stdio.sprintf(k30, "key30")
     p30: t.CPtr = ht3[k30]
-    v30: int = c.Deref((int | t.CPtr)(p30))
+    v30: int = *(int | t.CPtr)(p30)
     stdio.printf("ht3[key30]=%d\n", v30)
     testcheck.check(v30 == 3000, "ht key30 after del OK", "ht key30 after del FAILED")
 
     # 验证已删除的 key 不存在
     k0: str = stdlib.malloc(16)
     stdio.sprintf(k0, "key0")
-    has_k0: t.CInt = k0 in ht3
+    has_k0: int = k0 in ht3
     testcheck.check(has_k0 == 0, "ht key0 deleted OK", "ht key0 still exists FAILED")
 
     # === Test 12: 空表操作 ===
@@ -199,7 +199,7 @@ def main() -> CInt | CExport:
     testcheck.check(len(ht4) == 0, "empty ht len 0 OK", "empty ht len FAILED")
     empty_get: t.CPtr = ht4.get("none", None)
     testcheck.check(empty_get == None, "empty ht get OK", "empty ht get FAILED")
-    has_none: t.CInt = "none" in ht4
+    has_none: int = "none" in ht4
     testcheck.check(has_none == 0, "empty ht contains OK", "empty ht contains FAILED")
     empty_iter: int = 0
     for ek in ht4:

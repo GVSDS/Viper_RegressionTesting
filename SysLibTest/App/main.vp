@@ -15,7 +15,7 @@ import syslibtest_impl
 
 
 # MBuddy arena 大小：1MB
-ARENA_SIZE: t.CDefine = 1048576
+define ARENA_SIZE = 1048576
 
 
 def main() -> CInt | CExport:

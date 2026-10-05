@@ -19,18 +19,18 @@ import vthreading
 # ============================================================
 # 共享状态（模块级全局，跨线程读写）
 # ============================================================
-_shared_count: t.CInt = 0      # Lock 并发测试共享计数器
-_evt_done: t.CInt = 0          # Event 测试完成标志
-_cond_ready: t.CInt = 0        # Condition 测试就绪标志
-_rw_value: t.CInt = 0          # RWLock 测试共享值
-_main_tid: t.CUInt32T = 0      # 主线程 ID
+_shared_count: int = 0      # Lock 并发测试共享计数器
+_evt_done: int = 0          # Event 测试完成标志
+_cond_ready: int = 0        # Condition 测试就绪标志
+_rw_value: int = 0          # RWLock 测试共享值
+_main_tid: uint32 = 0      # 主线程 ID
 
 # 并发规模常量
-THREAD_NUM: t.CInt = 4
-LOCK_ITER: t.CInt = 1000
-RW_ITER: t.CInt = 100
-TLS_NUM: t.CInt = 4
-SYS_ITER: t.CInt = 10
+THREAD_NUM: int = 4
+LOCK_ITER: int = 1000
+RW_ITER: int = 100
+TLS_NUM: int = 4
+SYS_ITER: int = 10
 
 
 # ============================================================
@@ -45,10 +45,10 @@ def _basic_worker(arg: t.CPtr) -> t.CPtr:
 
 # 传参: 通过 arg 指针自增 100 次（c.Deref/c.DerefAs 读写）
 def _increment_worker(arg: t.CPtr) -> t.CPtr:
-    ip: t.CInt | t.CPtr = (t.CInt | t.CPtr)(arg)
-    i: t.CInt
+    ip: int | t.CPtr = (int | t.CPtr)(arg)
+    i: int
     for i in range(100):
-        c.DerefAs(ip, c.Deref(ip) + 1)
+        c.DerefAs(ip, *ip + 1)
     return NULL
 
 
@@ -67,7 +67,7 @@ def _lock_worker(arg: t.CPtr) -> t.CPtr:
 def _event_worker(arg: t.CPtr) -> t.CPtr:
     ev: vthreading.Event | t.CPtr = (vthreading.Event | t.CPtr)(arg)
     global _evt_done
-    r: t.CInt = ev.wait(5000)
+    r: int = ev.wait(5000)
     if r == 1:
         _evt_done = 1
     return NULL
@@ -77,7 +77,7 @@ def _event_worker(arg: t.CPtr) -> t.CPtr:
 def _cond_consumer(arg: t.CPtr) -> t.CPtr:
     cond: vthreading.Condition | t.CPtr = (vthreading.Condition | t.CPtr)(arg)
     global _cond_ready
-    tries: t.CInt = 0
+    tries: int = 0
     cond.acquire()
     while _cond_ready == 0 and tries < 100:
         cond.wait(100)
@@ -102,10 +102,10 @@ def _cond_producer(arg: t.CPtr) -> t.CPtr:
 def _rw_reader(arg: t.CPtr) -> t.CPtr:
     rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
     global _rw_value
-    i: t.CInt
+    i: int
     for i in range(RW_ITER * 10):
         rwl.acquire_read()
-        v: t.CInt = _rw_value
+        v: int = _rw_value
         rwl.release_read()
     return NULL
 
@@ -114,7 +114,7 @@ def _rw_reader(arg: t.CPtr) -> t.CPtr:
 def _rw_writer(arg: t.CPtr) -> t.CPtr:
     rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
     global _rw_value
-    i: t.CInt
+    i: int
     for i in range(RW_ITER):
         rwl.acquire_write()
         _rw_value += 1
@@ -125,38 +125,38 @@ def _rw_writer(arg: t.CPtr) -> t.CPtr:
 # TLS: 每线程 set/get 自校验（存入自身线程 ID 再读回比对）
 def _tls_worker(arg: t.CPtr) -> t.CPtr:
     tls: vthreading.local = vthreading.local()
-    tls.set(t.CPtr(t.CUInt64T(vthreading.get_current_thread_id())))
-    tid_val: t.CUInt64T = t.CUInt64T(tls.get())
-    ok: t.CInt = 0
-    if tid_val == t.CUInt64T(vthreading.get_current_thread_id()):
+    tls.set(t.CPtr(uint64(vthreading.get_current_thread_id())))
+    tid_val: uint64 = uint64(tls.get())
+    ok: int = 0
+    if tid_val == uint64(vthreading.get_current_thread_id()):
         ok = 1
     tls.free()
-    return t.CPtr(t.CUInt64T(ok))
+    return t.CPtr(uint64(ok))
 
 
 # 线程 ID 隔离: 工作线程 ID 必须与主线程不同
 def _tid_worker(arg: t.CPtr) -> t.CPtr:
     global _main_tid
     if vthreading.get_current_thread_id() == _main_tid:
-        return t.CPtr(t.CUInt64T(0))
-    return t.CPtr(t.CUInt64T(1))
+        return t.CPtr(uint64(0))
+    return t.CPtr(uint64(1))
 
 
 # stdlib.system 多线程并发: 每线程循环调 C 运行时 system()，统计失败次数
 def _system_worker(arg: t.CPtr) -> t.CPtr:
-    i: t.CInt
-    fails: t.CInt = 0
+    i: int
+    fails: int = 0
     for i in range(SYS_ITER):
-        r: t.CInt = stdlib.system("echo ok > NUL")
+        r: int = stdlib.system("echo ok > NUL")
         if r != 0:
             fails += 1
-    return t.CPtr(t.CUInt64T(fails))
+    return t.CPtr(uint64(fails))
 
 
 # ============================================================
 # main
 # ============================================================
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("ThreadingTest: vthreading 专项测试")
 
     # ========== Thread: start/join/is_alive/get_exit_code ==========
@@ -172,8 +172,8 @@ def main() -> t.CInt | t.CExport:
 
     # ========== Thread: 通过 arg 传参 ==========
     testcheck.section("Thread: arg 传参")
-    cnt: t.CInt = 0
-    th2: vthreading.Thread = vthreading.Thread(_increment_worker, c.Addr(cnt))
+    cnt: int = 0
+    th2: vthreading.Thread = vthreading.Thread(_increment_worker, &cnt)
     th2.start()
     testcheck.check(th2.join(5000) != FALSE, "join 正常返回", "join 超时")
     th2.close()
@@ -190,10 +190,10 @@ def main() -> t.CInt | t.CExport:
     t1.start()
     t2.start()
     t3.start()
-    j0: t.CInt = t0.join(10000)
-    j1: t.CInt = t1.join(10000)
-    j2: t.CInt = t2.join(10000)
-    j3: t.CInt = t3.join(10000)
+    j0: int = t0.join(10000)
+    j1: int = t1.join(10000)
+    j2: int = t2.join(10000)
+    j3: int = t3.join(10000)
     t0.close()
     t1.close()
     t2.close()
@@ -247,7 +247,7 @@ def main() -> t.CInt | t.CExport:
 
     # ========== local: TLS 线程局部存储 ==========
     testcheck.section("local: TLS 线程局部存储")
-    i_t: t.CInt
+    i_t: int
     for i_t in range(TLS_NUM):
         th_t: vthreading.Thread = vthreading.Thread(_tls_worker, NULL)
         th_t.start()

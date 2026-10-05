@@ -14,7 +14,7 @@ import stdlib
 # 从 LinkedNode* 取回 Node* 需显式向下转型：(Node | t.CPtr)(ptr)
 # ============================================================
 class Node(linkedlist.LinkedNode):
-    value: t.CInt
+    value: int
 
 
 # ============================================================
@@ -167,13 +167,13 @@ def test_insert_ops():
     root.insert_after(a, d)    # [1, 4, 2, 3] 在 a 后插入 d
     # 遍历验证顺序
     cur: Node | t.CPtr = (Node | t.CPtr)(root.child)
-    v0: t.CInt = cur.value
+    v0: int = cur.value
     cur = (Node | t.CPtr)(cur.next)
-    v1: t.CInt = cur.value
+    v1: int = cur.value
     cur = (Node | t.CPtr)(cur.next)
-    v2: t.CInt = cur.value
+    v2: int = cur.value
     cur = (Node | t.CPtr)(cur.next)
-    v3: t.CInt = cur.value
+    v3: int = cur.value
     testcheck.check(v0 == 1 and v1 == 4 and v2 == 2 and v3 == 3,
                     "order 1,4,2,3",
                     "insert order fail")
@@ -223,7 +223,7 @@ def test_index_access():
                     "child_at(5)=None",
                     "child_at 5 fail")
     # count_children
-    cc: t.CSizeT = root.count_children()
+    cc: sizet = root.count_children()
     testcheck.check(cc == 5,
                     "count_children=5",
                     "count_children fail")
@@ -291,7 +291,7 @@ def test_unlink():
 # 测试 10：SListNode 单向链表（OOP 方法）
 # ============================================================
 class SNode(linkedlist.SListNode):
-    value: t.CInt
+    value: int
 
 
 def test_slist():
@@ -358,7 +358,7 @@ def test_slist():
 def test_sprintf_vararg():
     testcheck.section("Test 11: viperlib.sprintf *args forwarding")
     # 测试 %d 单参数
-    buf: t.CChar | t.CPtr = stdlib.malloc(32)
+    buf: char | t.CPtr = stdlib.malloc(32)
     if buf is None: return
     buf[0] = 0
     viperlib.sprintf(buf, "key%d", 42)
@@ -366,7 +366,7 @@ def test_sprintf_vararg():
                     "sprintf key42",
                     "sprintf key%d fail")
     # 测试无参数
-    buf2: t.CChar | t.CPtr = stdlib.malloc(32)
+    buf2: char | t.CPtr = stdlib.malloc(32)
     if buf2 is None: return
     buf2[0] = 0
     viperlib.sprintf(buf2, "hello")
@@ -374,7 +374,7 @@ def test_sprintf_vararg():
                     "sprintf hello",
                     "sprintf no-arg fail")
     # 测试多参数
-    buf3: t.CChar | t.CPtr = stdlib.malloc(32)
+    buf3: char | t.CPtr = stdlib.malloc(32)
     if buf3 is None: return
     buf3[0] = 0
     viperlib.sprintf(buf3, "%d+%d=%d", 1, 2, 3)
@@ -401,7 +401,7 @@ novirtual class GSListNode[T]:
 novirtual class GSList[T]:
     Head: T | t.CPtr
     Tail: T | t.CPtr
-    Count: t.CSizeT
+    Count: sizet
 
     def __init__(self):
         self.Head = None
@@ -418,13 +418,13 @@ novirtual class GSList[T]:
         self.Tail = node
         self.Count += 1
 
-    def count(self) -> t.CSizeT:
+    def count(self) -> sizet:
         return self.Count
 
-    def at(self, index: t.CSizeT) -> T | t.CPtr:
+    def at(self, index: sizet) -> T | t.CPtr:
         if self.Head is None: return None
         cur: T | t.CPtr = self.Head
-        i: t.CSizeT = 0
+        i: sizet = 0
         while cur is not None:
             if i == index: return cur
             i += 1
@@ -433,7 +433,7 @@ novirtual class GSList[T]:
 
 
 class GNode(GSListNode[GNode]):
-    Value: t.CInt
+    Value: int
 
 
 def test_generic_slist():
@@ -489,7 +489,7 @@ def test_generic_slist():
                     "a2.Next fail")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("NoVTableTest: linkedlist 库（@t.NoVTable OOP 方法 + 字段展平继承）")
     test_append()
     test_prev_link()

@@ -19,37 +19,37 @@ def main() -> int:
     # ---------- 默认精度（核心正确性） ----------
     testcheck.section("default precision")
 
-    v1: t.CDouble = 1.0
+    v1: double = 1.0
     viperlib.snprintf(buf, 64, "%a", v1)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x1p+0") == 0, "%a 1.0 -> 0x1p+0", "FAIL 1.0")
 
-    v2: t.CDouble = 2.0
+    v2: double = 2.0
     viperlib.snprintf(buf, 64, "%a", v2)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x1p+1") == 0, "%a 2.0 -> 0x1p+1", "FAIL 2.0")
 
-    v_half: t.CDouble = 0.5
+    v_half: double = 0.5
     viperlib.snprintf(buf, 64, "%a", v_half)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x1p-1") == 0, "%a 0.5 -> 0x1p-1", "FAIL 0.5")
 
-    v3: t.CDouble = 3.0
+    v3: double = 3.0
     viperlib.snprintf(buf, 64, "%a", v3)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x1.8p+1") == 0, "%a 3.0 -> 0x1.8p+1", "FAIL 3.0")
 
-    v_pi: t.CDouble = 3.14
+    v_pi: double = 3.14
     viperlib.snprintf(buf, 64, "%a", v_pi)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x1.91eb851eb851fp+1") == 0, "%a 3.14 -> 0x1.91eb851eb851fp+1", "FAIL 3.14")
 
-    v0: t.CDouble = 0.0
+    v0: double = 0.0
     viperlib.snprintf(buf, 64, "%a", v0)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "0x0p+0") == 0, "%a 0.0 -> 0x0p+0", "FAIL 0.0")
 
-    vn1: t.CDouble = -1.0
+    vn1: double = -1.0
     viperlib.snprintf(buf, 64, "%a", vn1)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "-0x1p+0") == 0, "%a -1.0 -> -0x1p+0", "FAIL -1.0")
@@ -92,25 +92,25 @@ def main() -> int:
     testcheck.section("inf/nan")
 
     # 构造 +inf: bit pattern 0x7FF0000000000000
-    inf_bits: t.CUInt64T = 0x7FF0000000000000
-    inf_val: t.CDouble = 0.0
-    c.Load(c.Addr(inf_val), c.Addr(inf_bits))
+    inf_bits: uint64 = 0x7FF0000000000000
+    inf_val: double = 0.0
+    *(&inf_val) = *(&inf_bits)
     viperlib.snprintf(buf, 64, "%a", inf_val)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "inf") == 0, "%a +inf -> inf", "FAIL +inf")
 
     # 构造 -inf: bit pattern 0xFFF0000000000000
-    ninf_bits: t.CUInt64T = 0xFFF0000000000000
-    ninf_val: t.CDouble = 0.0
-    c.Load(c.Addr(ninf_val), c.Addr(ninf_bits))
+    ninf_bits: uint64 = 0xFFF0000000000000
+    ninf_val: double = 0.0
+    *(&ninf_val) = *(&ninf_bits)
     viperlib.snprintf(buf, 64, "%a", ninf_val)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "-inf") == 0, "%a -inf -> -inf", "FAIL -inf")
 
     # 构造 nan: bit pattern 0x7FF8000000000000
-    nan_bits: t.CUInt64T = 0x7FF8000000000000
-    nan_val: t.CDouble = 0.0
-    c.Load(c.Addr(nan_val), c.Addr(nan_bits))
+    nan_bits: uint64 = 0x7FF8000000000000
+    nan_val: double = 0.0
+    *(&nan_val) = *(&nan_bits)
     viperlib.snprintf(buf, 64, "%a", nan_val)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "nan") == 0, "%a nan -> nan", "FAIL nan")
@@ -127,8 +127,8 @@ def main() -> int:
     # ============================================================
     testcheck.section("viperlib %g bug diagnosis")
 
-    v_pi17: t.CDouble = 3.1415926535897931
-    v_e17: t.CDouble = 2.7182818284590455
+    v_pi17: double = 3.1415926535897931
+    v_e17: double = 2.7182818284590455
 
     # T1: 同一参数 %.17g vs %a（复现；%a 对则说明值本身正确）
     viperlib.snprintf(buf, 128, "T1 %.17g|%a", v_pi17, v_pi17)
@@ -182,9 +182,9 @@ def main() -> int:
     testcheck.check(string.strcmp(buf, "R1 1024|4096|255") == 0, "R1 3-const-int (1024|4096|255)", "R1 FAIL (第2变参被误读)")
 
     # R2: 3 个运行时变量 int（排除常量折叠差异）
-    ia: t.CInt = 1024
-    ib: t.CInt = 4096
-    ic: t.CInt = 255
+    ia: int = 1024
+    ib: int = 4096
+    ic: int = 255
     viperlib.snprintf(buf, 128, "R2 %d|%d|%d", ia, ib, ic)
     testcheck.info(buf)
     testcheck.check(string.strcmp(buf, "R2 1024|4096|255") == 0, "R2 3-var-int (1024|4096|255)", "R2 FAIL (第2变参被误读)")

@@ -68,7 +68,7 @@ extern def ProbeCoordByVal(dwSize: w32console.COORD) -> BOOL
 # 全局小整型先例：ViperApps/ViperOS/VKernel/Kernel/services/desktop.vp:62
 #                  （_cursor_buttons: uint8 = 0）
 # ============================================================
-U8Sink: t.CUInt8T = 0
+U8Sink: uint8 = 0
 
 
 # ============================================================
@@ -78,7 +78,7 @@ U8Sink: t.CUInt8T = 0
 #   def ord(s: t.CChar) -> int:
 #       return s
 # ============================================================
-def ProbeOrd(s: t.CChar) -> int:
+def ProbeOrd(s: char) -> int:
     return s
 
 
@@ -104,9 +104,9 @@ def ProbeMin(a: double, b: double) -> double:
 # 局部值落全局（global 声明 + 赋值）先例：
 #   Test/ArgparseTest/App/main.vp:17（global _mbuddy）→ :26（_mbuddy = ...）
 # ============================================================
-def ProbeU8Literal() -> t.CUInt8T:
+def ProbeU8Literal() -> uint8:
     global U8Sink
-    result: t.CUInt8T = 1
+    result: uint8 = 1
     U8Sink = result
     return result
 
@@ -128,7 +128,7 @@ def ProbeU8Literal() -> t.CUInt8T:
 #   （class Translator: def __init__(self): ...；实例化 TransPyV/App/main.vp:471）
 # ============================================================
 class Box:
-    p: t.CChar | t.CPtr
+    p: char | t.CPtr
 
     def __init__(self):
         self.p = None
@@ -151,7 +151,7 @@ class Box:
 # ============================================================
 @t.CExport
 def main() -> int:
-    Ch: t.CChar = 'A'
+    Ch: char = 'A'
     BoxInst: Box = Box()
     BoxInst.Clear()
     ProbeOrd(Ch)

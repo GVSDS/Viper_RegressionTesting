@@ -38,15 +38,15 @@ def test_value_struct_fields():
     node.IntVal = 42
     node.FloatVal = 3.14
     # 读取验证
-    v: t.CInt = node.IntVal
+    v: int = node.IntVal
     testcheck.check(v == 42, "Value.IntVal = 42", "expect 42")
-    f: t.CDouble = node.FloatVal
+    f: double = node.FloatVal
     testcheck.check(f > 3.0 and f < 4.0, "Value.FloatVal = 3.14", "expect ~3.14")
-    c: t.CInt = node.IsConst
+    c: int = node.IsConst
     testcheck.check(c == 1, "Value.IsConst = 1", "expect 1")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("G7: Minimal repro - class name 'Value' conflicts with variable")
     test_value_struct_fields()
     return testcheck.end()

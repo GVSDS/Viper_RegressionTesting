@@ -4,10 +4,10 @@ import t, c
 import testcheck
 
 
-def add_inline(a: t.CInt, b: t.CInt) -> t.CDefine:
+def add_inline(a: int, b: int) -> t.CDefine:
     return a + b
 
-def mul_inline(a: t.CInt, b: t.CInt) -> t.CDefine:
+def mul_inline(a: int, b: int) -> t.CDefine:
     return a * b
 
 
@@ -34,7 +34,7 @@ def raise_timeout():
 	raise TimeoutError("operation timed out")
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 
@@ -136,23 +136,23 @@ def main() -> t.CInt | t.CExport:
         testcheck.fail("Test 10: caught by generic except")
 
     testcheck.section("Test LLVMIR: inline LLVM IR add")
-    x: t.CInt = 10
-    y: t.CInt = 20
-    r: t.CInt
+    x: int = 10
+    y: int = 20
+    r: int
     c.LLVMIR(f"{c.LOut(r)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
     print("LLVMIR add result:", r)
     testcheck.check(r == 30, "LLVMIR add (10+20=30)", "LLVMIR add result mismatch")
 
     testcheck.section("Test CDefine function macro")
-    s: t.CInt = add_inline(3, 4)
+    s: int = add_inline(3, 4)
     print("add_inline(3, 4) =", s)
     testcheck.check(s == 7, "add_inline(3, 4) = 7", "add_inline result mismatch")
-    m: t.CInt = mul_inline(5, 6)
+    m: int = mul_inline(5, 6)
     print("mul_inline(5, 6) =", m)
     testcheck.check(m == 30, "mul_inline(5, 6) = 30", "mul_inline result mismatch")
 
     testcheck.section("Test LLVMIR with LOut")
-    out_val: t.CInt = 0
+    out_val: int = 0
     c.LLVMIR(f"{c.LOut(out_val)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
     print("LLVMIR LOut result:", out_val)
     testcheck.check(out_val == 30, "LLVMIR LOut (10+20=30)", "LLVMIR LOut result mismatch")

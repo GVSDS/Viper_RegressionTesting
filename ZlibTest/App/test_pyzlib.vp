@@ -9,9 +9,9 @@ import string
 import t, c
 
 
-test_passed: t.CInt = 0
-test_failed: t.CInt = 0
-def check(name: str, condition: t.CInt, detail: str):
+test_passed: int = 0
+test_failed: int = 0
+def check(name: str, condition: int, detail: str):
     global test_passed, test_failed
     if condition:
         test_passed += 1
@@ -20,12 +20,12 @@ def check(name: str, condition: t.CInt, detail: str):
         test_failed += 1
         printf("  [FAIL] %s  -- %s\n", name, detail if detail else "")
 
-def print_hex_test(data: BYTEPTR, length: t.CSizeT, max_show: t.CSizeT):
+def print_hex_test(data: BYTEPTR, length: sizet, max_show: sizet):
     if not data or length == 0:
         printf("(empty)\n")
         return
-    show: t.CSizeT = max_show if (length > max_show) else length
-    i: t.CSizeT
+    show: sizet = max_show if (length > max_show) else length
+    i: sizet
     for i in range(show):
         printf("%02X ", data[i])
     if length > max_show:
@@ -63,28 +63,28 @@ def test_compress_decompress():
     section_header("compress / decompress")
 
     inp: str = "Hello, World! This is a test of zlib compression and decompression."
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input (%zu bytes): \"%s\"\n", input_length, inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     check("compress returns non-None", compressed != None, "compress returned None")
     check("compress output size > 0", out_length > 0, "compressed size is 0")
     check("compress output produced", out_length > 0, "compressed size is 0")
 
     printf("  Compressed (%zu bytes): ", out_length)
     print_hex_test(compressed, out_length, 32)
-    printf("  Compression ratio: %.1f%%\n", t.CDouble(out_length) / input_length * 100)
+    printf("  Compression ratio: %.1f%%\n", double(out_length) / input_length * 100)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     decompressed: BYTEPTR = pyzlib.decompress(None, compressed, out_length,
-                                                   pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+                                                   pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, &dec_length)
     check("decompress returns non-None", decompressed != None, "decompress returned None")
     check("decompress output size matches input", dec_length == input_length, "size mismatch")
     check("decompress output matches input", decompressed != None and string.memcmp(decompressed, inp, input_length) == 0, "content mismatch")
 
-    printf("  Decompressed (%zu bytes): \"%.*s\"\n", dec_length, t.CInt(dec_length), str(decompressed))
+    printf("  Decompressed (%zu bytes): \"%.*s\"\n", dec_length, int(dec_length), str(decompressed))
 
     stdlib.free(compressed)
     stdlib.free(decompressed)
@@ -95,35 +95,35 @@ def test_compress_levels():
     section_header("Compression Levels")
 
     inp: str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input (%zu bytes): \"%s\"\n", input_length, inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
 
     c0: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                       pyzlib.Z_NO_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                       pyzlib.Z_NO_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     check("level 0 compress OK", c0 != None, "level 0 returned None")
     printf("  Level 0 (Z_NO_COMPRESSION): %zu bytes\n", out_length)
-    length0: t.CSizeT = out_length
+    length0: sizet = out_length
     stdlib.free(c0)
 
     c1: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                       pyzlib.Z_BEST_SPEED, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                       pyzlib.Z_BEST_SPEED, pyzlib.MAX_WBITS, &out_length)
     check("level 1 compress OK", c1 != None, "level 1 returned None")
     printf("  Level 1 (Z_BEST_SPEED)    : %zu bytes\n", out_length)
     stdlib.free(c1)
 
     c6: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                       pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                       pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     check("level -1 compress OK", c6 != None, "default level returned None")
     printf("  Level -1 (DEFAULT)        : %zu bytes\n", out_length)
     stdlib.free(c6)
 
     c9: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                       pyzlib.Z_BEST_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                       pyzlib.Z_BEST_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     check("level 9 compress OK", c9 != None, "level 9 returned None")
     printf("  Level 9 (Z_BEST_COMPRESS) : %zu bytes\n", out_length)
-    length9: t.CSizeT = out_length
+    length9: sizet = out_length
     stdlib.free(c9)
 
     check("level 9 smaller than level 0", length9 < length0, "level 9 not smaller than level 0")
@@ -139,7 +139,7 @@ def test_compressobj():
     printf("  Part 1: \"%s\"\n", part1)
     printf("  Part 2: \"%s\"\n", part2)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
 
     s: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                          pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
@@ -147,11 +147,11 @@ def test_compressobj():
     check("compressobj created", s != None, "compressobj is None")
     print_separator()
 
-    c1: BYTEPTR = s.compress(BYTEPTR(part1), strlen(part1), c.Addr(out_length))
+    c1: BYTEPTR = s.compress(BYTEPTR(part1), strlen(part1), &out_length)
     check("compress part1 OK", c1 != None, "compress part1 failed")
     printf("  Compressed part1: %zu bytes  -> ", out_length)
     print_hex_test(c1, out_length, 16)
-    total: t.CSizeT = out_length
+    total: sizet = out_length
     all: BYTEPTR = None
     if out_length > 0 and c1:
         all = BYTEPTR(stdlib.malloc(total))
@@ -159,7 +159,7 @@ def test_compressobj():
     stdlib.free(c1)
 
     c2: BYTEPTR = s.compress(BYTEPTR(part2),
-                                                strlen(part2), c.Addr(out_length))
+                                                strlen(part2), &out_length)
     check("compress part2 OK", c2 != None, "compress part2 failed")
     printf("  Compressed part2: %zu bytes  -> ", out_length)
     print_hex_test(c2, out_length, 16)
@@ -171,7 +171,7 @@ def test_compressobj():
             total += out_length
     stdlib.free(c2)
 
-    c3: BYTEPTR = s.flush(pyzlib.Z_FINISH, c.Addr(out_length))
+    c3: BYTEPTR = s.flush(pyzlib.Z_FINISH, &out_length)
     check("flush (Z_FINISH) OK", c3 != None, "flush failed")
     printf("  Flush result    : %zu bytes  -> ", out_length)
     print_hex_test(c3, out_length, 16)
@@ -186,14 +186,14 @@ def test_compressobj():
     print_separator()
 
     if all:
-        dec_length: t.CSizeT = 0
-        dec: BYTEPTR = pyzlib.decompress(None, all, total, pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+        dec_length: sizet = 0
+        dec: BYTEPTR = pyzlib.decompress(None, all, total, pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, &dec_length)
         check("decompress incremental OK", dec != None, "decompress returned None")
         check("decompress incremental size", dec != None and dec_length == strlen(part1) + strlen(part2), "size mismatch")
         check("decompress incremental content",
               dec != None and string.memcmp(dec, "Hello, World!", dec_length) == 0, "content mismatch")
         if dec:
-            printf("  Decompressed: \"%.*s\" (%zu bytes)\n", t.CInt(dec_length), str(dec), dec_length)
+            printf("  Decompressed: \"%.*s\" (%zu bytes)\n", int(dec_length), str(dec), dec_length)
         stdlib.free(dec)
         stdlib.free(all)
 
@@ -204,12 +204,12 @@ def test_decompressobj():
     section_header("decompressobj")
 
     inp: str = "Test data for decompress object."
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input (%zu bytes): \"%s\"\n", input_length, inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
     d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
@@ -217,16 +217,16 @@ def test_decompressobj():
     check("eof is false initially", d.eof == 0, "eof should be 0")
     print_separator()
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     dec: BYTEPTR = d.decompress(compressed, out_length,
-                                                0, c.Addr(dec_length))
+                                                0, &dec_length)
     check("decompress OK", dec != None, "decompress returned None")
     check("decompress size", dec != None and dec_length == input_length, "size mismatch")
     check("decompress content", dec != None and string.memcmp(dec, inp, input_length) == 0, "content mismatch")
     check("eof is true after stream end", d.eof == 1, "eof should be 1")
 
     if dec:
-        printf("  Decompressed (%zu bytes): \"%.*s\"\n", dec_length, t.CInt(dec_length), str(dec))
+        printf("  Decompressed (%zu bytes): \"%.*s\"\n", dec_length, int(dec_length), str(dec))
     printf("  eof = %d\n", d.eof)
 
     stdlib.free(dec)
@@ -238,35 +238,35 @@ def test_decompressobj_max_length():
     section_header("decompressobj max_length")
 
     inp: str = "This is a longer string for testing max_length parameter in decompress."
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input (%zu bytes): \"%s\"\n", input_length, inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
     d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     dec: BYTEPTR = d.decompress(compressed, out_length,
-                                                10, c.Addr(dec_length))
+                                                10, &dec_length)
     check("max_length decompress OK", dec != None, "decompress returned None")
     check("max_length limits output", dec_length <= 10, "output exceeded max_length")
     if dec:
-        printf("  First chunk (max_length=10): \"%.*s\" (%zu bytes)\n", t.CInt(dec_length), str(dec), dec_length)
+        printf("  First chunk (max_length=10): \"%.*s\" (%zu bytes)\n", int(dec_length), str(dec), dec_length)
     stdlib.free(dec)
 
-    tail_length: t.CSizeT = 0
-    tail: BYTEPTR = d.unconsumed_tail(c.Addr(tail_length))
+    tail_length: sizet = 0
+    tail: BYTEPTR = d.unconsumed_tail(&tail_length)
     check("unconsumed_tail exists", tail != None or tail_length == 0, "no unconsumed_tail")
     printf("  unconsumed_tail: %zu bytes remaining\n", tail_length)
     printf("  eof = %d\n", d.eof)
 
     if tail_length > 0 or not d.eof:
-        flushed: BYTEPTR = d.flush(pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+        flushed: BYTEPTR = d.flush(pyzlib.DEF_BUF_SIZE, &dec_length)
         check("flush after max_length OK", flushed != None, "flush returned None")
-        if flushed: printf("  Flushed (%zu bytes): \"%.*s\"\n", dec_length, t.CInt(dec_length), str(flushed))
+        if flushed: printf("  Flushed (%zu bytes): \"%.*s\"\n", dec_length, int(dec_length), str(flushed))
         stdlib.free(flushed)
 
     printf("  eof after flush = %d\n", d.eof)
@@ -280,15 +280,15 @@ def test_decompressobj_unused_data():
     section_header("decompressobj unused_data")
 
     inp: str = "Hello"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input: \"%s\"\n", inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
-    total_length: t.CSizeT = out_length + 5
+    total_length: sizet = out_length + 5
     combined: BYTEPTR = BYTEPTR(stdlib.malloc(total_length))
     string.memcpy(combined, compressed, out_length)
     string.memcpy(combined + out_length, "EXTRA", 5)
@@ -297,22 +297,22 @@ def test_decompressobj_unused_data():
 
     d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     dec: BYTEPTR = d.decompress(combined, total_length,
-                                                0, c.Addr(dec_length))
+                                                0, &dec_length)
     check("decompress with extra OK", dec != None, "decompress returned None")
     check("eof after stream end", d.eof == 1, "eof should be 1")
     if dec:
-        printf("  Decompressed: \"%.*s\" (%zu bytes)\n", t.CInt(dec_length), str(dec), dec_length)
+        printf("  Decompressed: \"%.*s\" (%zu bytes)\n", int(dec_length), str(dec), dec_length)
     stdlib.free(dec)
 
     print_separator()
 
-    unused_length: t.CSizeT = 0
-    unused: BYTEPTR = d.unused_data(c.Addr(unused_length))
+    unused_length: sizet = 0
+    unused: BYTEPTR = d.unused_data(&unused_length)
     check("unused_data exists", unused != None and unused_length > 0, "no unused_data")
     check("unused_data is EXTRA", unused_length == 5 and unused != None and string.memcmp(unused, "EXTRA", 5) == 0, "unused_data mismatch")
-    printf("  unused_data (%zu bytes): \"%.*s\"\n", unused_length, t.CInt(unused_length), str(unused))
+    printf("  unused_data (%zu bytes): \"%.*s\"\n", unused_length, int(unused_length), str(unused))
 
     d.delete()
     stdlib.free(combined)
@@ -323,14 +323,14 @@ def test_compress_copy():
     section_header("Compress.copy()")
 
     inp: str = "Copy test data for compress object"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input: \"%s\"\n", inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     c1: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                           pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                                           pyzlib.Z_DEFAULT_STRATEGY, None, 0)
-    c1.compress(BYTEPTR(inp), input_length, c.Addr(out_length))
+    c1.compress(BYTEPTR(inp), input_length, &out_length)
     printf("  Original: compressed %zu bytes so far\n", out_length)
 
     c2: pyzlib.Compress | t.CPtr = c1.copy()
@@ -339,15 +339,15 @@ def test_compress_copy():
 
     print_separator()
 
-    f1: BYTEPTR = c1.flush(pyzlib.Z_FINISH, c.Addr(out_length))
+    f1: BYTEPTR = c1.flush(pyzlib.Z_FINISH, &out_length)
     check("flush original OK", f1 != None, "flush original failed")
-    length1: t.CSizeT = out_length
+    length1: sizet = out_length
     printf("  Original flush: %zu bytes\n", length1)
     stdlib.free(f1)
 
-    f2: BYTEPTR = c2.flush(pyzlib.Z_FINISH, c.Addr(out_length))
+    f2: BYTEPTR = c2.flush(pyzlib.Z_FINISH, &out_length)
     check("flush copy OK", f2 != None, "flush copy failed")
-    length2: t.CSizeT = out_length
+    length2: sizet = out_length
     printf("  Copy flush   : %zu bytes\n", length2)
     stdlib.free(f2)
 
@@ -362,12 +362,12 @@ def test_decompress_copy():
     section_header("Decompress.copy()")
 
     inp: str = "Decompress copy test"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input: \"%s\"\n", inp)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
     d1: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
@@ -377,18 +377,18 @@ def test_decompress_copy():
 
     print_separator()
 
-    dec_length1: t.CSizeT = 0
-    dec_length2: t.CSizeT = 0
+    dec_length1: sizet = 0
+    dec_length2: sizet = 0
     dec1: BYTEPTR = d1.decompress(compressed, out_length,
-                                                  0, c.Addr(dec_length1))
+                                                  0, &dec_length1)
     dec2: BYTEPTR = d2.decompress(compressed, out_length,
-                                                  0, c.Addr(dec_length2))
+                                                  0, &dec_length2)
     check("decompress copy output size", dec_length1 == dec_length2, "sizes differ")
     check("decompress copy output content",
           dec1 and dec2 and string.memcmp(dec1, dec2, dec_length1) == 0, "content differs")
 
-    if dec1: printf("  Original: \"%.*s\" (%zu bytes)\n", t.CInt(dec_length1), str(dec1), dec_length1)
-    if dec2: printf("  Copy    : \"%.*s\" (%zu bytes)\n", t.CInt(dec_length2), str(dec2), dec_length2)
+    if dec1: printf("  Original: \"%.*s\" (%zu bytes)\n", int(dec_length1), str(dec1), dec_length1)
+    if dec2: printf("  Copy    : \"%.*s\" (%zu bytes)\n", int(dec_length2), str(dec2), dec_length2)
 
     stdlib.free(dec1)
     stdlib.free(dec2)
@@ -435,18 +435,18 @@ def test_crc32():
 def test_empty_compress():
     section_header("Empty data compress/decompress")
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(""), 0,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     check("compress empty OK", compressed != None, "compress empty returned None")
     check("compress empty output > 0", out_length > 0, "compressed empty is 0 bytes")
     printf("  Empty input compressed: %zu bytes (header only)\n", out_length)
     printf("  Hex: ")
     print_hex_test(compressed, out_length, 32)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     decompressed: BYTEPTR = pyzlib.decompress(None, compressed, out_length,
-                                                   pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+                                                   pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, &dec_length)
     check("decompress empty OK", decompressed != None, "decompress empty returned None")
     check("decompress empty size == 0", dec_length == 0, "decompressed size != 0")
     printf("  Decompressed back: %zu bytes\n", dec_length)
@@ -460,27 +460,27 @@ def test_gzip_format():
     section_header("Gzip format (wbits=31)")
 
     inp: str = "Gzip format test"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input: \"%s\" (%zu bytes)\n", inp, input_length)
 
-    gzip_wbits: t.CInt = pyzlib.MAX_WBITS + 16
+    gzip_wbits: int = pyzlib.MAX_WBITS + 16
     printf("  wbits = MAX_WBITS + 16 = %d\n", gzip_wbits)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, gzip_wbits, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, gzip_wbits, &out_length)
     check("gzip compress OK", compressed != None, "gzip compress failed")
     printf("  Gzip compressed: %zu bytes\n", out_length)
     printf("  Header bytes: ")
     print_hex_test(compressed, 4 if (out_length > 4) else out_length, 4)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     decompressed: BYTEPTR = pyzlib.decompress(None, compressed, out_length,
-                                                   gzip_wbits, pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+                                                   gzip_wbits, pyzlib.DEF_BUF_SIZE, &dec_length)
     check("gzip decompress OK", decompressed != None, "gzip decompress failed")
     check("gzip decompress size", dec_length == input_length, "size mismatch")
     check("gzip decompress content", decompressed != None and string.memcmp(decompressed, inp, input_length) == 0, "content mismatch")
-    if decompressed: printf("  Decompressed: \"%.*s\" (%zu bytes)\n", t.CInt(dec_length), str(decompressed), dec_length)
+    if decompressed: printf("  Decompressed: \"%.*s\" (%zu bytes)\n", int(dec_length), str(decompressed), dec_length)
 
     stdlib.free(compressed)
     stdlib.free(decompressed)
@@ -491,25 +491,25 @@ def test_raw_deflate():
     section_header("Raw deflate (wbits=-15)")
 
     inp: str = "Raw deflate test"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Input: \"%s\" (%zu bytes)\n", inp, input_length)
 
-    raw_wbits: t.CInt = -pyzlib.MAX_WBITS
+    raw_wbits: int = -pyzlib.MAX_WBITS
     printf("  wbits = -MAX_WBITS = %d\n", raw_wbits)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     compressed: BYTEPTR = pyzlib.compress(None, BYTEPTR(inp), input_length,
-                                              pyzlib.Z_DEFAULT_COMPRESSION, raw_wbits, c.Addr(out_length))
+                                              pyzlib.Z_DEFAULT_COMPRESSION, raw_wbits, &out_length)
     check("raw deflate compress OK", compressed != None, "raw deflate compress failed")
     printf("  Raw compressed: %zu bytes\n", out_length)
 
-    dec_length: t.CSizeT = 0
+    dec_length: sizet = 0
     decompressed: BYTEPTR = pyzlib.decompress(None, compressed, out_length,
-                                                   raw_wbits, pyzlib.DEF_BUF_SIZE, c.Addr(dec_length))
+                                                   raw_wbits, pyzlib.DEF_BUF_SIZE, &dec_length)
     check("raw deflate decompress OK", decompressed != None, "raw deflate decompress failed")
     check("raw deflate decompress size", dec_length == input_length, "size mismatch")
     check("raw deflate decompress content", decompressed != None and string.memcmp(decompressed, inp, input_length) == 0, "content mismatch")
-    if decompressed: printf("  Decompressed: \"%.*s\" (%zu bytes)\n", t.CInt(dec_length), str(decompressed), dec_length)
+    if decompressed: printf("  Decompressed: \"%.*s\" (%zu bytes)\n", int(dec_length), str(decompressed), dec_length)
 
     stdlib.free(compressed)
     stdlib.free(decompressed)
@@ -521,11 +521,11 @@ def test_zdict():
 
     dict: str = "common words that appear frequently in the data"
     inp: str = "common words that appear frequently"
-    input_length: t.CSizeT = strlen(inp)
+    input_length: sizet = strlen(inp)
     printf("  Dictionary: \"%s\" (%zu bytes)\n", dict, strlen(dict))
     printf("  Input     : \"%s\" (%zu bytes)\n", inp, input_length)
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     s: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                          pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                                          pyzlib.Z_DEFAULT_STRATEGY,
@@ -533,28 +533,28 @@ def test_zdict():
     check("compressobj with zdict OK", s != None, "compressobj with zdict failed")
 
     comp_data: BYTEPTR = s.compress(BYTEPTR(inp),
-                                                       input_length, c.Addr(out_length))
+                                                       input_length, &out_length)
     check("compress with zdict OK", comp_data != None, "compress with zdict failed")
     printf("  Compressed with zdict: %zu bytes\n", out_length)
     stdlib.free(comp_data)
 
-    flush_data: BYTEPTR = s.flush(pyzlib.Z_FINISH, c.Addr(out_length))
+    flush_data: BYTEPTR = s.flush(pyzlib.Z_FINISH, &out_length)
     check("flush with zdict OK", flush_data != None, "flush with zdict failed")
     printf("  Flush: %zu bytes\n", out_length)
     stdlib.free(flush_data)
 
     print_separator()
 
-    total_comp: t.CSizeT = out_length
+    total_comp: sizet = out_length
     s.delete()
 
     s = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                          pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                          pyzlib.Z_DEFAULT_STRATEGY, None, 0)
     comp_no_dict: BYTEPTR = s.compress(BYTEPTR(inp),
-                                                          input_length, c.Addr(out_length))
-    flush_no_dict: BYTEPTR = s.flush(pyzlib.Z_FINISH, c.Addr(out_length))
-    no_dict_total: t.CSizeT = 0
+                                                          input_length, &out_length)
+    flush_no_dict: BYTEPTR = s.flush(pyzlib.Z_FINISH, &out_length)
+    no_dict_total: sizet = 0
     if comp_no_dict: no_dict_total += out_length
     if flush_no_dict: no_dict_total += out_length
     printf("  Without zdict: ~%zu bytes compressed\n", no_dict_total)
@@ -576,9 +576,9 @@ def test_huffman_tree():
     check("fixed lit tree count == 288", lit_tree.count == 288, "count mismatch")
     check("fixed lit tree max_bits == 9", lit_tree.max_bits == 9, "max_bits mismatch")
 
-    has_8bit: t.CInt = 0
-    has_9bit: t.CInt = 0
-    has_7bit: t.CInt = 0
+    has_8bit: int = 0
+    has_9bit: int = 0
+    has_7bit: int = 0
     for i in range(143 + 1):
         if lit_tree.codes[i].bits == 8:
             has_8bit += 1
@@ -605,7 +605,7 @@ def test_huffman_tree():
     check("fixed dist tree count == 32", dist_tree.count == 32, "count mismatch")
     check("fixed dist tree max_bits == 5", dist_tree.max_bits == 5, "max_bits mismatch")
 
-    all_5bit: t.CInt = 1
+    all_5bit: int = 1
     for i in range(32):
         if dist_tree.codes[i].bits != 5:
             all_5bit = 0
@@ -613,7 +613,7 @@ def test_huffman_tree():
     printf("  All 32 distance codes: 5 bits each\n")
 
     printf("\n  --- Dynamic Huffman tree from frequencies ---\n")
-    dyn_freqs: t.CArray[t.CInt, 256]
+    dyn_freqs: t.CArray[int, 256]
     string.memset(dyn_freqs, 0, dyn_freqs.__sizeof__())
     dyn_freqs['A'] = 50
     dyn_freqs['B'] = 25
@@ -629,8 +629,8 @@ def test_huffman_tree():
     check("dynamic tree count == 257", dyn_tree.count == 257, "count mismatch")
     check("dynamic tree max_bits <= 15", dyn_tree.max_bits <= 15, "max_bits overflow")
 
-    total_codes: t.CInt = 0
-    max_length_found: t.CInt = 0
+    total_codes: int = 0
+    max_length_found: int = 0
     for i in range(257):
         if dyn_tree.codes[i].bits > 0:
             total_codes += 1
@@ -644,7 +644,7 @@ def test_huffman_tree():
 
     printf("  Code assignments:\n")
     names: t.CArray[str, None] = ["A","B","C","D","E","F"] # ä¸ä¸ªé½æ?char* çæ°ç»?
-    syms: t.CArray[t.CInt, None] = ['A','B','C','D','E','F']
+    syms: t.CArray[int, None] = ['A','B','C','D','E','F']
     for i in range(6):
         printf("    '%s' (freq=%3d): code=0x%04X, bits=%d\n",
                 names[i], dyn_freqs[syms[i]],
@@ -655,15 +655,15 @@ def test_huffman_tree():
 
     printf("    EOB (freq=1): code=0x%04X, bits=%d\n",
             dyn_tree.codes[256].code, dyn_tree.codes[256].bits)
-    a_bits: t.CInt = dyn_tree.codes['A'].bits
-    f_bits: t.CInt = dyn_tree.codes['F'].bits
+    a_bits: int = dyn_tree.codes['A'].bits
+    f_bits: int = dyn_tree.codes['F'].bits
     check("high-freq symbol has shorter code", a_bits <= f_bits, "A should be <= F")
     printf("  High-freq 'A' (%d bits) <= low-freq 'F' (%d bits): %s\n",
             a_bits, f_bits, "YES" if (a_bits <= f_bits) else "NO")
 
     printf("\n  --- Huffman encode/decode roundtrip ---\n")
     
-    rt_freqs: t.CArray[t.CInt, 288]
+    rt_freqs: t.CArray[int, 288]
     string.memset(rt_freqs, 0, rt_freqs.__sizeof__())
     rt_freqs['H'] = 10
     rt_freqs['e'] = 8
@@ -680,15 +680,15 @@ def test_huffman_tree():
     enc_tree.build_codes(rt_freqs, 257, 15)
 
     dec_tree = zhuff.zhuff_decode_tree()
-    dec_tree.build_decode_tree(c.Addr(enc_tree))
+    dec_tree.build_decode_tree(&enc_tree)
 
     writer = zdef.zbit_writer(None)
 
-    symbols: t.CArray[t.CInt, None] = ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', 256]
-    num_symbols: t.CInt = 13
+    symbols: t.CArray[int, None] = ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', 256]
+    num_symbols: int = 13
 
     for i in range(num_symbols):
-        enc_tree.encode_symbol(symbols[i], c.Addr(writer))
+        enc_tree.encode_symbol(symbols[i], &writer)
 
     reader = zdef.zbit_reader()
     reader.buf = writer.buf
@@ -696,9 +696,9 @@ def test_huffman_tree():
     reader.byte_pos = 0
     reader.bit_pos = 0
 
-    roundtrip_ok: t.CInt = 1
+    roundtrip_ok: int = 1
     for i in range(num_symbols):
-        decoded: t.CInt = dec_tree.decode_symbol(c.Addr(reader))
+        decoded: int = dec_tree.decode_symbol(&reader)
         if decoded != symbols[i]:
             roundtrip_ok = 0
             printf("  MISMATCH at symbol %d: expected %d, got %d\n", i, symbols[i], decoded)
@@ -710,7 +710,7 @@ def test_huffman_tree():
     stdlib.free(writer.buf)
 
     printf("\n  --- Overflow handling (many symbols, limited max_bits) ---\n")
-    of_freqs: t.CArray[t.CInt, 256]
+    of_freqs: t.CArray[int, 256]
     for i in range(256):
         of_freqs[i] = 1
     of_freqs[256] = 1
@@ -718,14 +718,14 @@ def test_huffman_tree():
     of_tree = zhuff.zhuff_tree()
     of_tree.build_codes(of_freqs, 257, 15)
 
-    overflow_ok: t.CInt = 1
+    overflow_ok: int = 1
     for i in range(257):
         if of_tree.codes[i].bits > 15 or of_tree.codes[i].bits < 0:
             overflow_ok = 0
             break
     check("all code lengthgths <= 15 with 257 symbols", overflow_ok, "code lengthgth overflow")
 
-    bl_count: t.CArray[t.CInt, 16] = [0]
+    bl_count: t.CArray[int, 16] = [0]
     for i in range(257):
         if of_tree.codes[i].bits > 0:
             bl_count[of_tree.codes[i].bits] += 1
@@ -735,13 +735,13 @@ def test_huffman_tree():
             printf("    %2d bits: %3d codes\n", i, bl_count[i])
 
     dt = zhuff.zhuff_decode_tree()
-    dt.build_decode_tree(c.Addr(of_tree))
+    dt.build_decode_tree(&of_tree)
 
     w = zdef.zbit_writer(None)
-    of_tree.encode_symbol(0,   c.Addr(w))
-    of_tree.encode_symbol(128, c.Addr(w))
-    of_tree.encode_symbol(255, c.Addr(w))
-    of_tree.encode_symbol(256, c.Addr(w))
+    of_tree.encode_symbol(0,   &w)
+    of_tree.encode_symbol(128, &w)
+    of_tree.encode_symbol(255, &w)
+    of_tree.encode_symbol(256, &w)
 
     r = zdef.zbit_reader()
     r.buf = w.buf
@@ -749,10 +749,10 @@ def test_huffman_tree():
     r.byte_pos = 0
     r.bit_pos  = 0
 
-    s0: t.CInt = dt.decode_symbol(c.Addr(r))
-    s1: t.CInt = dt.decode_symbol(c.Addr(r))
-    s2: t.CInt = dt.decode_symbol(c.Addr(r))
-    s3: t.CInt = dt.decode_symbol(c.Addr(r))
+    s0: int = dt.decode_symbol(&r)
+    s1: int = dt.decode_symbol(&r)
+    s2: int = dt.decode_symbol(&r)
+    s3: int = dt.decode_symbol(&r)
 
     check("overflow roundtrip: symbol 0", s0 == 0, "decode mismatch")
     check("overflow roundtrip: symbol 128", s1 == 128, "decode mismatch")
@@ -766,7 +766,7 @@ def test_huffman_tree():
     # 与 ZlibDbg 的失败形态（码表把部分符号编成无码位/错码位）直接对齐。
     w2 = zdef.zbit_writer(None)
     for i in range(257):
-        of_tree.encode_symbol(i, c.Addr(w2))
+        of_tree.encode_symbol(i, &w2)
 
     r2 = zdef.zbit_reader()
     r2.buf = w2.buf
@@ -774,9 +774,9 @@ def test_huffman_tree():
     r2.byte_pos = 0
     r2.bit_pos = 0
 
-    full_ok: t.CInt = 1
+    full_ok: int = 1
     for i in range(257):
-        got: t.CInt = dt.decode_symbol(c.Addr(r2))
+        got: int = dt.decode_symbol(&r2)
         if got != i:
             full_ok = 0
             printf("  FULL ROUNDTRIP MISMATCH at %d: got %d\n", i, got)
@@ -786,7 +786,7 @@ def test_huffman_tree():
 
 
     printf("\n  --- Kraft inequality check ---\n")
-    kf_freqs: t.CArray[t.CInt, 256]
+    kf_freqs: t.CArray[int, 256]
     string.memset(kf_freqs, 0, kf_freqs.__sizeof__())
     kf_freqs['X'] = 100
     kf_freqs['Y'] = 50
@@ -796,10 +796,10 @@ def test_huffman_tree():
     kf_tree = zhuff.zhuff_tree()
     kf_tree.build_codes(kf_freqs, 257, 15)
 
-    kraft_sum: t.CDouble = 0.0
+    kraft_sum: double = 0.0
     for i in range(257):
         if kf_tree.codes[i].bits > 0:
-            kraft_sum += 1.0 / (t.CDouble(ULONGLONG(1) << kf_tree.codes[i].bits))
+            kraft_sum += 1.0 / (double(ULONGLONG(1) << kf_tree.codes[i].bits))
     check("Kraft inequality: sum <= 1.0", kraft_sum <= 1.0 + 1e-9, "Kraft violated")
     printf("  Kraft sum = %.10f (must be <= 1.0)\n", kraft_sum)
 
@@ -809,11 +809,11 @@ def test_huffman_tree():
 def test_error_handling():
     section_header("Error handling")
 
-    out_length: t.CSizeT = 0
+    out_length: sizet = 0
     printf("  Trying to decompress garbage data...\n")
 
     result: BYTEPTR = pyzlib.decompress(None, BYTEPTR("garbage"), 7,
-                                             pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, c.Addr(out_length))
+                                             pyzlib.MAX_WBITS, pyzlib.DEF_BUF_SIZE, &out_length)
     check("decompress garbage returns None", result == None, "should have returned None")
     printf("  Error code   : %d\n", pyzlib.get_error_code())
     printf("  Error message: \"%s\"\n", pyzlib.get_error())
@@ -869,7 +869,7 @@ def test_constants():
     section_footer()
 
 
-def main123456() -> t.CInt:
+def main123456() -> int:
     printf("==============================================\n")
     printf("  Python zlib - C Implementation Tests\n")
     printf("==============================================\n")

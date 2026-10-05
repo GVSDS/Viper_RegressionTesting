@@ -26,9 +26,9 @@ def caller2_reverse_chain(head: G4Node | t.CPtr) -> G4Node | t.CPtr:
     return prev
 
 
-def caller2_count_nodes(head: G4Node | t.CPtr) -> t.CInt:
+def caller2_count_nodes(head: G4Node | t.CPtr) -> int:
     """计算链表节点数"""
-    count: t.CInt = 0
+    count: int = 0
     cur: G4Node | t.CPtr = head
     while cur is not None:
         count = count + 1

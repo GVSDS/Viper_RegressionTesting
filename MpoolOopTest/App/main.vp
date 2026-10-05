@@ -3,7 +3,7 @@ import testcheck
 import mpooltest
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("MpoolOopTest: MemPool OOP 测试")
     testcheck.section("MPool OOP")
     mpooltest.mpool_main()

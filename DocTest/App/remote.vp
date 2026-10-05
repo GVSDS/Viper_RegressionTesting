@@ -8,7 +8,7 @@ def remote_func() -> int:
 
 class RemoteClass:
     "Remote class docstring."
-    value: t.CInt
+    value: int
 
     def remote_method(self) -> int:
         "Remote method docstring."

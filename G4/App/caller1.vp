@@ -29,11 +29,11 @@ def caller1_make_chain(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
     return a
 
 
-def caller1_sum_chain(head: G4Node | t.CPtr) -> t.CInt:
+def caller1_sum_chain(head: G4Node | t.CPtr) -> int:
     """遍历链表求和，直接访问 Next 字段"""
     if head is None:
         return 0
-    total: t.CInt = head.IntVal
+    total: int = head.IntVal
     cur: G4Node | t.CPtr = head
     # 直接访问 Next 字段（不通过 g4node_get_next 访问器）
     while cur.Next is not None:

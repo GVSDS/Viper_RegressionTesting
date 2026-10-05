@@ -17,9 +17,9 @@ from linkedlist import GSListNode
 class Value(GSListNode[Value]):
     Ty: t.CPtr
     Name: t.CPtr
-    IsConst: t.CInt
-    IntVal: t.CInt64T
-    FloatVal: t.CDouble
+    IsConst: int
+    IntVal: int64
+    FloatVal: double
 
     def __init__(self):
         self.Ty = None

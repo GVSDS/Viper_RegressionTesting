@@ -19,8 +19,8 @@ class Box[T]():
 
 def test_explicit_box():
     testcheck.section("Test 1: Box[t.CInt](42)")
-    b = Box[t.CInt](42)
-    v: t.CInt = b.get()
+    b = Box[int](42)
+    v: int = b.get()
     testcheck.check(v == 42, "Box[t.CInt](42).get() = 42", "expect 42")
 
 # ============================================================
@@ -34,13 +34,13 @@ class Pair[T1, T2]():
         self.first = T1(a)
         self.second = T2(b)
 
-    def sum_as_int(self) -> t.CInt:
-        return t.CInt(self.first) + t.CInt(self.second)
+    def sum_as_int(self) -> int:
+        return int(self.first) + int(self.second)
 
 def test_explicit_pair():
     testcheck.section("Test 2: Pair[t.CInt, t.CInt](10, 20)")
-    p = Pair[t.CInt, t.CInt](10, 20)
-    r: t.CInt = p.sum_as_int()
+    p = Pair[int, int](10, 20)
+    r: int = p.sum_as_int()
     testcheck.check(r == 30, "Pair[t.CInt,t.CInt](10,20).sum = 30", "expect 30")
 
 # ============================================================
@@ -58,11 +58,11 @@ class Wrapper[T]():
 def test_mixed_generic_class():
     testcheck.section("Test 3: mixed explicit and inferred")
     # 手动传
-    w1 = Wrapper[t.CInt](100)
+    w1 = Wrapper[int](100)
     # 自动推导
     w2 = Wrapper(200)
-    r1: t.CInt = w1.get()
-    r2: t.CInt = w2.get()
+    r1: int = w1.get()
+    r2: int = w2.get()
     testcheck.check(r1 == 100 and r2 == 200, "Wrapper[t.CInt](100)=100 Wrapper(200)=200", "expect 100 200")
 
 # ============================================================
@@ -82,11 +82,11 @@ class Counter[T]():
 
 def test_explicit_counter():
     testcheck.section("Test 4: Counter[t.CInt](0) with methods")
-    c = Counter[t.CInt](0)
+    c = Counter[int](0)
     c.increment()
     c.increment()
     c.increment()
-    r: t.CInt = c.get_count()
+    r: int = c.get_count()
     testcheck.check(r == 3, "Counter[t.CInt](0) +3 = 3", "expect 3")
 
 # ============================================================
@@ -94,12 +94,12 @@ def test_explicit_counter():
 # ============================================================
 def test_explicit_box_set():
     testcheck.section("Test 5: Box[t.CInt] set method")
-    b = Box[t.CInt](10)
+    b = Box[int](10)
     b.set(99)
-    v: t.CInt = b.get()
+    v: int = b.get()
     testcheck.check(v == 99, "Box[t.CInt].set(99) get = 99", "expect 99")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("GenericTest4: 泛型结构体手动传类型参数")
     test_explicit_box()
     test_explicit_pair()

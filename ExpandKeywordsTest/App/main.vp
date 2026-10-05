@@ -10,23 +10,23 @@ import testcheck
 # ============================================================
 
 # fn: 单参数返回
-fn add_one(x: t.CInt) -> t.CInt:
+fn add_one(x: int) -> int:
     return x + 1
 
 
 # fun: 双参数返回
-fun add_two(a: t.CInt, b: t.CInt) -> t.CInt:
+fun add_two(a: int, b: int) -> int:
     return a + b
 
 
 # func: 浮点参数返回
-func mul_float(a: t.CDouble, b: t.CDouble) -> t.CDouble:
+func mul_float(a: double, b: double) -> double:
     return a * b
 
 
 # function: 内部用 def 定义再调用（别名与 def 混用）
-function get_ten() -> t.CInt:
-    def inner() -> t.CInt:
+function get_ten() -> int:
+    def inner() -> int:
         return 10
     return inner()
 
@@ -42,15 +42,15 @@ fn noop():
 
 
 # fun 递归
-fun fact(n: t.CInt) -> t.CInt:
+fun fact(n: int) -> int:
     if n <= 1:
         return 1
     return n * fact(n - 1)
 
 
 # func 多语句 + 局部变量
-func avg3(a: t.CDouble, b: t.CDouble, c: t.CDouble) -> t.CDouble:
-    total: t.CDouble = a + b + c
+func avg3(a: double, b: double, c: double) -> double:
+    total: double = a + b + c
     return total / 3.0
 
 # func12344444 avg3(a: t.CDouble, b: t.CDouble, c: t.CDouble) -> t.CDouble:
@@ -58,7 +58,7 @@ func avg3(a: t.CDouble, b: t.CDouble, c: t.CDouble) -> t.CDouble:
 #    return total / 3.0
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ExpandKeywordsTest: fn/fun/func/function")
     testcheck.section("function def keywords")
 

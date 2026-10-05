@@ -5,7 +5,7 @@ import testcheck
 # ============================================================
 # Test 1: global 在嵌套函数中
 # ============================================================
-g_val: t.CInt = 100
+g_val: int = 100
 
 def outer_modify_global():
     global g_val
@@ -26,7 +26,7 @@ def test_global_in_nested():
 # ============================================================
 def test_nonlocal_multi_level():
     testcheck.section("Test 2: nonlocal multi-level")
-    x: t.CInt = 1
+    x: int = 1
     def level1():
         nonlocal x
         x += 10
@@ -44,13 +44,13 @@ def test_nonlocal_multi_level():
 # ============================================================
 # Test 3: global 和 nonlocal 混合
 # ============================================================
-g_mixed: t.CInt = 0
+g_mixed: int = 0
 
 def test_global_nonlocal_mixed():
     testcheck.section("Test 3: global + nonlocal mixed")
     global g_mixed
     g_mixed = 0
-    local_var: t.CInt = 0
+    local_var: int = 0
     def modify_both():
         nonlocal local_var
         global g_mixed
@@ -65,10 +65,10 @@ def test_global_nonlocal_mixed():
 # ============================================================
 def test_lambda_multi_capture():
     testcheck.section("Test 4: lambda multi-capture")
-    a: t.CInt = 10
-    b: t.CInt = 20
+    a: int = 10
+    b: int = 20
     f = lambda: a + b
-    r: t.CInt = f()
+    r: int = f()
     testcheck.check(r == 30, "lambda multi-capture (a+b == 30)", "lambda multi-capture (expect 30)")
 
 # ============================================================
@@ -76,9 +76,9 @@ def test_lambda_multi_capture():
 # ============================================================
 def test_lambda_arg_capture():
     testcheck.section("Test 5: lambda arg + capture")
-    base: t.CInt = 100
+    base: int = 100
     add = lambda x: base + x
-    r: t.CInt = add(42)
+    r: int = add(42)
     testcheck.check(r == 142, "lambda arg+capture (100+42 == 142)", "lambda arg+capture (expect 142)")
 
 # ============================================================
@@ -86,12 +86,12 @@ def test_lambda_arg_capture():
 # ============================================================
 def test_nested_return():
     testcheck.section("Test 6: nested function return")
-    x: t.CInt = 5
-    def double_x() -> t.CInt:
+    x: int = 5
+    def double_x() -> int:
         nonlocal x
         x = x * 2
         return x
-    r: t.CInt = double_x()
+    r: int = double_x()
     testcheck.check(r == 10 and x == 10, "nested return (r==10 x==10)", "nested return (expect r=10 x=10)")
 
 # ============================================================
@@ -99,8 +99,8 @@ def test_nested_return():
 # ============================================================
 def test_nonlocal_loop():
     testcheck.section("Test 7: nonlocal with loop")
-    total: t.CInt = 0
-    def accumulate(n: t.CInt):
+    total: int = 0
+    def accumulate(n: int):
         nonlocal total
         for i in range(n):
             total += i
@@ -112,7 +112,7 @@ def test_nonlocal_loop():
 # ============================================================
 # Test 8: global 数组操作
 # ============================================================
-g_arr: t.CArray[t.CInt, 4] = [0]
+g_arr: t.CArray[int, 4] = [0]
 
 def test_global_array():
     testcheck.section("Test 8: global array")
@@ -121,7 +121,7 @@ def test_global_array():
     g_arr[1] = 20
     g_arr[2] = 30
     g_arr[3] = 40
-    total: t.CInt = g_arr[0] + g_arr[1] + g_arr[2] + g_arr[3]
+    total: int = g_arr[0] + g_arr[1] + g_arr[2] + g_arr[3]
     testcheck.check(total == 100, "global array (total == 100)", "global array (expect 100)")
 
 # ============================================================
@@ -129,8 +129,8 @@ def test_global_array():
 # ============================================================
 def test_nested_conditional():
     testcheck.section("Test 9: nested conditional call")
-    result: t.CInt = 0
-    def set_result(val: t.CInt):
+    result: int = 0
+    def set_result(val: int):
         nonlocal result
         result = val
     if 1:
@@ -146,10 +146,10 @@ def test_lambda_chain():
     testcheck.section("Test 10: lambda chain")
     f1 = lambda: 10
     f2 = lambda: 20
-    r: t.CInt = f1() + f2()
+    r: int = f1() + f2()
     testcheck.check(r == 30, "lambda chain (10+20 == 30)", "lambda chain (expect 30)")
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ClosureAdvancedTest: 高级闭包测试")
     test_global_in_nested()
     test_nonlocal_multi_level()

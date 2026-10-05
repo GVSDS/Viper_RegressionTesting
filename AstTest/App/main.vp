@@ -11,25 +11,25 @@ import w32.win32console
 
 
 # MBuddy arena 大小：1MB
-ARENA_SIZE: t.CDefine = 1048576
+define ARENA_SIZE = 1048576
 # mpool 内存大小：512KB
-POOL_SIZE: t.CDefine = 524288
+define POOL_SIZE = 524288
 # dump 缓冲区大小：256KB
-DUMP_SIZE: t.CDefine = 262144
+define DUMP_SIZE = 262144
 
 
-def classify_list(lst: list[ast.AST | t.CPtr] | t.CPtr, depth: t.CInt):
+def classify_list(lst: list[ast.AST | t.CPtr] | t.CPtr, depth: int):
     """递归遍历 list[AST | t.CPtr] 容器，逐元素分类（orelse/args/comparators 等）"""
     if lst is None:
         return
-    n: t.CSizeT = lst.__len__()
-    i: t.CSizeT = 0
+    n: sizet = lst.__len__()
+    i: sizet = 0
     while i < n:
         classify_print(lst.get(i), depth + 1)
         i += 1
 
 
-def classify_print(node: ast.AST | t.CPtr, depth: t.CInt):
+def classify_print(node: ast.AST | t.CPtr, depth: int):
     """递归遍历 parse 树，用 isinstance 运行时判定每个节点的类别并打印。
 
     依赖 TPV isinstance 的 vtable 子类集合比较：
@@ -40,7 +40,7 @@ def classify_print(node: ast.AST | t.CPtr, depth: t.CInt):
     """
     if node is None:
         return
-    sp: t.CInt = 0
+    sp: int = 0
     while sp < depth:
         printf("  ")
         sp += 1
@@ -53,7 +53,7 @@ def classify_print(node: ast.AST | t.CPtr, depth: t.CInt):
     # 按 kind 遍历语句持有的表达式字段（语句 body 块均在 children）。
     # 属性访问前先 cast 成具体节点类：node 静态类型是 ast.AST，
     # 直接访问 node.value 会在 AST 基类字段表 fast-fail（按需过滤原则）。
-    k: t.CInt = node.kind()
+    k: int = node.kind()
     if k == ast.ASTKind.Assign:
         asg: ast.Assign | t.CPtr = (ast.Assign | t.CPtr)(node)
         classify_print(asg.value, depth + 1)
@@ -98,8 +98,8 @@ def classify_print(node: ast.AST | t.CPtr, depth: t.CInt):
         pass
     # children（语句 body 块）
     if node.children is not None:
-        n: t.CSizeT = node.children.__len__()
-        i: t.CSizeT = 0
+        n: sizet = node.children.__len__()
+        i: sizet = 0
         while i < n:
             classify_print(node.children.get(i), depth + 1)
             i += 1
@@ -139,7 +139,7 @@ def main() -> CInt | CExport:
     if dump_mem == None:
         printf("FAIL: malloc for dump failed\n")
         return 1
-    dump_buf: t.CChar | t.CPtr = t.CChar(dump_mem, t.CPtr)
+    dump_buf: char | t.CPtr = char(dump_mem, t.CPtr)
 
     # 综合测试源码：覆盖 CPython 主要语法
     src: str = """x = 1
@@ -214,9 +214,9 @@ class Point:
         printf("PASS: Module is neither Stmt nor ExprNode\n")
 
     # 断言 2: 顶层 body 每条语句均为 Stmt
-    top_ok: t.CInt = 1
-    top_n: t.CSizeT = tree.children.__len__()
-    i2: t.CSizeT = 0
+    top_ok: int = 1
+    top_n: sizet = tree.children.__len__()
+    i2: sizet = 0
     while i2 < top_n:
         top_node: ast.AST | t.CPtr = tree.children.get(i2)
         if isinstance(top_node, ast.Stmt) == 0:

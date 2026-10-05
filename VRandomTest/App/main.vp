@@ -9,13 +9,13 @@ import testcheck
 # VRandomTest - 硬件随机数生成 + 标准分布函数测试
 # ============================================================
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("VRandomTest: Hardware RNG + Distributions")
 
     # --- Test 1: RDRAND basic ---
     testcheck.section("Test 1: RDRAND basic")
-    r32: t.CUInt32T = vrandom.rdrand32()
-    r64: t.CUInt64T = vrandom.rdrand64()
+    r32: uint32 = vrandom.rdrand32()
+    r64: uint64 = vrandom.rdrand64()
     stdio.printf("  rdrand32() = 0x%08x\n", r32)
     stdio.printf("  rdrand64() = 0x%016llx\n", r64)
     testcheck.ok("RDRAND basic")
@@ -23,7 +23,7 @@ def main() -> t.CInt:
     # --- Test 2: randint ---
     testcheck.section("Test 2: randint(1, 100)")
     for _ in range(5):
-        v: t.CInt = vrandom.randint(1, 100)
+        v: int = vrandom.randint(1, 100)
         stdio.printf("  randint(1,100) = %d\n", v)
     testcheck.ok("randint range check")
 
@@ -37,14 +37,14 @@ def main() -> t.CInt:
     # --- Test 4: getrandbits ---
     testcheck.section("Test 4: getrandbits(8)")
     for _ in range(3):
-        b: t.CUInt64T = vrandom.getrandbits(8)
+        b: uint64 = vrandom.getrandbits(8)
         stdio.printf("  getrandbits(8) = 0x%02llx\n", b)
     testcheck.ok("getrandbits width check")
 
     # --- Test 5: random() [0,1) ---
     testcheck.section("Test 5: random()")
     for _ in range(3):
-        f: t.CDouble = vrandom.random()
+        f: double = vrandom.random()
         stdio.printf("  random() = %f\n", f)
     testcheck.ok("random() in [0,1)")
 

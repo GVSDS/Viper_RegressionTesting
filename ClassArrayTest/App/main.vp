@@ -3,7 +3,7 @@ import testcheck
 import class_test
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ClassArrayTest: 类与数组测试")
 
     testcheck.section("CLASS TESTS")

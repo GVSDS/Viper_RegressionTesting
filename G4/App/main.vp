@@ -30,7 +30,7 @@ def test_g4node_create():
         testcheck.check(False, "new_g4node", "FAIL")
         return
     n.IntVal = 42
-    v: t.CInt = n.IntVal
+    v: int = n.IntVal
     testcheck.check(v == 42, "G4Node.IntVal = 42", "expect 42")
 
 
@@ -53,7 +53,7 @@ def test_g4node_next_field():
     if next_node is None:
         testcheck.check(False, "g4node_get_next", "FAIL")
         return
-    v: t.CInt = next_node.IntVal
+    v: int = next_node.IntVal
     testcheck.check(v == 20, "n1.Next.IntVal = 20", "expect 20")
 
 
@@ -75,7 +75,7 @@ def test_g4node_chain():
     c.IntVal = 3
     g4node_set_next(a, b)
     g4node_set_next(b, c)
-    sum: t.CInt = a.IntVal
+    sum: int = a.IntVal
     p: G4Node | t.CPtr = g4node_get_next(a)
     sum = sum + p.IntVal
     p = g4node_get_next(p)
@@ -95,7 +95,7 @@ def test_caller1_direct_access():
     if head is None:
         testcheck.check(False, "caller1_make_chain", "FAIL")
         return
-    total: t.CInt = caller1.caller1_sum_chain(head)
+    total: int = caller1.caller1_sum_chain(head)
     stdio.printf("caller1 chain total = %d\n", total)
     testcheck.check(total == 600, "caller1 sum = 100+200+300 = 600", "expect 600")
 
@@ -112,9 +112,9 @@ def test_caller2_reverse():
     if head is None:
         testcheck.check(False, "caller1_make_chain", "FAIL")
         return
-    count_before: t.CInt = caller2.caller2_count_nodes(head)
+    count_before: int = caller2.caller2_count_nodes(head)
     reversed_head: G4Node | t.CPtr = caller2.caller2_reverse_chain(head)
-    count_after: t.CInt = caller2.caller2_count_nodes(reversed_head)
+    count_after: int = caller2.caller2_count_nodes(reversed_head)
     stdio.printf("caller2 count before=%d after=%d\n", count_before, count_after)
     testcheck.check(count_before == 3 and count_after == 3,
                     "caller2 reverse count OK (3,3)", "caller2 count mismatch")
@@ -138,12 +138,12 @@ def test_caller3_append():
         return
     extra.IntVal = 400
     head = caller3.caller3_append(head, extra)
-    total: t.CInt = caller1.caller1_sum_chain(head)
+    total: int = caller1.caller1_sum_chain(head)
     stdio.printf("caller3 after append total = %d\n", total)
     testcheck.check(total == 1000, "caller3 append sum = 600+400 = 1000", "expect 1000")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("G4: GSListNode inheritance from includes (Phase1 path)")
     test_g4node_create()
     test_g4node_next_field()

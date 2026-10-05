@@ -147,26 +147,26 @@ def test_write(pool: memhub.MemPool | t.CPtr):
 
     # 写整数
     v1: json.JsonValue | t.CPtr = json.int_val(pool, 42)
-    s1: t.CChar | t.CPtr = json.write(pool, v1, False)
+    s1: char | t.CPtr = json.write(pool, v1, False)
     testcheck.check(string.strcmp(s1, "42") == 0, "write int 42", "write int 42")
 
     # 写字符串
     v2: json.JsonValue | t.CPtr = json.string_val(pool, "hello")
-    s2: t.CChar | t.CPtr = json.write(pool, v2, False)
+    s2: char | t.CPtr = json.write(pool, v2, False)
     testcheck.check(string.strcmp(s2, '"hello"') == 0, "write string hello", "write string hello")
 
     # 写布尔
     v3: json.JsonValue | t.CPtr = json.bool_val(pool, True)
-    s3: t.CChar | t.CPtr = json.write(pool, v3, False)
+    s3: char | t.CPtr = json.write(pool, v3, False)
     testcheck.check(string.strcmp(s3, "true") == 0, "write bool true", "write bool true")
 
     v4: json.JsonValue | t.CPtr = json.bool_val(pool, False)
-    s4: t.CChar | t.CPtr = json.write(pool, v4, False)
+    s4: char | t.CPtr = json.write(pool, v4, False)
     testcheck.check(string.strcmp(s4, "false") == 0, "write bool false", "write bool false")
 
     # 写 null
     v5: json.JsonValue | t.CPtr = json.null(pool)
-    s5: t.CChar | t.CPtr = json.write(pool, v5, False)
+    s5: char | t.CPtr = json.write(pool, v5, False)
     testcheck.check(string.strcmp(s5, "null") == 0, "write null", "write null")
 
     # 写数组
@@ -174,14 +174,14 @@ def test_write(pool: memhub.MemPool | t.CPtr):
     json.array_append(pool, arr, json.int_val(pool, 1))
     json.array_append(pool, arr, json.int_val(pool, 2))
     json.array_append(pool, arr, json.int_val(pool, 3))
-    s6: t.CChar | t.CPtr = json.write(pool, arr, False)
+    s6: char | t.CPtr = json.write(pool, arr, False)
     testcheck.check(string.strcmp(s6, "[1,2,3]") == 0, "write array [1,2,3]", "write array [1,2,3]")
 
     # 写对象
     obj: json.JsonValue | t.CPtr = json.object(pool)
     json.object_set(pool, obj, "a", json.int_val(pool, 1))
     json.object_set(pool, obj, "b", json.string_val(pool, "x"))
-    s7: t.CChar | t.CPtr = json.write(pool, obj, False)
+    s7: char | t.CPtr = json.write(pool, obj, False)
     testcheck.check(s7 != None, "write object non-null", "write object non-null")
 
 
@@ -191,7 +191,7 @@ def test_write(pool: memhub.MemPool | t.CPtr):
 def test_nested(pool: memhub.MemPool | t.CPtr):
     testcheck.section("Parse Nested JSON (Pythonic API)")
 
-    src: t.CChar | t.CPtr = '{"name": "Viper", "version": 1, "features": ["fast", "safe", "portable"], "nested": {"key": "value", "num": 99}}'
+    src: char | t.CPtr = '{"name": "Viper", "version": 1, "features": ["fast", "safe", "portable"], "nested": {"key": "value", "num": 99}}'
     root: json.JsonValue | t.CPtr = json.parse(pool, src)
     testcheck.check(root.is_object(), "nested is_object", "nested is_object")
     testcheck.check(len(root) == 4, "nested len()==4", "nested len()==4")
@@ -262,12 +262,12 @@ def test_escape(pool: memhub.MemPool | t.CPtr):
     # 解析含转义字符的字符串
     v1: json.JsonValue | t.CPtr = json.parse(pool, '"hello\\nworld"')
     testcheck.check(v1.is_string(), "escape \\n is_string", "escape \\n is_string")
-    sv1: t.CChar | t.CPtr = v1.as_string()
+    sv1: char | t.CPtr = v1.as_string()
     testcheck.check(sv1 != None and sv1[5] == '\n', "escape \\n contains newline", "escape \\n contains newline")
 
     v2: json.JsonValue | t.CPtr = json.parse(pool, '"tab\\there"')
     testcheck.check(v2.is_string(), "escape \\t is_string", "escape \\t is_string")
-    sv2: t.CChar | t.CPtr = v2.as_string()
+    sv2: char | t.CPtr = v2.as_string()
     testcheck.check(sv2 != None and sv2[3] == '\t', "escape \\t contains tab", "escape \\t contains tab")
 
     v3: json.JsonValue | t.CPtr = json.parse(pool, '"quote\\""')
@@ -277,7 +277,7 @@ def test_escape(pool: memhub.MemPool | t.CPtr):
 # ============================================================
 # 主函数
 # ============================================================
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("JSON Library Test (Pythonic API)")
 
     # 使用 mpool 的 bump 分配器

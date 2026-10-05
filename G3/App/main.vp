@@ -11,7 +11,7 @@ from linkedlist import GSListNode
 
 @t.NoVTable
 class Node(GSListNode[Node]):
-    value: t.CInt
+    value: int
 
     def __init__(self):
         self.value = 0
@@ -33,7 +33,7 @@ def test_node_next_field():
     n2.value = 20
     n1.Next = n2
     next_node: Node = n1.Next
-    v: t.CInt = next_node.value
+    v: int = next_node.value
     testcheck.check(v == 20, "n1.Next.value = 20", "expect 20")
 
 
@@ -47,7 +47,7 @@ def test_node_chain():
     c.value = 3
     a.Next = b
     b.Next = c
-    sum: t.CInt = a.value
+    sum: int = a.value
     p: Node = a.Next
     sum = sum + p.value
     p = p.Next
@@ -55,7 +55,7 @@ def test_node_chain():
     testcheck.check(sum == 6, "chain sum = 1+2+3 = 6", "expect 6")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("G3: GSListNode inheritance (F-bounded polymorphism)")
     test_node_create()
     test_node_next_field()

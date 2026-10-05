@@ -18,7 +18,7 @@ from linkedlist import GSListNode, GSList
 # G5Node: 继承 GSListNode[G5Node]（Phase2 路径，正确特化）
 @t.NoVTable
 class G5Node(GSListNode[G5Node]):
-    Value: t.CInt
+    Value: int
 
     def __init__(self):
         self.Next = None
@@ -28,7 +28,7 @@ class G5Node(GSListNode[G5Node]):
 # G5ListWrapper: 包装 GSList[G5Node]，测试 GSList 字段访问
 # 注意：GSList[G5Node] 走 Phase2 特化路径
 # 用 pool 工厂函数分配 GSList，避免栈分配悬垂指针
-GSLIST_SIZE: t.CDefine = 24  # Head(8) + Tail(8) + Count(8)
+define GSLIST_SIZE = 24  # Head(8) + Tail(8) + Count(8)
 
 @t.NoVTable
 class G5ListWrapper:
@@ -51,7 +51,7 @@ def test_g5node_create():
     testcheck.section("Test 1: G5Node create and field access")
     n: G5Node = G5Node()
     n.Value = 42
-    v: t.CInt = n.Value
+    v: int = n.Value
     testcheck.check(v == 42, "G5Node.Value = 42", "expect 42")
 
 
@@ -66,7 +66,7 @@ def test_g5node_next():
     if next_node is None:
         testcheck.check(False, "n1.Next is None", "FAIL")
         return
-    v: t.CInt = next_node.Value
+    v: int = next_node.Value
     testcheck.check(v == 20, "n1.Next.Value = 20", "expect 20")
 
 
@@ -83,7 +83,7 @@ def test_gslist_create():
     # 检查初始状态
     head: G5Node | t.CPtr = lst.Head
     tail: G5Node | t.CPtr = lst.Tail
-    count: t.CSizeT = lst.Count
+    count: sizet = lst.Count
     testcheck.check(head is None, "initial Head is None", "expect None")
     testcheck.check(tail is None, "initial Tail is None", "expect None")
     testcheck.check(count == 0, "initial Count = 0", "expect 0")
@@ -107,7 +107,7 @@ def test_gslist_append():
     lst.append(c)
 
     # 验证 Count
-    count: t.CSizeT = lst.Count
+    count: sizet = lst.Count
     testcheck.check(count == 3, "Count = 3 after 3 appends", "expect 3")
 
     # 验证 Head
@@ -125,7 +125,7 @@ def test_gslist_append():
     testcheck.check(tail.Value == 3, "Tail.Value = 3", "expect 3")
 
     # 遍历链表验证顺序
-    sum: t.CInt = 0
+    sum: int = 0
     cur: G5Node | t.CPtr = lst.Head
     while cur is not None:
         sum = sum + cur.Value
@@ -161,12 +161,12 @@ def test_wrapper_list_field():
     if head is None:
         testcheck.check(False, "wrapper.List.Head is None", "FAIL")
         return
-    count: t.CSizeT = wrapper.List.Count
+    count: sizet = wrapper.List.Count
     testcheck.check(head.Value == 999, "wrapper.List.Head.Value = 999", "expect 999")
     testcheck.check(count == 1, "wrapper.List.Count = 1", "expect 1")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("G5: GSList[T] field access (Phase2 path, pool alloc for wrapper)")
     test_g5node_create()
     test_g5node_next()

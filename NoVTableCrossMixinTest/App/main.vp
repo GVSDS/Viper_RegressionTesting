@@ -15,14 +15,14 @@ import testcheck
 # 期望：按实际定义类（BaseA）做前缀，或按最终组合类（Combined）。
 # ============================================================
 novirtual class BaseA:
-    a: t.CInt
+    a: int
 
     def helper(self) -> int:
         return self.a
 
 
 novirtual class BaseB:
-    b: t.CInt
+    b: int
 
     def caller(self) -> int:
         return self.helper()
@@ -52,7 +52,7 @@ def test_cross_mixin_call():
 #   inner2 内写 self.a2（this_adjust 精确到组合类中 a2 字段）。
 # ============================================================
 novirtual class MixinA2:
-    a2: t.CInt
+    a2: int
 
     def inner2(self) -> int:
         self.a2 = self.a2 + 10
@@ -60,14 +60,14 @@ novirtual class MixinA2:
 
 
 novirtual class MixinB2(MixinA2):
-    b2: t.CInt
+    b2: int
 
     def mid2(self) -> int:
         return self.inner2() + self.b2
 
 
 novirtual class MixinC2:
-    c2: t.CInt
+    c2: int
 
     def outer2(self) -> int:
         return self.mid2() + self.c2
@@ -97,14 +97,14 @@ def test_multilevel_chain():
 # DataMixin.get_val 内 self.val 需 this_adjust 到第二父类字段区。
 # ============================================================
 novirtual class PtrMixin:
-    name: t.CChar | t.CPtr
+    name: char | t.CPtr
 
-    def get_name(self) -> t.CChar | t.CPtr:
+    def get_name(self) -> char | t.CPtr:
         return self.name
 
 
 novirtual class DataMixin:
-    val: t.CInt
+    val: int
 
     def get_val(self) -> int:
         return self.val
@@ -127,7 +127,7 @@ def test_second_parent_offset():
                     "second parent this_adjust fail")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("NoVTableCrossMixinTest")
     test_cross_mixin_call()
     test_multilevel_chain()

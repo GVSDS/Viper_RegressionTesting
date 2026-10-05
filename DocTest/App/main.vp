@@ -20,7 +20,7 @@ def no_doc_func() -> int:
 # 同模块类（有 docstring）
 class LocalClass:
     "Local class docstring."
-    value: t.CInt
+    value: int
 
     def local_method(self) -> int:
         "Local method docstring."
@@ -62,7 +62,7 @@ def test_cross_module_doc():
     _check_doc_null("remote.no_doc_func", remote.no_doc_func.__doc__)
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("DocTest: __doc__ magic string test")
     test_local_doc()
     test_cross_module_doc()

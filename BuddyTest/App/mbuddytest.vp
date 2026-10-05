@@ -12,7 +12,7 @@ import w32.win32base
 
 
 # 线程函数: 在共享 MBuddy 上执行 alloc/free (测试 spinlock 线程安全)
-def _thread_alloc_free(param: t.CPtr) -> t.CUInt32T:
+def _thread_alloc_free(param: t.CPtr) -> uint32:
     bd: memhub.MemBuddy | t.CPtr = (memhub.MemBuddy | t.CPtr)(param)
     i: CInt
     for i in range(100):
@@ -191,7 +191,7 @@ def mbuddy_main() -> CInt:
     testcheck.check(valid != None, "alloc for illegal test OK", "alloc FAILED")
 
     # 1. free 随机地址 (地址 1)
-    bd5.free(t.CPtr(t.CUInt64T(1)))
+    bd5.free(t.CPtr(uint64(1)))
     testcheck.ok("free(addr=1) ignored")
 
     # 2. free NULL
@@ -199,15 +199,15 @@ def mbuddy_main() -> CInt:
     testcheck.ok("free(NULL) ignored")
 
     # 3. free 越界指针 (arena 之前)
-    bd5.free(t.CPtr(t.CUInt64T(arena5)))
+    bd5.free(t.CPtr(uint64(arena5)))
     testcheck.ok("free(before arena) ignored")
 
     # 4. free 越界指针 (arena 之后)
-    bd5.free(t.CPtr(t.CUInt64T(arena5) + 99999))
+    bd5.free(t.CPtr(uint64(arena5) + 99999))
     testcheck.ok("free(after arena) ignored")
 
     # 5. free 未对齐指针 (arena + 1, 在 mem 区域内但不对齐)
-    bd5.free(t.CPtr(t.CUInt64T(bd5.base) + 1))
+    bd5.free(t.CPtr(uint64(bd5.base) + 1))
     testcheck.ok("free(misaligned) ignored")
 
     # 6. 验证合法 free 仍正常工作 (释放后应能再次分配)
@@ -237,7 +237,7 @@ def mbuddy_main() -> CInt:
         p: bytes = bd6.alloc(32)
         if p == None:
             break
-        ptrs[alloc_count] = t.CUInt64T(p)
+        ptrs[alloc_count] = uint64(p)
         alloc_count += 1
 
     viperlib.snprintf(buf, 256, "allocated %d blocks before OOM", alloc_count)
@@ -388,7 +388,7 @@ def mbuddy_main() -> CInt:
     # 创建 4 个线程并发 alloc/free
     t_idx: CInt
     for t_idx in range(NUM_THREADS):
-        h: bytes = w32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, c.Addr(tid))
+        h: bytes = w32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, &tid)
         handles[t_idx] = CUInt64T(h)
 
     # 等待所有线程完成
@@ -521,7 +521,7 @@ def mbuddy_main() -> CInt:
         fp: bytes = bd_fill.alloc(24)
         if fp == None:
             break
-        fill_ptrs[fill_count] = t.CUInt64T(fp)
+        fill_ptrs[fill_count] = uint64(fp)
         fill_count += 1
 
     viperlib.snprintf(buf, 256, "fill: %d min blocks allocated", fill_count)

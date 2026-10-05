@@ -2,8 +2,8 @@ import config
 import t, c
 
 
-def AboutSizeTWhileTest(length: t.CSizeT):
-    pos: t.CSizeT = 0
+def AboutSizeTWhileTest(length: sizet):
+    pos: sizet = 0
     while pos < length:
         print("Pos: ", pos)
         if pos > config.POSMAX: break
@@ -24,8 +24,8 @@ def AboutSizeTWhileTest(length: t.CSizeT):
         pos += 1
 
 
-def MathBasicTest(x: t.CInt, y: t.CInt) -> t.CInt:
-    result: t.CInt = 0
+def MathBasicTest(x: int, y: int) -> int:
+    result: int = 0
     result = x + y
     print("Add: ", result)
     result = x - y
@@ -40,15 +40,15 @@ def MathBasicTest(x: t.CInt, y: t.CInt) -> t.CInt:
     return result
 
 
-def MathAdvancedTest(value: t.CInt) -> t.CInt:
-    counter: t.CInt = 0
-    scaled: t.CInt = 0
-    offset: t.CInt = 0
+def MathAdvancedTest(value: int) -> int:
+    counter: int = 0
+    scaled: int = 0
+    offset: int = 0
     scaled = value * config.MATH_SCALE
     print("Scaled: ", scaled)
     offset = scaled + config.MATH_OFFSET
     print("Offset: ", offset)
-    threshold: t.CInt = config.THRESHOLD
+    threshold: int = config.THRESHOLD
     if offset > threshold:
         print("Above threshold")
         counter = 1
@@ -61,8 +61,8 @@ def MathAdvancedTest(value: t.CInt) -> t.CInt:
     return counter
 
 
-def WhileWithElifElseTest(start: t.CInt, end: t.CInt):
-    idx: t.CInt = start
+def WhileWithElifElseTest(start: int, end: int):
+    idx: int = start
     while idx < end:
         if idx < 0:
             print("Negative: ", idx)
@@ -77,10 +77,10 @@ def WhileWithElifElseTest(start: t.CInt, end: t.CInt):
         idx += 1
 
 
-def NestedWhileWithMacrosTest(outer_limit: t.CInt, inner_limit: t.CInt):
-    outer: t.CInt = 0
-    inner: t.CInt = 0
-    total_ops: t.CInt = 0
+def NestedWhileWithMacrosTest(outer_limit: int, inner_limit: int):
+    outer: int = 0
+    inner: int = 0
+    total_ops: int = 0
     while outer < outer_limit:
         inner = 0
         while inner < inner_limit:
@@ -92,10 +92,10 @@ def NestedWhileWithMacrosTest(outer_limit: t.CInt, inner_limit: t.CInt):
     print("Total operations: ", total_ops)
 
 
-def ComplexConditionTest(a: t.CInt, b: t.CInt, c_val: t.CInt):
-    x: t.CInt = a
-    y: t.CInt = b
-    z: t.CInt = c_val
+def ComplexConditionTest(a: int, b: int, c_val: int):
+    x: int = a
+    y: int = b
+    z: int = c_val
     while x < config.LOOP_LIMIT:
         if x > 0 and y > 0 and z > 0:
             print("All positive: ", x, y, z)
@@ -113,9 +113,9 @@ def ComplexConditionTest(a: t.CInt, b: t.CInt, c_val: t.CInt):
         z += 1
 
 
-def RetryLoopTest(retry_count: t.CInt) -> t.CInt:
-    attempt: t.CInt = 0
-    success: t.CInt = 0
+def RetryLoopTest(retry_count: int) -> int:
+    attempt: int = 0
+    success: int = 0
     while attempt < retry_count:
         if attempt < config.MAX_RETRY:
             print("Attempt: ", attempt, " less than max")
@@ -130,12 +130,12 @@ def RetryLoopTest(retry_count: t.CInt) -> t.CInt:
     return success
 
 
-def BitwiseOperationsTest(value: t.CInt) -> t.CInt:
-    shifted: t.CInt = 0
-    masked: t.CInt = 0
-    xored: t.CInt = 0
-    anded: t.CInt = 0
-    ored: t.CInt = 0
+def BitwiseOperationsTest(value: int) -> int:
+    shifted: int = 0
+    masked: int = 0
+    xored: int = 0
+    anded: int = 0
+    ored: int = 0
     shifted = value << config.SHIFT_AMOUNT
     print("Left shift: ", shifted)
     shifted = value >> config.SHIFT_AMOUNT
@@ -151,10 +151,10 @@ def BitwiseOperationsTest(value: t.CInt) -> t.CInt:
     return masked
 
 
-def CompoundAssignmentMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
-    x: t.CInt = a
-    y: t.CInt = b
-    result: t.CInt = 0
+def CompoundAssignmentMathTest(a: int, b: int) -> int:
+    x: int = a
+    y: int = b
+    result: int = 0
     x += y
     print("x += y: ", x)
     x -= y
@@ -186,10 +186,10 @@ def CompoundAssignmentMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
     return result
 
 
-def PowerAndModuloTest(base: t.CInt, exponent: t.CInt) -> t.CInt:
-    result: t.CInt = 1
-    temp: t.CInt = 0
-    i: t.CInt = 0
+def PowerAndModuloTest(base: int, exponent: int) -> int:
+    result: int = 1
+    temp: int = 0
+    i: int = 0
     while i < exponent:
         result *= base
         i += 1
@@ -203,8 +203,8 @@ def PowerAndModuloTest(base: t.CInt, exponent: t.CInt) -> t.CInt:
     return result
 
 
-def MixedArithmeticTest(x: t.CInt, y: t.CInt, z: t.CInt) -> t.CInt:
-    result: t.CInt = 0
+def MixedArithmeticTest(x: int, y: int, z: int) -> int:
+    result: int = 0
     result = (x + y) * z
     print("(x+y)*z: ", result)
     result = x + (y * z)
@@ -215,7 +215,7 @@ def MixedArithmeticTest(x: t.CInt, y: t.CInt, z: t.CInt) -> t.CInt:
     print("x*scale + y*scale: ", result)
     result = ((x % config.MODULO_DIVISOR) + (y % config.MODULO_DIVISOR)) * config.MATH_SCALE
     print("(x%%mod + y%%mod)*scale: ", result)
-    temp: t.CInt = 0
+    temp: int = 0
     temp = x | y & z
     print("x | y & z: ", temp)
     temp = (x | y) & z
@@ -225,12 +225,12 @@ def MixedArithmeticTest(x: t.CInt, y: t.CInt, z: t.CInt) -> t.CInt:
     return result
 
 
-def MathWithWhileLoopTest(start: t.CInt, count: t.CInt) -> t.CInt:
-    idx: t.CInt = 0
-    accumulator: t.CInt = 0
-    multiplier: t.CInt = config.MATH_SCALE
+def MathWithWhileLoopTest(start: int, count: int) -> int:
+    idx: int = 0
+    accumulator: int = 0
+    multiplier: int = config.MATH_SCALE
     while idx < count:
-        temp: t.CInt = (start + idx) * multiplier
+        temp: int = (start + idx) * multiplier
         temp = temp + config.MATH_OFFSET
         if temp > config.THRESHOLD:
             temp = config.THRESHOLD
@@ -241,11 +241,11 @@ def MathWithWhileLoopTest(start: t.CInt, count: t.CInt) -> t.CInt:
     return accumulator
 
 
-def ComplexNestedMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
-    layer1: t.CInt = 0
-    layer2: t.CInt = 0
-    layer3: t.CInt = 0
-    i: t.CInt = 0
+def ComplexNestedMathTest(a: int, b: int) -> int:
+    layer1: int = 0
+    layer2: int = 0
+    layer3: int = 0
+    i: int = 0
     layer1 = (a + b) * config.MATH_SCALE
     print("Layer1: ", layer1)
     while i < config.BIT_RANGE:
@@ -259,9 +259,9 @@ def ComplexNestedMathTest(a: t.CInt, b: t.CInt) -> t.CInt:
     return layer3
 
 
-def ConditionalMathChainTest(value: t.CInt) -> t.CInt:
-    result: t.CInt = 0
-    step: t.CInt = 0
+def ConditionalMathChainTest(value: int) -> int:
+    result: int = 0
+    step: int = 0
     while step < config.LOOP_LIMIT:
         if step < 5:
             result += step * config.MATH_SCALE
@@ -279,10 +279,10 @@ def ConditionalMathChainTest(value: t.CInt) -> t.CInt:
     return result
 
 
-def BitManipulationMathTest(value: t.CInt) -> t.CInt:
-    original: t.CInt = value
-    nibble: t.CInt = 0
-    result: t.CInt = 0
+def BitManipulationMathTest(value: int) -> int:
+    original: int = value
+    nibble: int = 0
+    result: int = 0
     result = (value << config.SHIFT_AMOUNT) | (value >> (8 - config.SHIFT_AMOUNT))
     print("Rotate left: ", result)
     result = (value >> config.SHIFT_AMOUNT) | (value << (8 - config.SHIFT_AMOUNT))

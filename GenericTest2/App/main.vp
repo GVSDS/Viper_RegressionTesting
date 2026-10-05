@@ -11,8 +11,8 @@ def square[T](x: T) -> T:
 
 def test_generic_square_types():
     testcheck.section("Test 1: generic square with different types")
-    r1: t.CInt = square(5)
-    r2: t.CInt = square(10)
+    r1: int = square(5)
+    r2: int = square(10)
     testcheck.check(r1 == 25 and r2 == 100, "square (5^2=25 10^2=100)", "square expect 25 100")
 
 # ============================================================
@@ -27,38 +27,38 @@ def clamp[T](val: T, lo: T, hi: T) -> T:
 
 def test_generic_clamp():
     testcheck.section("Test 2: generic clamp")
-    r1: t.CInt = clamp(5, 0, 10)
-    r2: t.CInt = clamp(-3, 0, 10)
-    r3: t.CInt = clamp(15, 0, 10)
+    r1: int = clamp(5, 0, 10)
+    r2: int = clamp(-3, 0, 10)
+    r3: int = clamp(15, 0, 10)
     testcheck.check(r1 == 5 and r2 == 0 and r3 == 10, "clamp (5 0 10)", "clamp expect 5 0 10")
 
 # ============================================================
 # Test 3: 泛型类 - Stack[T]
 # ============================================================
 class Stack[T]():
-    data: t.CArray[t.CInt, 16]
-    top: t.CInt
+    data: t.CArray[int, 16]
+    top: int
 
     def __init__(self):
         self.top = 0
 
     def push(self, val: T):
-        self.data[self.top] = t.CInt(val)
+        self.data[self.top] = int(val)
         self.top += 1
 
     def pop(self) -> T:
         self.top -= 1
         return T(self.data[self.top])
 
-    def is_empty(self) -> t.CInt:
+    def is_empty(self) -> int:
         if self.top == 0:
             return 1
         return 0
 
-    def size_of(self) -> t.CSizeT:
+    def size_of(self) -> sizet:
         return self.__sizeof__()
 
-    def type_size(self) -> t.CSizeT:
+    def type_size(self) -> sizet:
         return Stack[T].__sizeof__()
 
 def test_generic_stack():
@@ -69,29 +69,29 @@ def test_generic_stack():
     s.push(10)
     s.push(20)
     s.push(30)
-    r1: t.CInt = s.pop()
-    r2: t.CInt = s.pop()
-    r3: t.CInt = s.pop()
+    r1: int = s.pop()
+    r2: int = s.pop()
+    r3: int = s.pop()
     testcheck.check(r1 == 30 and r2 == 20 and r3 == 10, "Stack (pop=30 20 10)", "Stack expect 30 20 10")
 
 # ============================================================
 # Test 4: 泛型函数 - swap via pointer
 # ============================================================
 class IntPair:
-    a: t.CInt
-    b: t.CInt
+    a: int
+    b: int
 
 def generic_swap(p: IntPair | t.CPtr):
-    tmp: t.CInt = c.Deref(p).a
-    c.Deref(p).a = c.Deref(p).b
-    c.Deref(p).b = tmp
+    tmp: int = (*p).a
+    (*p).a = (*p).b
+    (*p).b = tmp
 
 def test_generic_swap():
     testcheck.section("Test 4: generic swap via pointer")
     p: IntPair = IntPair()
     p.a = 100
     p.b = 200
-    generic_swap(c.Addr(p))
+    generic_swap(&p)
     testcheck.check(p.a == 200 and p.b == 100, "swap (a=200 b=100)", "swap expect 200 100")
 
 # ============================================================
@@ -118,24 +118,24 @@ class Range[T]():
 def test_generic_range():
     testcheck.section("Test 5: generic Range[T]")
     r = Range(0, 10, 1)  # 0+1+2+...+9=45
-    s: t.CInt = r.sum_all()
+    s: int = r.sum_all()
     testcheck.check(s == 45, "Range sum (0..9=45)", "Range sum expect 45")
 
 # ============================================================
 # Test 6: 泛型函数 - 数组求和（非泛型数组参数）
 # ============================================================
-def array_sum(arr: t.CArray[t.CInt, 8], n: t.CInt) -> t.CInt:
-    result: t.CInt = 0
+def array_sum(arr: t.CArray[int, 8], n: int) -> int:
+    result: int = 0
     for i in range(n):
         result += arr[i]
     return result
 
 def test_generic_array_sum():
     testcheck.section("Test 6: array sum")
-    arr: t.CArray[t.CInt, 8] = [0]
+    arr: t.CArray[int, 8] = [0]
     for i in range(8):
         arr[i] = (i + 1) * 10
-    s: t.CInt = array_sum(arr, 8)
+    s: int = array_sum(arr, 8)
     testcheck.check(s == 360, "array sum (360)", "array sum expect 360")
 
 # ============================================================
@@ -151,31 +151,31 @@ def max_of_three[T](a: T, b: T, c_val: T) -> T:
 
 def test_generic_max_three():
     testcheck.section("Test 7: generic max of three")
-    r1: t.CInt = max_of_three(1, 2, 3)
-    r2: t.CInt = max_of_three(10, 30, 20)
-    r3: t.CInt = max_of_three(50, 50, 50)
+    r1: int = max_of_three(1, 2, 3)
+    r2: int = max_of_three(10, 30, 20)
+    r3: int = max_of_three(50, 50, 50)
     testcheck.check(r1 == 3 and r2 == 30 and r3 == 50, "max3 (3 30 50)", "max3 expect 3 30 50")
 
 # ============================================================
 # Test 8: 泛型类 - 带方法的容器
 # ============================================================
 class Container[T]():
-    values: t.CArray[t.CInt, 8]
-    size: t.CInt
+    values: t.CArray[int, 8]
+    size: int
 
     def __init__(self):
         self.size = 0
 
     def add(self, v: T):
-        self.values[self.size] = t.CInt(v)
+        self.values[self.size] = int(v)
         self.size += 1
 
-    def get(self, idx: t.CInt) -> T:
+    def get(self, idx: int) -> T:
         return T(self.values[idx])
 
-    def contains(self, v: T) -> t.CInt:
+    def contains(self, v: T) -> int:
         for i in range(self.size):
-            if self.values[i] == t.CInt(v):
+            if self.values[i] == int(v):
                 return 1
         return 0
 
@@ -193,9 +193,9 @@ def test_generic_container():
     c.add(10)
     c.add(20)
     c.add(30)
-    has20: t.CInt = c.contains(20)
-    has99: t.CInt = c.contains(99)
-    total: t.CInt = c.total()
+    has20: int = c.contains(20)
+    has99: int = c.contains(99)
+    total: int = c.total()
     testcheck.check(has20 == 1 and has99 == 0 and total == 60, "Container (has20=1 has99=0 total=60)", "Container expect 1 0 60")
 
 # ============================================================
@@ -211,8 +211,8 @@ def factorial[T](n: T) -> T:
 
 def test_generic_factorial():
     testcheck.section("Test 9: generic factorial")
-    r1: t.CInt = factorial(5)
-    r2: t.CInt = factorial(10)
+    r1: int = factorial(5)
+    r2: int = factorial(10)
     testcheck.check(r1 == 120 and r2 == 3628800, "factorial (5!=120 10!=3628800)", "factorial expect 120 3628800")
 
 # ============================================================
@@ -236,7 +236,7 @@ def test_generic_accumulator():
     a.add_val(10)
     a.add_val(20)
     a.add_val(30)
-    r: t.CInt = a.get_result()
+    r: int = a.get_result()
     testcheck.check(r == 60, "Accumulator (result=60)", "Accumulator expect 60")
 
 # ============================================================
@@ -249,15 +249,15 @@ def test_generic_sizeof_bug():
     # 同 Test 3：无参构造必须显式标注类型实参；Stack[int] = { [16 x i32], i32 } = 68。
     s = Stack[int]()
     s.push(10)
-    sz: t.CSizeT = s.__sizeof__()
-    inner_sz: t.CSizeT = s.size_of()
-    type_sz: t.CSizeT = s.type_size()
+    sz: sizet = s.__sizeof__()
+    inner_sz: sizet = s.size_of()
+    type_sz: sizet = s.type_size()
     stdio.printf("Stack[int] obj.__sizeof__() = %lu, self.__sizeof__() = %lu, Stack[T].__sizeof__() = %lu (expect 68)\n", sz, inner_sz, type_sz)
     testcheck.check(sz == 68, "obj.__sizeof__() == 68 OK", "obj.__sizeof__() FAILED")
     testcheck.check(inner_sz == 68, "self.__sizeof__() == 68 OK", "self.__sizeof__() FAILED")
     testcheck.check(type_sz == 68, "Stack[T].__sizeof__() == 68 OK", "Stack[T].__sizeof__() FAILED")
 
-def main() -> t.CInt:  
+def main() -> int:  
     testcheck.begin("GenericTest2: Advanced Generic Tests")
     test_generic_square_types()
     test_generic_clamp()

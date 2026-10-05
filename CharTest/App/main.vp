@@ -7,7 +7,7 @@ def bump(v: char) -> char:
     return char(v + 1)
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     # 1) char 注解：char = t.CChar = i8（标量内置类型，非指针）
     ch: char = 65
     stdio.printf("1 char annot: %d (expect 65)\n", int(ch))

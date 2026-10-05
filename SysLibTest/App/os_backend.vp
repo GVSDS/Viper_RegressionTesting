@@ -32,7 +32,7 @@ def os_isdir(path: str) -> bool:
     return os._posix.isdir(path)
 
 
-def os_getsize(path: str) -> t.CInt64T:
+def os_getsize(path: str) -> int64:
     """返回文件大小（字节，跨平台）。失败返回 -1。"""
     if platmacro.IS_WINDOWS:
         return os._win32.getsize(path)

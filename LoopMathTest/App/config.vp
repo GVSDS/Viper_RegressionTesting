@@ -1,24 +1,24 @@
 import t, c
 
 
-POSMAX: t.CDefine = 100
-MAX_RETRY: t.CDefine = 5
-BUFFER_SIZE: t.CDefine = 256
-PI: t.CDefine = 3.14159
-EULER: t.CDefine = 2.71828
-TRUE: t.CDefine = 1
-FALSE: t.CDefine = 0
-NULL: t.CDefine = 0
+define POSMAX = 100
+define MAX_RETRY = 5
+define BUFFER_SIZE = 256
+define PI = 3.14159
+define EULER = 2.71828
+define TRUE = 1
+define FALSE = 0
+define NULL = 0
 
 
-MATH_OFFSET: t.CDefine = 10
-MATH_SCALE: t.CDefine = 2
-THRESHOLD: t.CDefine = 50
-LOOP_LIMIT: t.CDefine = 20
-SHIFT_AMOUNT: t.CDefine = 2
-MASK_VALUE: t.CDefine = 0xFF
-BIT_RANGE: t.CDefine = 4
-EXPONENT_BASE: t.CDefine = 3
-MODULO_DIVISOR: t.CDefine = 7
-SCALE_SHIFT: t.CDefine = 4
-HALF_SCALE: t.CDefine = 0.5
+define MATH_OFFSET = 10
+define MATH_SCALE = 2
+define THRESHOLD = 50
+define LOOP_LIMIT = 20
+define SHIFT_AMOUNT = 2
+define MASK_VALUE = 0xFF
+define BIT_RANGE = 4
+define EXPONENT_BASE = 3
+define MODULO_DIVISOR = 7
+define SCALE_SHIFT = 4
+define HALF_SCALE = 0.5

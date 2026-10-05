@@ -28,12 +28,12 @@ async def task() -> int:
     return 99
 
 
-def main() -> t.CInt:
-    n: t.CInt = 0
+def main() -> int:
+    n: int = 0
     for i in range(3):
         tt: coro.Coroutine = coro.Coroutine(*&task())
-        r: t.CInt = coro.coro_run(tt)
-        e: t.CInt = coro.coro_exception(tt)
+        r: int = coro.coro_run(tt)
+        e: int = coro.coro_exception(tt)
         m: t.CPtr = coro.coro_exception_msg(tt)
         stdio.printf("[%d] r = %d, exc = %d, msg = %s\n", i, r, e, m)
         coro.coro_destroy(tt)

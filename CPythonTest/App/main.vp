@@ -26,7 +26,7 @@ def test_long_operations():
     testcheck.check(py_str != 0, "PyObject_Str != NULL", "PyObject_Str != NULL")
 
     # 获取 C 字符串
-    c_str: t.CChar | CPtr = cpython.PyUnicode_AsUTF8(py_str)
+    c_str: char | CPtr = cpython.PyUnicode_AsUTF8(py_str)
     testcheck.check(c_str != 0, "PyUnicode_AsUTF8 != NULL", "PyUnicode_AsUTF8 != NULL")
     printf("  PyLong_FromLong(12345) -> str = %s\n", c_str)
 
@@ -63,7 +63,7 @@ def test_string_operations():
     testcheck.check(py_s1 != 0, "PyUnicode_FromString != NULL", "PyUnicode_FromString != NULL")
 
     # 获取 UTF8
-    utf8: t.CChar | CPtr = cpython.PyUnicode_AsUTF8(py_s1)
+    utf8: char | CPtr = cpython.PyUnicode_AsUTF8(py_s1)
     testcheck.check(utf8 != 0, "AsUTF8 != NULL", "AsUTF8 != NULL")
     printf("  PyUnicode_FromString -> %s\n", utf8)
 
@@ -74,7 +74,7 @@ def test_string_operations():
     # 字符串拼接
     py_s2: cpython.PyObject | CPtr = cpython.PyUnicode_FromString(" World")
     py_concat: cpython.PyObject | CPtr = cpython.PyUnicode_Concat(py_s1, py_s2)
-    concat_utf8: t.CChar | CPtr = cpython.PyUnicode_AsUTF8(py_concat)
+    concat_utf8: char | CPtr = cpython.PyUnicode_AsUTF8(py_concat)
     testcheck.check(py_concat != 0, "Concat != NULL", "Concat != NULL")
     printf("  Concat -> %s\n", concat_utf8)
 
@@ -148,7 +148,7 @@ def test_dict_operations():
     # 获取值
     got_val: cpython.PyObject | CPtr = cpython.PyDict_GetItem(py_dict, py_key1)
     testcheck.check(got_val != 0, "GetItem(name) != NULL", "GetItem(name) != NULL")
-    got_str: t.CChar | CPtr = cpython.PyUnicode_AsUTF8(got_val)
+    got_str: char | CPtr = cpython.PyUnicode_AsUTF8(got_val)
     testcheck.check(got_str != 0, "name == Viper", "name == Viper")
     printf("  dict['name'] = %s\n", got_str)
 
@@ -278,7 +278,7 @@ def test_operator_overload():
     testcheck.check(sa != 0 and sb != 0, "PyUnicodeObj.from_string != NULL", "PyUnicodeObj.from_string != NULL")
 
     sc: cpython.PyUnicodeObj | CPtr = sa + sb
-    sc_utf8: t.CChar | CPtr = sc.as_utf8()
+    sc_utf8: char | CPtr = sc.as_utf8()
     testcheck.check(sc_utf8 != 0, "PyUnicodeObj concat != NULL", "PyUnicodeObj concat != NULL")
     if sc_utf8 != 0:
         printf("  PyUnicodeObj 'Hello' + ' World' = %s\n", sc_utf8)
@@ -302,13 +302,13 @@ def test_operator_overload():
         lst.append(e3)
         testcheck.check(len(lst) == 3, "PyListObj len == 3", "PyListObj len == 3")
 
-        item0: cpython.PyObject | CPtr = lst[t.CSizeT(0)]
+        item0: cpython.PyObject | CPtr = lst[sizet(0)]
         testcheck.check(cpython.PyLong_AsLong(item0) == 100, "PyListObj lst[0] == 100", "PyListObj lst[0] == 100")
 
         # __setitem__
         e4: cpython.PyObject | CPtr = cpython.PyLong_FromLong(999)
-        lst[t.CSizeT(1)] = e4
-        item1: cpython.PyObject | CPtr = lst[t.CSizeT(1)]
+        lst[sizet(1)] = e4
+        item1: cpython.PyObject | CPtr = lst[sizet(1)]
         testcheck.check(cpython.PyLong_AsLong(item1) == 999, "PyListObj lst[1] = 999", "PyListObj lst[1] = 999")
 
         cpython.Py_DecRef(e4)
@@ -327,7 +327,7 @@ def test_operator_overload():
         testcheck.check(len(dct) == 1, "PyDictObj len == 1", "PyDictObj len == 1")
 
         got_lang: cpython.PyObject | CPtr = dct[dk1]
-        got_str: t.CChar | CPtr = cpython.PyUnicode_AsUTF8(got_lang)
+        got_str: char | CPtr = cpython.PyUnicode_AsUTF8(got_lang)
         testcheck.check(got_str != 0, "PyDictObj dct['lang'] == Viper", "PyDictObj dct['lang'] == Viper")
         if got_str != 0:
             printf("  PyDictObj dct['lang'] = %s\n", got_str)

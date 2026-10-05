@@ -16,20 +16,20 @@ import testcheck
 # ============================================================
 
 
-MAX_SIZE: t.CDefine = 1024
-MIN_VAL: t.CDefine = 0
-MAX_VAL: t.CDefine = 100
-MASK_BYTE: t.CDefine = 0xFF
-SHIFT_BITS: t.CDefine = 8
-PI_INT: t.CDefine = 3
-ENABLED: t.CDefine = 1
-DISABLED: t.CDefine = 0
-PAGE_SIZE: t.CDefine = 4096
-BUFFER_LEN: t.CDefine = 256
+define MAX_SIZE = 1024
+define MIN_VAL = 0
+define MAX_VAL = 100
+define MASK_BYTE = 0xFF
+define SHIFT_BITS = 8
+define PI_INT = 3
+define ENABLED = 1
+define DISABLED = 0
+define PAGE_SIZE = 4096
+define BUFFER_LEN = 256
 
-CODE_SEG:  t.CDefine | t.CUInt16T = 0x08
-DATA_SEG:  t.CDefine | t.CUInt16T = 0x10
-STACK_SEG: t.CDefine | t.CUInt16T = 0x20
+CODE_SEG:  t.CDefine | uint16 = 0x08
+DATA_SEG:  t.CDefine | uint16 = 0x10
+STACK_SEG: t.CDefine | uint16 = 0x20
 
 
 def MAKE_FLAG(bit: CInt32T) -> t.CDefine:
@@ -335,7 +335,7 @@ def test_cifdef_cross_module() -> CInt:
     return 0
 
 def test_cifdef_guard() -> CInt:
-    MY_HEADER_GUARD: t.CDefine = 1
+    define MY_HEADER_GUARD = 1
     if c.CIfndef(MY_HEADER_GUARD):
         print(0)
     else:
@@ -380,7 +380,7 @@ def test_cifdef_complex() -> CInt:
     return 0
 
 
-def main() -> t.CInt:
+def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 

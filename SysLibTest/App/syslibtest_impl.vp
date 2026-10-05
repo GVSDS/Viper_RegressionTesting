@@ -19,11 +19,11 @@ import w32.win32process
 
 
 # 测试用临时文件/目录名前缀
-TEST_DIR:  t.CDefine = "__sylibtest_dir__"
-TEST_FILE: t.CDefine = "__sylibtest_file.txt"
-TEST_COPY: t.CDefine = "__sylibtest_copy.txt"
-TEST_TREE: t.CDefine = "__sylibtest_tree__"
-TEST_MOVE: t.CDefine = "__sylibtest_moved.txt"
+define TEST_DIR = "__sylibtest_dir__"
+define TEST_FILE = "__sylibtest_file.txt"
+define TEST_COPY = "__sylibtest_copy.txt"
+define TEST_TREE = "__sylibtest_tree__"
+define TEST_MOVE = "__sylibtest_moved.txt"
 
 
 # =============================================================================
@@ -128,7 +128,7 @@ def run() -> CInt:
     testcheck.section("os.path 路径操作")
 
     # sep
-    sep_char: t.CChar = os.path.sep()
+    sep_char: char = os.path.sep()
     viperlib.snprintf(buf, 512, "sep = %c", sep_char)
     testcheck.info(buf)
 
@@ -198,8 +198,8 @@ def run() -> CInt:
     testcheck.check(os_backend.os_exists(TEST_COPY), "copyfile: dst exists OK", "copyfile: dst not exists")
 
     # 验证拷贝内容一致（检查文件大小）
-    src_size: t.CInt64T = os_backend.os_getsize(TEST_FILE)
-    dst_size: t.CInt64T = os_backend.os_getsize(TEST_COPY)
+    src_size: int64 = os_backend.os_getsize(TEST_FILE)
+    dst_size: int64 = os_backend.os_getsize(TEST_COPY)
     viperlib.snprintf(buf, 512, "src_size=%lld dst_size=%lld", src_size, dst_size)
     testcheck.info(buf)
     testcheck.check(src_size == dst_size, "copyfile: same size OK", "copyfile: size mismatch")

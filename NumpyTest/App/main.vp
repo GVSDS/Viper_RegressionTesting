@@ -3,7 +3,7 @@ import testcheck
 import test_numpy
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     testcheck.begin("NumpyTest: numpy 正确性测试")
     testcheck.section("numpy Correctness Tests")
     test_numpy.test_numpy_correct()

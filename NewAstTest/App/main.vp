@@ -35,8 +35,8 @@ def main() -> CInt | CExport:
     failed: CInt = 0
 
     # --- 分配 dump 缓冲区（用于 AST 反向输出测试） ---
-    DUMP_BUF_SIZE: t.CSizeT = 8192
-    dump_buf: t.CChar | CPtr = stdlib.malloc(DUMP_BUF_SIZE)
+    DUMP_BUF_SIZE: sizet = 8192
+    dump_buf: char | CPtr = stdlib.malloc(DUMP_BUF_SIZE)
     if dump_buf is None:
         printf("FAIL: dump_buf alloc failed\n")
         stdlib.free(arena)
@@ -120,7 +120,7 @@ def main() -> CInt | CExport:
     else:
         body.append(binop)
         body.append(unary)
-        cnt: t.CSizeT = body.__len__()
+        cnt: sizet = body.__len__()
         if cnt == 2:
             passed += 1
             printf("PASS: list append x2, count=%zu\n", cnt)
@@ -210,7 +210,7 @@ def main() -> CInt | CExport:
         printf("PASS: If, kind=%d\n", if_stmt.kind())
 
     # --- Test 15: Compare 节点 ---
-    cmp_ops: list[t.CInt] | CPtr = list[t.CInt](pool)
+    cmp_ops: list[int] | CPtr = list[int](pool)
     cmp_ops.append(OpKind.Lt)
     cmp_comparators: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
     cmp_comparators.append(int_42)
@@ -269,7 +269,7 @@ def main() -> CInt | CExport:
 
     # --- Test 20: Module.children 遍历 ---
     if mod is not None and mod.children is not None:
-        mod_cnt: t.CSizeT = mod.children.__len__()
+        mod_cnt: sizet = mod.children.__len__()
         if mod_cnt == 2:
             passed += 1
             printf("PASS: Module.children count=%zu (expected 2)\n", mod_cnt)
@@ -302,7 +302,7 @@ def main() -> CInt | CExport:
 
     # --- Test 22: If.children 遍历 (ret + expr_stmt) ---
     if if_stmt is not None and if_stmt.children is not None:
-        if_cnt: t.CSizeT = if_stmt.children.__len__()
+        if_cnt: sizet = if_stmt.children.__len__()
         if if_cnt == 2:
             passed += 1
             printf("PASS: If.children count=%zu (expected 2)\n", if_cnt)
@@ -348,7 +348,7 @@ def main() -> CInt | CExport:
 
     # --- Test 26: parse 模块的 children 验证 ---
     if parsed_mod is not None and parsed_mod.children is not None:
-        pmod_cnt: t.CSizeT = parsed_mod.children.__len__()
+        pmod_cnt: sizet = parsed_mod.children.__len__()
         if pmod_cnt == 1:
             passed += 1
             printf("PASS: parsed Module.children count=%zu (expected 1)\n", pmod_cnt)
@@ -385,7 +385,7 @@ c = a + b
 """
     multi_mod: Module | CPtr = parse(multi_src, pool)
     if multi_mod is not None and multi_mod.children is not None:
-        multi_cnt: t.CSizeT = multi_mod.children.__len__()
+        multi_cnt: sizet = multi_mod.children.__len__()
         if multi_cnt == 3:
             passed += 1
             printf("PASS: parse multi-stmt, children=%zu (expected 3)\n", multi_cnt)
@@ -402,7 +402,7 @@ c = a + b
 """
     if_mod: Module | CPtr = parse(if_src, pool)
     if if_mod is not None and if_mod.children is not None:
-        if_cnt2: t.CSizeT = if_mod.children.__len__()
+        if_cnt2: sizet = if_mod.children.__len__()
         if_k: CInt = if_mod.children.get(0).kind()
         if if_cnt2 == 1 and if_k == ASTKind.If:
             passed += 1
@@ -420,7 +420,7 @@ c = a + b
 """
     for_mod: Module | CPtr = parse(for_src, pool)
     if for_mod is not None and for_mod.children is not None:
-        for_cnt: t.CSizeT = for_mod.children.__len__()
+        for_cnt: sizet = for_mod.children.__len__()
         for_k: CInt = for_mod.children.get(0).kind()
         if for_cnt == 1 and for_k == ASTKind.For:
             passed += 1
@@ -438,7 +438,7 @@ c = a + b
 """
     while_mod: Module | CPtr = parse(while_src, pool)
     if while_mod is not None and while_mod.children is not None:
-        while_cnt: t.CSizeT = while_mod.children.__len__()
+        while_cnt: sizet = while_mod.children.__len__()
         while_k: CInt = while_mod.children.get(0).kind()
         if while_cnt == 1 and while_k == ASTKind.While:
             passed += 1
@@ -456,7 +456,7 @@ c = a + b
 """
     def_mod: Module | CPtr = parse(def_src, pool)
     if def_mod is not None and def_mod.children is not None:
-        def_cnt: t.CSizeT = def_mod.children.__len__()
+        def_cnt: sizet = def_mod.children.__len__()
         def_k: CInt = def_mod.children.get(0).kind()
         if def_cnt == 1 and def_k == ASTKind.FunctionDef:
             passed += 1
@@ -490,7 +490,7 @@ c = a + b
 """
     nested_mod: Module | CPtr = parse(nested_src, pool)
     if nested_mod is not None and nested_mod.children is not None:
-        nested_cnt: t.CSizeT = nested_mod.children.__len__()
+        nested_cnt: sizet = nested_mod.children.__len__()
         nested_k: CInt = nested_mod.children.get(0).kind()
         if nested_cnt == 1 and nested_k == ASTKind.For:
             passed += 1
@@ -513,7 +513,7 @@ w = z * 2
 """
     mixed_mod: Module | CPtr = parse(mixed_src, pool)
     if mixed_mod is not None and mixed_mod.children is not None:
-        mixed_cnt: t.CSizeT = mixed_mod.children.__len__()
+        mixed_cnt: sizet = mixed_mod.children.__len__()
         if mixed_cnt == 4:
             passed += 1
             printf("PASS: parse mixed module, children=%zu (expected 4)\n", mixed_cnt)
@@ -640,7 +640,7 @@ w = z * 2
 """
     class_mod: Module | CPtr = parse(class_src, pool)
     if class_mod is not None and class_mod.children is not None:
-        class_cnt: t.CSizeT = class_mod.children.__len__()
+        class_cnt: sizet = class_mod.children.__len__()
         class_k: CInt = class_mod.children.get(0).kind()
         if class_cnt == 1 and class_k == ASTKind.ClassDef:
             passed += 1
@@ -660,7 +660,7 @@ except:
 """
     try_mod: Module | CPtr = parse(try_src, pool)
     if try_mod is not None and try_mod.children is not None:
-        try_cnt: t.CSizeT = try_mod.children.__len__()
+        try_cnt: sizet = try_mod.children.__len__()
         try_k: CInt = try_mod.children.get(0).kind()
         if try_cnt == 1 and try_k == ASTKind.Try:
             passed += 1
@@ -678,7 +678,7 @@ from sys import path
 """
     import_mod: Module | CPtr = parse(import_src, pool)
     if import_mod is not None and import_mod.children is not None:
-        import_cnt: t.CSizeT = import_mod.children.__len__()
+        import_cnt: sizet = import_mod.children.__len__()
         k0: CInt = import_mod.children.get(0).kind()
         k1: CInt = import_mod.children.get(1).kind()
         if import_cnt == 2 and k0 == ASTKind.Import and k1 == ASTKind.ImportFrom:
@@ -698,7 +698,7 @@ x += 1
 """
     aug_mod: Module | CPtr = parse(aug_src, pool)
     if aug_mod is not None and aug_mod.children is not None:
-        aug_cnt: t.CSizeT = aug_mod.children.__len__()
+        aug_cnt: sizet = aug_mod.children.__len__()
         aug_k: CInt = aug_mod.children.get(1).kind()
         if aug_cnt == 2 and aug_k == ASTKind.AugAssign:
             passed += 1
@@ -735,7 +735,7 @@ x += 1
 """
     nested_def_mod: Module | CPtr = parse(nested_def_src, pool)
     if nested_def_mod is not None and nested_def_mod.children is not None:
-        nd_cnt: t.CSizeT = nested_def_mod.children.__len__()
+        nd_cnt: sizet = nested_def_mod.children.__len__()
         nd_k: CInt = nested_def_mod.children.get(0).kind()
         if nd_cnt == 1 and nd_k == ASTKind.FunctionDef:
             passed += 1
@@ -791,7 +791,7 @@ else:
 """
     cmix_mod: Module | CPtr = parse(complex_mixed_src, pool)
     if cmix_mod is not None and cmix_mod.children is not None:
-        cmix_cnt: t.CSizeT = cmix_mod.children.__len__()
+        cmix_cnt: sizet = cmix_mod.children.__len__()
         dump(cmix_mod, dump_buf, DUMP_BUF_SIZE)
         printf("--- AST dump of complex mixed ---\n%s\n--- end dump ---\n", dump_buf)
         cm_def: str = string.strstr(dump_buf, "FunctionDef")
@@ -800,7 +800,7 @@ else:
         cm_bool: str = string.strstr(dump_buf, "BoolOp(")
         cm_cmp: str = string.strstr(dump_buf, "Compare(")
         cm_ret: str = string.strstr(dump_buf, "Return(")
-        ok: t.CInt = 0
+        ok: int = 0
         if cmix_cnt == 3:
             if cm_def is not None and cm_while is not None:
                 if cm_call is not None and cm_bool is not None:
@@ -1524,7 +1524,7 @@ class C(Base1, Base2):
 """
     adef_mod: Module | CPtr = parse(adef_src, pool)
     if adef_mod is not None and adef_mod.children is not None:
-        adef_cnt: t.CSizeT = adef_mod.children.__len__()
+        adef_cnt: sizet = adef_mod.children.__len__()
         if adef_cnt == 1:
             adef_child: AST | CPtr = adef_mod.children.get(0)
             if adef_child is not None and adef_child.kind() == ASTKind.FunctionDef:
@@ -1553,7 +1553,7 @@ class C(Base1, Base2):
 """
     afor_mod: Module | CPtr = parse(afor_src, pool)
     if afor_mod is not None and afor_mod.children is not None:
-        afor_cnt: t.CSizeT = afor_mod.children.__len__()
+        afor_cnt: sizet = afor_mod.children.__len__()
         if afor_cnt == 1:
             afor_child: AST | CPtr = afor_mod.children.get(0)
             if afor_child is not None and afor_child.kind() == ASTKind.FunctionDef:
@@ -1597,7 +1597,7 @@ class C(Base1, Base2):
 """
     awith_mod: Module | CPtr = parse(awith_src, pool)
     if awith_mod is not None and awith_mod.children is not None:
-        awith_cnt: t.CSizeT = awith_mod.children.__len__()
+        awith_cnt: sizet = awith_mod.children.__len__()
         if awith_cnt == 1:
             awith_child: AST | CPtr = awith_mod.children.get(0)
             if awith_child is not None and awith_child.kind() == ASTKind.FunctionDef:
@@ -1673,7 +1673,7 @@ class C(Base1, Base2):
 """
     acombo_mod: Module | CPtr = parse(acombo_src, pool)
     if acombo_mod is not None and acombo_mod.children is not None:
-        acombo_cnt: t.CSizeT = acombo_mod.children.__len__()
+        acombo_cnt: sizet = acombo_mod.children.__len__()
         if acombo_cnt == 1:
             acombo_child: AST | CPtr = acombo_mod.children.get(0)
             if acombo_child is not None and acombo_child.kind() == ASTKind.FunctionDef:

@@ -9,7 +9,7 @@ import testcheck
 
 def test_for_in_range():
     testcheck.section("Test 1: for i in range(n)")
-    s: t.CInt = 0
+    s: int = 0
     for i in range(10):
         s += i
     testcheck.check(s == 45, "range sum OK (45)", "range sum FAILED expect 45")
@@ -17,7 +17,7 @@ def test_for_in_range():
 
 def test_for_in_str():
     testcheck.section("Test 2: for ch in str")
-    cnt: t.CInt = 0
+    cnt: int = 0
     for ch in "hello":
         cnt += 1
     testcheck.check(cnt == 5, "str iter OK (5)", "str iter FAILED expect 5")
@@ -32,7 +32,7 @@ def test_for_in_list():
     lst.append("y")
     lst.append("z")
     lst.append("w")
-    total: t.CInt = 0
+    total: int = 0
     for v in lst:
         total += 1
     testcheck.check(total == 4, "list iter OK (4)", "list iter FAILED expect 4")
@@ -51,7 +51,7 @@ def test_zip_list_list():
     lb.append("1")
     lb.append("2")
     lb.append("3")
-    cnt: t.CInt = 0
+    cnt: int = 0
     for ca, cb in zip(la, lb):
         stdio.printf("zip[%d]: '%s'='%s'\n", cnt, ca, cb)
         cnt += 1
@@ -67,7 +67,7 @@ def test_zip_range_list():
     lst.append("p")
     lst.append("q")
     lst.append("r")
-    cnt: t.CInt = 0
+    cnt: int = 0
     for n, v in zip(range(3), lst):
         stdio.printf("zip range+list[%d]: %d='%s'\n", cnt, n, v)
         cnt += 1
@@ -79,7 +79,7 @@ def test_zip_str_str():
     testcheck.section("Test 6: zip(str, str)")
     sa: str = "abc"
     sb: str = "123"
-    cnt: t.CInt = 0
+    cnt: int = 0
     for ca, cb in zip(sa, sb):
         stdio.printf("zip str+str[%d]: '%c'%c\n", cnt, ca, cb)
         cnt += 1
@@ -94,7 +94,7 @@ def test_zip_range_len_list():
     lst.append("www")
     lst.append("gvsds")
     lst.append("com")
-    cnt: t.CInt = 0
+    cnt: int = 0
     for idx, v in zip(range(len(lst)), lst):
         stdio.printf("lst[%d]='%s'\n", idx, v)
         cnt += 1
@@ -110,8 +110,8 @@ def test_enumerate_list():
     lst.append("alpha")
     lst.append("beta")
     lst.append("gamma")
-    cnt: t.CInt = 0
-    last_idx: t.CInt = -1
+    cnt: int = 0
+    last_idx: int = -1
     for idx, v in enumerate(lst):
         stdio.printf("enum[%d]='%s'\n", idx, v)
         last_idx = idx
@@ -123,8 +123,8 @@ def test_enumerate_list():
 
 def test_enumerate_str():
     testcheck.section("Test 9: enumerate(str)")
-    cnt: t.CInt = 0
-    last_idx: t.CInt = -1
+    cnt: int = 0
+    last_idx: int = -1
     for idx, ch in enumerate("ABCD"):
         stdio.printf("enum str[%d]='%c'\n", idx, ch)
         last_idx = idx
@@ -135,9 +135,9 @@ def test_enumerate_str():
 
 def test_enumerate_range():
     testcheck.section("Test 10: enumerate(range)")
-    cnt: t.CInt = 0
-    last_idx: t.CInt = -1
-    last_val: t.CInt = -1
+    cnt: int = 0
+    last_idx: int = -1
+    last_val: int = -1
     for idx, v in enumerate(range(5)):
         stdio.printf("enum range[%d]=%d\n", idx, v)
         last_idx = idx
@@ -150,7 +150,7 @@ def test_enumerate_range():
 
 def test_for_else_no_break():
     testcheck.section("Test 11: for-else (迭代耗尽 → 执行 else)")
-    total: t.CInt = 0
+    total: int = 0
     for i in range(3):
         total += i
     else:
@@ -160,7 +160,7 @@ def test_for_else_no_break():
 
 def test_for_else_break():
     testcheck.section("Test 12: for-else (break → 跳过 else)")
-    found: t.CInt = 0
+    found: int = 0
     for i in range(10):
         if i == 4:
             found = 1
@@ -172,7 +172,7 @@ def test_for_else_break():
 
 def test_for_else_empty_range():
     testcheck.section("Test 13: for-else (range(0) 空迭代 → 执行 else)")
-    v: t.CInt = 0
+    v: int = 0
     for i in range(0):
         v = 1
     else:
@@ -188,8 +188,8 @@ def test_for_else_list():
     lst.append("a")
     lst.append("b")
     lst.append("c")
-    cnt: t.CInt = 0
-    ran_else: t.CInt = 0
+    cnt: int = 0
+    ran_else: int = 0
     for v in lst:
         cnt += 1
     else:
@@ -201,8 +201,8 @@ def test_for_else_list():
 
 def test_while_else_cond_false():
     testcheck.section("Test 15: while-else (条件变假 → 执行 else)")
-    i: t.CInt = 0
-    acc: t.CInt = 0
+    i: int = 0
+    acc: int = 0
     while i < 3:
         acc += i
         i += 1
@@ -213,7 +213,7 @@ def test_while_else_cond_false():
 
 def test_while_else_zero_iter():
     testcheck.section("Test 16: while-else (一次都不进循环 → 执行 else)")
-    n: t.CInt = 0
+    n: int = 0
     while n < 0:
         n = 99
     else:
@@ -223,8 +223,8 @@ def test_while_else_zero_iter():
 
 def test_while_else_break():
     testcheck.section("Test 17: while-else (break → 跳过 else)")
-    i: t.CInt = 0
-    flag: t.CInt = 0
+    i: int = 0
+    flag: int = 0
     while i < 10:
         if i == 2:
             flag = 1
@@ -235,7 +235,7 @@ def test_while_else_break():
     testcheck.check(flag == 1, "while-else break OK (1)", "while-else break FAILED expect 1")
 
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ForAndLoopTest: 迭代器与循环测试")
 
     test_for_in_range()

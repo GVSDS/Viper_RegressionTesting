@@ -20,7 +20,7 @@ class Result(t.REnum):
     class Ok:
         value: CInt
     class Err:
-        msg: t.CChar | CPtr
+        msg: char | CPtr
 
 
 class GeoShape(t.REnum):

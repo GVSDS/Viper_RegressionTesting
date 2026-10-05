@@ -5,48 +5,48 @@ import t, c
 
 
 class SimpleData():
-    x: t.CInt
-    y: t.CInt
+    x: int
+    y: int
 
 
 class Point3D():
-    x: t.CFloat
-    y: t.CFloat
-    z: t.CFloat
+    x: float
+    y: float
+    z: float
 
 
 class Student():
-    name: t.CChar | t.CPtr
-    age: t.CInt
-    score: t.CInt
+    name: char | t.CPtr
+    age: int
+    score: int
 
-    def __init__(self, n: t.CChar | t.CPtr, a: t.CInt, s: t.CInt):
+    def __init__(self, n: char | t.CPtr, a: int, s: int):
         self.name = n
         self.age = a
         self.score = s
 
-    def get_age(self) -> t.CInt:
+    def get_age(self) -> int:
         return self.age
 
-    def get_score(self) -> t.CInt:
+    def get_score(self) -> int:
         return self.score
 
 
 class Counter():
-    value: t.CInt
+    value: int
 
-    def __init__(self, initial: t.CInt):
+    def __init__(self, initial: int):
         self.value = initial
 
     def increment(self):
         self.value += 1
 
-    def get_value(self) -> t.CInt:
+    def get_value(self) -> int:
         return self.value
 
 
 class StackObj():
-    data: t.CInt
+    data: int
     next_ptr: t.CPtr
 
 
@@ -111,7 +111,7 @@ def TestHeapAllocation():
 
 def TestHeapObjectWithInit():
     stdio.printf("=== Test Heap Object with Init ===\n")
-    mem_size: t.CSizeT = 256
+    mem_size: sizet = 256
     ptr: t.CPtr = stdlib.malloc(mem_size)
     if ptr != 0:
         stdio.printf("Allocated %d bytes\n", mem_size)
@@ -156,8 +156,8 @@ def TestClassWithBitFields():
 
 def TestIntArray():
     stdio.printf("=== Test Int Array ===\n")
-    arr: t.CArray[t.CInt, 5] = t.CArray[t.CInt, 5]()
-    i: t.CInt = 0
+    arr: t.CArray[int, 5] = t.CArray[int, 5]()
+    i: int = 0
     while i < 5:
         arr[i] = i * 10
         i += 1
@@ -169,12 +169,12 @@ def TestIntArray():
 
 def TestFloatArray():
     stdio.printf("=== Test Float Array ===\n")
-    farr: t.CArray[t.CFloat, 4] = t.CArray[t.CFloat, 4]()
+    farr: t.CArray[float, 4] = t.CArray[float, 4]()
     farr[0] = 1.5
     farr[1] = 2.5
     farr[2] = 3.5
     farr[3] = 4.5
-    i: t.CInt = 0
+    i: int = 0
     while i < 4:
         stdio.printf("farr[%d]=%.1f\n", i, farr[i])
         i += 1
@@ -182,7 +182,7 @@ def TestFloatArray():
 
 def TestCharArray():
     stdio.printf("=== Test Char Array (String) ===\n")
-    str_arr: t.CArray[t.CChar, 32] = t.CArray[t.CChar, 32]()
+    str_arr: t.CArray[char, 32] = t.CArray[char, 32]()
     str_arr[0] = 'H'
     str_arr[1] = 'e'
     str_arr[2] = 'l'
@@ -194,15 +194,15 @@ def TestCharArray():
 
 def TestNestedArray():
     stdio.printf("=== Test Nested Array (Array of Arrays) ===\n")
-    row0: t.CArray[t.CInt, 3] = t.CArray[t.CInt, 3]()
-    row1: t.CArray[t.CInt, 3] = t.CArray[t.CInt, 3]()
+    row0: t.CArray[int, 3] = t.CArray[int, 3]()
+    row1: t.CArray[int, 3] = t.CArray[int, 3]()
     row0[0] = 0
     row0[1] = 1
     row0[2] = 2
     row1[0] = 10
     row1[1] = 11
     row1[2] = 12
-    i: t.CInt = 0
+    i: int = 0
     while i < 3:
         stdio.printf("row0[%d]=%d ", i, row0[i])
         i += 1
@@ -217,7 +217,7 @@ def TestNestedArray():
 def TestArrayWithStruct():
     stdio.printf("=== Test Array with Struct ===\n")
     points: t.CArray[SimpleData, 3] = t.CArray[SimpleData, 3]()
-    i: t.CInt = 0
+    i: int = 0
     while i < 3:
         points[i].x = i * 10
         points[i].y = i * 100
@@ -230,11 +230,11 @@ def TestArrayWithStruct():
 
 def TestArrayPointer():
     stdio.printf("=== Test Array Pointer ===\n")
-    data: t.CArray[t.CInt, 8] = t.CArray[t.CInt, 8]()
+    data: t.CArray[int, 8] = t.CArray[int, 8]()
     data[0] = 100
     data[1] = 200
     data[2] = 300
-    ptr: t.CInt | t.CPtr = data
+    ptr: int | t.CPtr = data
     stdio.printf("ptr[0]=%d\n", ptr[0])
     stdio.printf("ptr[1]=%d\n", ptr[1])
     stdio.printf("ptr[2]=%d\n", ptr[2])

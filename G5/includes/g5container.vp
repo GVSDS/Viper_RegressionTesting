@@ -15,7 +15,7 @@ import memhub
 
 @t.NoVTable
 class G5Node(GSListNode[G5Node]):
-    Value: t.CInt
+    Value: int
 
 
 # ============================================================
@@ -40,7 +40,7 @@ class G5Container:
 # ============================================================
 
 # G5Node 硬编码大小: Next(8) + Value(4) + padding(4) = 16 字节
-G5NODE_SIZE: t.CDefine = 16
+define G5NODE_SIZE = 16
 
 def new_g5node(pool: memhub.MemBuddy | t.CPtr) -> G5Node | t.CPtr:
     """从 pool 分配并零初始化一个 G5Node"""
@@ -51,7 +51,7 @@ def new_g5node(pool: memhub.MemBuddy | t.CPtr) -> G5Node | t.CPtr:
 
 
 # GSList 硬编码大小: Head(8) + Tail(8) + Count(8) = 24 字节
-G5LIST_SIZE: t.CDefine = 24
+define G5LIST_SIZE = 24
 
 def new_g5list(pool: memhub.MemBuddy | t.CPtr) -> GSList[G5Node] | t.CPtr:
     """从 pool 分配并零初始化一个 GSList 容器（Head/Tail/Count 全零）"""
@@ -62,7 +62,7 @@ def new_g5list(pool: memhub.MemBuddy | t.CPtr) -> GSList[G5Node] | t.CPtr:
 
 
 # G5Container 硬编码大小: List(8) = 8 字节
-G5CONTAINER_SIZE: t.CDefine = 8
+define G5CONTAINER_SIZE = 8
 
 def new_g5container(pool: memhub.MemBuddy | t.CPtr) -> G5Container | t.CPtr:
     """从 pool 分配并零初始化一个 G5Container"""
@@ -95,7 +95,7 @@ def g5list_get_tail(lst: GSList[G5Node] | t.CPtr) -> G5Node | t.CPtr:
     return lst.Tail
 
 
-def g5list_get_count(lst: GSList[G5Node] | t.CPtr) -> t.CSizeT:
+def g5list_get_count(lst: GSList[G5Node] | t.CPtr) -> sizet:
     """获取链表节点数"""
     if lst is None: return 0
     return lst.Count
@@ -113,7 +113,7 @@ def g5list_set_tail(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
     lst.Tail = node
 
 
-def g5list_set_count(lst: GSList[G5Node] | t.CPtr, count: t.CSizeT):
+def g5list_set_count(lst: GSList[G5Node] | t.CPtr, count: sizet):
     """设置链表节点数"""
     if lst is None: return
     lst.Count = count
@@ -139,12 +139,12 @@ def g5list_append(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
 # G5Node 访问器
 # ============================================================
 
-def g5node_get_value(node: G5Node | t.CPtr) -> t.CInt:
+def g5node_get_value(node: G5Node | t.CPtr) -> int:
     if node is None: return 0
     return node.Value
 
 
-def g5node_set_value(node: G5Node | t.CPtr, value: t.CInt):
+def g5node_set_value(node: G5Node | t.CPtr, value: int):
     if node is None: return
     node.Value = value
 

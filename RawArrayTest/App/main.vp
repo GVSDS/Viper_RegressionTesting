@@ -4,7 +4,7 @@ import stdio
 
 
 # 模块级全局定长数组（rawarray 复刻 t.CArray）
-g_arr: rawarray[t.CInt, 4] = [10, 20, 30, 40]
+g_arr: rawarray[int, 4] = [10, 20, 30, 40]
 
 
 # struct 内嵌定长数组字段
@@ -13,7 +13,7 @@ class Ctx:
     buf: rawarray[uint8, 64]
 
 
-def main() -> t.CInt | t.CExport:
+def main() -> int | t.CExport:
     # 1) 全局数组读取
     stdio.printf("1 g_arr[0]=%d g_arr[3]=%d (expect 10 40)\n", g_arr[0], g_arr[3])
 

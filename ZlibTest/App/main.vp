@@ -7,7 +7,7 @@ import w32.win32memory
 import c
 import testcheck
 
-def main() -> t.CInt:
+def main() -> int:
     testcheck.begin("ZlibTest: Zlib 压缩库测试")
     tpz.main123456()
     testcheck.ok("zlib test_pyzlib completed")
