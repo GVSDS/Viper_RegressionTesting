@@ -3,6 +3,7 @@ import stdio
 import string
 import c
 import testcheck
+import inline_test
 
 # ============================================================
 # Test 1: 字符串指针迭代 - 逐字符直到\0
@@ -176,4 +177,5 @@ def main() -> t.CInt:
     test_ptr_arithmetic()
     test_manual_strcmp()
     test_struct_ptr_access()
+    inline_test.inline_array_test()
     return testcheck.end()

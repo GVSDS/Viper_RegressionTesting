@@ -35,7 +35,7 @@ class Container:
         else:
             stdio.printf("FAIL: inline list[struct, N] in Container\n")
 
-def main() -> t.CInt:
+def inline_array_test() -> t.CInt:
     stdio.printf("=== InlineArrayTest ===\n")
     c1 = Container()
     c1.fill()
