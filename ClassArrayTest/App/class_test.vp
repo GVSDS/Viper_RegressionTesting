@@ -16,11 +16,11 @@ class Point3D():
 
 
 class Student():
-    name: char | t.CPtr
+    name: char*
     age: int
     score: int
 
-    def __init__(self, n: char | t.CPtr, a: int, s: int):
+    def __init__(self, n: char*, a: int, s: int):
         self.name = n
         self.age = a
         self.score = s
@@ -157,14 +157,10 @@ def TestClassWithBitFields():
 def TestIntArray():
     stdio.printf("=== Test Int Array ===\n")
     arr: t.CArray[int, 5] = t.CArray[int, 5]()
-    i: int = 0
-    while i < 5:
+    for i in range(5):
         arr[i] = i * 10
-        i += 1
-    i = 0
-    while i < 5:
+    for i in range(5):
         stdio.printf("arr[%d]=%d\n", i, arr[i])
-        i += 1
 
 
 def TestFloatArray():
@@ -174,10 +170,8 @@ def TestFloatArray():
     farr[1] = 2.5
     farr[2] = 3.5
     farr[3] = 4.5
-    i: int = 0
-    while i < 4:
+    for i in range(4):
         stdio.printf("farr[%d]=%.1f\n", i, farr[i])
-        i += 1
 
 
 def TestCharArray():
@@ -202,30 +196,22 @@ def TestNestedArray():
     row1[0] = 10
     row1[1] = 11
     row1[2] = 12
-    i: int = 0
-    while i < 3:
+    for i in range(3):
         stdio.printf("row0[%d]=%d ", i, row0[i])
-        i += 1
     stdio.printf("\n")
-    i = 0
-    while i < 3:
+    for i in range(3):
         stdio.printf("row1[%d]=%d ", i, row1[i])
-        i += 1
     stdio.printf("\n")
 
 
 def TestArrayWithStruct():
     stdio.printf("=== Test Array with Struct ===\n")
     points: t.CArray[SimpleData, 3] = t.CArray[SimpleData, 3]()
-    i: int = 0
-    while i < 3:
+    for i in range(3):
         points[i].x = i * 10
         points[i].y = i * 100
-        i += 1
-    i = 0
-    while i < 3:
+    for i in range(3):
         stdio.printf("Point[%d]: x=%d, y=%d\n", i, points[i].x, points[i].y)
-        i += 1
 
 
 def TestArrayPointer():
@@ -234,7 +220,7 @@ def TestArrayPointer():
     data[0] = 100
     data[1] = 200
     data[2] = 300
-    ptr: int | t.CPtr = data
+    ptr: int* = data
     stdio.printf("ptr[0]=%d\n", ptr[0])
     stdio.printf("ptr[1]=%d\n", ptr[1])
     stdio.printf("ptr[2]=%d\n", ptr[2])

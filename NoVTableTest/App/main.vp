@@ -36,9 +36,9 @@ def test_append():
                     "append count=3",
                     "append count fail")
     # 验证顺序（LinkedNode* → Node* 显式向下转型）
-    c1: Node | t.CPtr = (Node | t.CPtr)(root.child)
-    c2: Node | t.CPtr = (Node | t.CPtr)(c1.next)
-    c3: Node | t.CPtr = (Node | t.CPtr)(c2.next)
+    c1: Node* = (Node*)(root.child)
+    c2: Node* = (Node*)(c1.next)
+    c3: Node* = (Node*)(c2.next)
     testcheck.check(c1.value == 10 and c2.value == 20 and c3.value == 30,
                     "order 10,20,30",
                     "order fail")
@@ -57,7 +57,7 @@ def test_prev_link():
     root.append(a)
     root.append(b)
     # b.prev 应指向 a
-    bp: Node | t.CPtr = (Node | t.CPtr)(b.prev)
+    bp: Node* = (Node*)(b.prev)
     testcheck.check(bp is not None and bp.value == 1,
                     "b.prev.value=1",
                     "prev link fail")
@@ -78,12 +78,12 @@ def test_last_child():
     a.value = 100
     b.value = 200
     root.append(a)
-    lc: Node | t.CPtr = (Node | t.CPtr)(root.last_child)
+    lc: Node* = (Node*)(root.last_child)
     testcheck.check(lc is not None and lc.value == 100,
                     "last_child=100 after 1 append",
                     "last_child fail 1")
     root.append(b)
-    lc = (Node | t.CPtr)(root.last_child)
+    lc = (Node*)(root.last_child)
     testcheck.check(lc is not None and lc.value == 200,
                     "last_child=200 after 2 append",
                     "last_child fail 2")
@@ -110,12 +110,12 @@ def test_remove():
                     "count=2 after detach",
                     "detach count fail")
     # a.next 应直接指向 c
-    an: Node | t.CPtr = (Node | t.CPtr)(a.next)
+    an: Node* = (Node*)(a.next)
     testcheck.check(an is not None and an.value == 3,
                     "a.next.value=3",
                     "detach link fail")
     # c.prev 应指向 a
-    cp: Node | t.CPtr = (Node | t.CPtr)(c.prev)
+    cp: Node* = (Node*)(c.prev)
     testcheck.check(cp is not None and cp.value == 1,
                     "c.prev.value=1",
                     "detach prev fail")
@@ -141,7 +141,7 @@ def test_remove_child():
     testcheck.check(root.child_count == 1,
                     "count=1 after remove_child",
                     "remove_child count fail")
-    fc: Node | t.CPtr = (Node | t.CPtr)(root.child)
+    fc: Node* = (Node*)(root.child)
     testcheck.check(fc is not None and fc.value == 20,
                     "first child=20",
                     "remove_child first fail")
@@ -166,13 +166,13 @@ def test_insert_ops():
     root.insert_before(c, b)   # [1, 2, 3]  在 c 前插入 b
     root.insert_after(a, d)    # [1, 4, 2, 3] 在 a 后插入 d
     # 遍历验证顺序
-    cur: Node | t.CPtr = (Node | t.CPtr)(root.child)
+    cur: Node* = (Node*)(root.child)
     v0: int = cur.value
-    cur = (Node | t.CPtr)(cur.next)
+    cur = (Node*)(cur.next)
     v1: int = cur.value
-    cur = (Node | t.CPtr)(cur.next)
+    cur = (Node*)(cur.next)
     v2: int = cur.value
-    cur = (Node | t.CPtr)(cur.next)
+    cur = (Node*)(cur.next)
     v3: int = cur.value
     testcheck.check(v0 == 1 and v1 == 4 and v2 == 2 and v3 == 3,
                     "order 1,4,2,3",
@@ -206,10 +206,10 @@ def test_index_access():
     root.append(n3)
     root.append(n4)
     # child_at
-    r0: Node | t.CPtr = (Node | t.CPtr)(root.child_at(0))
-    r2: Node | t.CPtr = (Node | t.CPtr)(root.child_at(2))
-    r4: Node | t.CPtr = (Node | t.CPtr)(root.child_at(4))
-    r5: Node | t.CPtr = (Node | t.CPtr)(root.child_at(5))
+    r0: Node* = (Node*)(root.child_at(0))
+    r2: Node* = (Node*)(root.child_at(2))
+    r4: Node* = (Node*)(root.child_at(4))
+    r5: Node* = (Node*)(root.child_at(5))
     testcheck.check(r0 is not None and r0.value == 0,
                     "child_at(0)=0",
                     "child_at 0 fail")
@@ -251,8 +251,8 @@ def test_sibling_traverse():
                     "has_children=1",
                     "has_children fail")
     # 从 b 出发找头尾兄弟
-    fs: Node | t.CPtr = (Node | t.CPtr)(b.first_sibling())
-    ls: Node | t.CPtr = (Node | t.CPtr)(b.last_sibling())
+    fs: Node* = (Node*)(b.first_sibling())
+    ls: Node* = (Node*)(b.last_sibling())
     testcheck.check(fs is not None and fs.value == 1,
                     "first_sibling=1",
                     "first_sibling fail")
@@ -303,7 +303,7 @@ def test_slist():
     n1.value = 200
     n2.value = 300
     # append (O(n)) — 直接用 n0 作为 head
-    head: linkedlist.SListNode | t.CPtr = n0
+    head: linkedlist.SListNode* = n0
     head = head.append(n1)
     head = head.append(n2)
     # count
@@ -311,10 +311,10 @@ def test_slist():
                     "count=3",
                     "count fail")
     # at
-    a0: SNode | t.CPtr = (SNode | t.CPtr)(head.at(0))
-    a1: SNode | t.CPtr = (SNode | t.CPtr)(head.at(1))
-    a2: SNode | t.CPtr = (SNode | t.CPtr)(head.at(2))
-    a3: SNode | t.CPtr = (SNode | t.CPtr)(head.at(3))
+    a0: SNode* = (SNode*)(head.at(0))
+    a1: SNode* = (SNode*)(head.at(1))
+    a2: SNode* = (SNode*)(head.at(2))
+    a3: SNode* = (SNode*)(head.at(3))
     testcheck.check(a0 is not None and a0.value == 100,
                     "at(0)=100",
                     "at 0 fail")
@@ -336,14 +336,14 @@ def test_slist():
                     "n1.Next cleared",
                     "n1.Next not cleared")
     # 移除后 a0.Next 应指向 n2
-    a0b: SNode | t.CPtr = (SNode | t.CPtr)(a0.Next)
+    a0b: SNode* = (SNode*)(a0.Next)
     testcheck.check(a0b is not None and a0b.value == 300,
                     "after remove a0.Next=300",
                     "a0.Next fail")
     # append_after (O(1))
     n3: SNode = SNode()
     n3.value = 400
-    tail: linkedlist.SListNode | t.CPtr = n2.append_after(n3)
+    tail: linkedlist.SListNode* = n2.append_after(n3)
     testcheck.check(tail is n3,
                     "append_after returns n3",
                     "append_after fail")
@@ -358,7 +358,7 @@ def test_slist():
 def test_sprintf_vararg():
     testcheck.section("Test 11: viperlib.sprintf *args forwarding")
     # 测试 %d 单参数
-    buf: char | t.CPtr = stdlib.malloc(32)
+    buf: char* = stdlib.malloc(32)
     if buf is None: return
     buf[0] = 0
     viperlib.sprintf(buf, "key%d", 42)
@@ -366,7 +366,7 @@ def test_sprintf_vararg():
                     "sprintf key42",
                     "sprintf key%d fail")
     # 测试无参数
-    buf2: char | t.CPtr = stdlib.malloc(32)
+    buf2: char* = stdlib.malloc(32)
     if buf2 is None: return
     buf2[0] = 0
     viperlib.sprintf(buf2, "hello")
@@ -374,7 +374,7 @@ def test_sprintf_vararg():
                     "sprintf hello",
                     "sprintf no-arg fail")
     # 测试多参数
-    buf3: char | t.CPtr = stdlib.malloc(32)
+    buf3: char* = stdlib.malloc(32)
     if buf3 is None: return
     buf3[0] = 0
     viperlib.sprintf(buf3, "%d+%d=%d", 1, 2, 3)
@@ -396,11 +396,11 @@ def test_sprintf_vararg():
 # 注：编译器暂不支持 模块.泛型类[T]() 跨模块构造，故本地定义。
 # ============================================================
 novirtual class GSListNode[T]:
-    Next: T | t.CPtr
+    Next: T*
 
 novirtual class GSList[T]:
-    Head: T | t.CPtr
-    Tail: T | t.CPtr
+    Head: T*
+    Tail: T*
     Count: sizet
 
     def __init__(self):
@@ -421,9 +421,9 @@ novirtual class GSList[T]:
     def count(self) -> sizet:
         return self.Count
 
-    def at(self, index: sizet) -> T | t.CPtr:
+    def at(self, index: sizet) -> T*:
         if self.Head is None: return None
-        cur: T | t.CPtr = self.Head
+        cur: T* = self.Head
         i: sizet = 0
         while cur is not None:
             if i == index: return cur
@@ -439,7 +439,7 @@ class GNode(GSListNode[GNode]):
 def test_generic_slist():
     testcheck.section("Test 12: Generic GSListNode[T] + GSList[T]")
     # 技术点 3: 泛型类作字段类型 + 构造
-    lst: GSList[GNode] | t.CPtr = GSList[GNode]()
+    lst: GSList[GNode]* = GSList[GNode]()
 
     # 技术点 1+2: 递归泛型 + NoVTable 组合（GNode 定义在上方）
     n0: GNode = GNode()
@@ -460,10 +460,10 @@ def test_generic_slist():
                     "GSList count fail")
 
     # at (O(n)) — 返回 GNode|CPtr，无需向下转型
-    a0: GNode | t.CPtr = lst.at(0)
-    a1: GNode | t.CPtr = lst.at(1)
-    a2: GNode | t.CPtr = lst.at(2)
-    a3: GNode | t.CPtr = lst.at(3)
+    a0: GNode* = lst.at(0)
+    a1: GNode* = lst.at(1)
+    a2: GNode* = lst.at(2)
+    a3: GNode* = lst.at(3)
     testcheck.check(a0 is not None and a0.Value == 10,
                     "GSList.at(0)=10",
                     "GSList at 0 fail")

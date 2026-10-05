@@ -97,9 +97,9 @@ def test_multilevel_chain():
 # DataMixin.get_val 内 self.val 需 this_adjust 到第二父类字段区。
 # ============================================================
 novirtual class PtrMixin:
-    name: char | t.CPtr
+    name: char*
 
-    def get_name(self) -> char | t.CPtr:
+    def get_name(self) -> char*:
         return self.name
 
 

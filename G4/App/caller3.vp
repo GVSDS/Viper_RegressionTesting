@@ -12,20 +12,20 @@ from g4node import G4Node, new_g4node
 # ============================================================
 
 
-def caller3_find_tail(head: G4Node | t.CPtr) -> G4Node | t.CPtr:
+def caller3_find_tail(head: G4Node*) -> G4Node*:
     """找到链表尾部节点，直接访问 Next"""
     if head is None:
         return None
-    cur: G4Node | t.CPtr = head
+    cur: G4Node* = head
     while cur.Next is not None:
         cur = cur.Next
     return cur
 
 
-def caller3_append(head: G4Node | t.CPtr, new_node: G4Node | t.CPtr) -> G4Node | t.CPtr:
+def caller3_append(head: G4Node*, new_node: G4Node*) -> G4Node*:
     """在链表末尾追加节点"""
     if head is None:
         return new_node
-    tail: G4Node | t.CPtr = caller3_find_tail(head)
+    tail: G4Node* = caller3_find_tail(head)
     tail.Next = new_node
     return head

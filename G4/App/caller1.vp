@@ -13,11 +13,11 @@ from g4node import G4Node, new_g4node
 # ============================================================
 
 
-def caller1_make_chain(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
+def caller1_make_chain(pool: memhub.MemBuddy*) -> G4Node*:
     """创建 3 节点链表，直接访问 Next 字段"""
-    a: G4Node | t.CPtr = new_g4node(pool)
-    b: G4Node | t.CPtr = new_g4node(pool)
-    c: G4Node | t.CPtr = new_g4node(pool)
+    a: G4Node* = new_g4node(pool)
+    b: G4Node* = new_g4node(pool)
+    c: G4Node* = new_g4node(pool)
     if a is None or b is None or c is None:
         return None
     a.IntVal = 100
@@ -29,12 +29,12 @@ def caller1_make_chain(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
     return a
 
 
-def caller1_sum_chain(head: G4Node | t.CPtr) -> int:
+def caller1_sum_chain(head: G4Node*) -> int:
     """遍历链表求和，直接访问 Next 字段"""
     if head is None:
         return 0
     total: int = head.IntVal
-    cur: G4Node | t.CPtr = head
+    cur: G4Node* = head
     # 直接访问 Next 字段（不通过 g4node_get_next 访问器）
     while cur.Next is not None:
         cur = cur.Next

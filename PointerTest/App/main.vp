@@ -12,7 +12,7 @@ import testcheck
 
 # --- Test 1: global 声明对模块级变量的影响 ---
 _g_val: int = 0
-_g_ptr: uint32 | t.CPtr = None
+_g_ptr: uint32* = None
 
 def test_global_write():
     """测试：缺少 global 声明时，赋值是否修改模块级变量"""
@@ -30,30 +30,30 @@ def test_global_write_no_decl():
 
 def test_global_ptr():
     global _g_ptr
-    buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if buf:
         string.memset(buf, 0, 256)
         _g_ptr = buf
-        p: uint32 | t.CPtr = _g_ptr
+        p: uint32* = _g_ptr
         p[0] = 0xAABBCCDD
         p[1] = 0x11223344
 
 def test_global_ptr_no_decl():
     """测试：没有 global 声明时，同名注解声明是编译期错误（此处演示合法写法）
 
-    新规则：模块级已有 `_g_ptr` 时，函数内写 `_g_ptr: t.CUInt32T | t.CPtr = None`
+    新规则：模块级已有 `_g_ptr` 时，函数内写 `_g_ptr: t.CUInt32T* = None`
     （无 global）或 `global _g_ptr` 之后仍带类型注解声明，都判为"重复声明"并终止
     编译（TypeError）——不管注解类型是否与全局相同。合法写法只有两种：
       - 修改全局：`global _g_ptr` + **无注解**赋值（见 test_global_ptr）
       - 独立局部：换成不与全局重名的变量名（本函数）
     """
-    local_ptr: uint32 | t.CPtr = None  # 独立局部变量，不触碰全局 _g_ptr
+    local_ptr: uint32* = None  # 独立局部变量，不触碰全局 _g_ptr
 
 
 # --- Test 2: 指针算术和数组索引 ---
 def test_pointer_arithmetic():
     """测试指针算术：偏移计算是否正确"""
-    buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer arithmetic: VirtualAlloc returned NULL")
         return
@@ -93,7 +93,7 @@ def test_array_decay():
 # --- Test 4: 指针类型转换 (CVoid/CPtr) ---
 def test_pointer_cast():
     """测试指针与整数之间的类型转换"""
-    buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer cast: VirtualAlloc returned NULL")
         return
@@ -102,7 +102,7 @@ def test_pointer_cast():
     # 通过 CVoid 指针写入
     raw: t.CPtr = t.CPtr(uint64(buf))
     # 将 CVoid 指针转回 CUInt32T 指针
-    p32: uint32 | t.CPtr = (uint32 | t.CPtr)(raw)
+    p32: uint32* = (uint32*)(raw)
     p32[0] = 0xDEADBEEF
 
     # 通过原始指针读取
@@ -116,7 +116,7 @@ def test_pointer_cast():
 # --- Test 5: 指针偏移计算 (byte offset vs element offset) ---
 def test_pointer_offset():
     """测试指针偏移：CUInt8T* + N 应该偏移 N 字节，CUInt32T* + N 应该偏移 N*4 字节"""
-    buf: uint8 | t.CPtr = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint8* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer offset: VirtualAlloc returned NULL")
         return
@@ -129,7 +129,7 @@ def test_pointer_offset():
     buf[3] = 0x44  # 'D'
 
     # 通过 CUInt32T* 读取（应该读到 0x44434241 on little-endian）
-    p32: uint32 | t.CPtr = (uint32 | t.CPtr)(t.CPtr(uint64(buf)))
+    p32: uint32* = (uint32*)(t.CPtr(uint64(buf)))
     val: uint32 = p32[0]
 
     # little-endian: 0x44434241
@@ -153,7 +153,7 @@ def test_struct_pointer():
     s.b = 20
     s.c = 0x123456789ABCDEF0
 
-    p: TestStruct | t.CPtr = &s
+    p: TestStruct* = &s
     stdio.printf("struct pointer access (a=%d b=%d c=0x%llx)\n", p.a, p.b, p.c)
     testcheck.check(p.a == 10 and p.b == 20 and p.c == 0x123456789ABCDEF0, "struct pointer access", "struct pointer access mismatch")
 
@@ -161,8 +161,8 @@ def test_struct_pointer():
 # --- Test 7: memcpy/memset 通过指针 ---
 def test_memcpy_pointers():
     """测试 memcpy 在指针之间的数据复制"""
-    src_buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
-    dst_buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    src_buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    dst_buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not src_buf or not dst_buf:
         testcheck.fail("memcpy: VirtualAlloc returned NULL")
         return
@@ -184,13 +184,13 @@ def test_memcpy_pointers():
 
 
 # --- Test 8: 指针作为函数参数 ---
-def fill_array(arr: uint32 | t.CPtr, count: int, val: uint32):
+def fill_array(arr: uint32*, count: int, val: uint32):
     for i in range(count):
         arr[i] = val
 
 def test_pointer_param():
     """测试指针作为函数参数传递"""
-    buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer param: VirtualAlloc returned NULL")
         return
@@ -239,7 +239,7 @@ def main() -> int | t.CExport:
     testcheck.section("Test 1b: global pointer")
     test_global_ptr()
     if _g_ptr:
-        p: uint32 | t.CPtr = _g_ptr
+        p: uint32* = _g_ptr
         stdio.printf("_g_ptr[0] = 0x%x (expect 0xAABBCCDD)\n", p[0])
         stdio.printf("_g_ptr[1] = 0x%x (expect 0x11223344)\n", p[1])
         testcheck.check(p[0] == 0xAABBCCDD and p[1] == 0x11223344, "global pointer values", "global pointer mismatch")

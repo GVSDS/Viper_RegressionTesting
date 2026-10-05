@@ -12,24 +12,24 @@ from g4node import G4Node, new_g4node
 # ============================================================
 
 
-def caller2_reverse_chain(head: G4Node | t.CPtr) -> G4Node | t.CPtr:
+def caller2_reverse_chain(head: G4Node*) -> G4Node*:
     """反转链表，直接访问 Next 字段"""
     if head is None:
         return None
-    prev: G4Node | t.CPtr = None
-    cur: G4Node | t.CPtr = head
+    prev: G4Node* = None
+    cur: G4Node* = head
     while cur is not None:
-        nxt: G4Node | t.CPtr = cur.Next
+        nxt: G4Node* = cur.Next
         cur.Next = prev
         prev = cur
         cur = nxt
     return prev
 
 
-def caller2_count_nodes(head: G4Node | t.CPtr) -> int:
+def caller2_count_nodes(head: G4Node*) -> int:
     """计算链表节点数"""
     count: int = 0
-    cur: G4Node | t.CPtr = head
+    cur: G4Node* = head
     while cur is not None:
         count = count + 1
         cur = cur.Next

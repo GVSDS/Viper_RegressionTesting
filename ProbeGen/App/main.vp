@@ -46,7 +46,7 @@ import w32.win32console as w32console
 # 只声明不调用：extern 声明未调用不产生链接引用，不影响链接
 # 先例：Test/Extern2Test/App/main.vp:18-35（三个仅声明不调用的外部声明）
 # ============================================================
-extern def ProbeNestedUnion(Context: VOIDPTR | t.CPtr) -> BOOL
+extern def ProbeNestedUnion(Context: VOIDPTR*) -> BOOL
 
 
 # ============================================================
@@ -128,7 +128,7 @@ def ProbeU8Literal() -> uint8:
 #   （class Translator: def __init__(self): ...；实例化 TransPyV/App/main.vp:471）
 # ============================================================
 class Box:
-    p: char | t.CPtr
+    p: char*
 
     def __init__(self):
         self.p = None

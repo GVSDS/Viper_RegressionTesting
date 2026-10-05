@@ -5,7 +5,7 @@ import testcheck
 
 def test_for_in_string():
     testcheck.section("Test 1: for-in string iteration")
-    s: char | t.CPtr = "Hello"
+    s: char* = "Hello"
     result: int = 0
     for ch in s:
         result += ch
@@ -14,7 +14,7 @@ def test_for_in_string():
 
 def test_for_in_char_ptr():
     testcheck.section("Test 2: for-in char* iteration")
-    s: char | t.CPtr = "ABC"
+    s: char* = "ABC"
     chars: t.CArray[int, 4] = [0]
     idx: int = 0
     for ch in s:
@@ -25,16 +25,16 @@ def test_for_in_char_ptr():
 
 def test_strcpy_for_in():
     testcheck.section("Test 3: strcpy using for-in")
-    src: char | t.CPtr = "test"
+    src: char* = "test"
     # 手动实现 strcpy 用 for-in
     import w32.win32memory
-    buf: char | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    buf: char* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
     string.memset(buf, 0, 64)
     # 用 for-in 复制
-    p: char | t.CPtr = buf
+    p: char* = buf
     for ch in src:
         p[0] = ch
         p += 1

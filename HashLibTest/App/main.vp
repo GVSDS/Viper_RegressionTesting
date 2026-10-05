@@ -12,7 +12,7 @@ import w32.win32console
 # ==============================================
 # 工具函数：打印十六进制哈希串
 # ==============================================
-def print_hex(buf: uint8 | t.CPtr, length: int):
+def print_hex(buf: uint8*, length: int):
     for i in range(length):
         stdio.printf("%02x", buf[i])
     stdio.printf("\n")

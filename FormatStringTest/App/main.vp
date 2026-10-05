@@ -36,10 +36,10 @@ export def main() -> int:
     print("Assigned: ", s)
 
     # ctraits.isptr 编译时类型判断测试
-    # c.Addr(s) 取的是局部变量 s（str = i8*）的地址，结果是 i8**（char**）；
-    # 与 INTPTR（= t.CInt | t.CPtr，int*，见 includes/stdint.vp）层数与基座都不同，
-    # 且指针隐式转换已收紧（层数必须相同）⇒ 注解按实际类型写 str | t.CPtr（= i8**）。
-    ptr_var: str | t.CPtr = &s
+    # &s 取的是局部变量 s（str = i8*）的地址，结果是 i8**（char**）；
+    # 与 INTPTR（= int*，见 includes/stdint.vp）层数与基座都不同，
+    # 且指针隐式转换已收紧（层数必须相同）⇒ 注解按实际类型写 str*（= i8**）。
+    ptr_var: str* = &s
     val_var: int = 42
     if c.CIf(ctraits.isptr(ptr_var)):
         print("ptr_var is pointer")

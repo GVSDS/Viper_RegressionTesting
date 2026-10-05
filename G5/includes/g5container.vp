@@ -32,7 +32,7 @@ class G5Node(GSListNode[G5Node]):
 
 @t.NoVTable
 class G5Container:
-    List: GSList[G5Node] | t.CPtr
+    List: GSList[G5Node]*
 
 
 # ============================================================
@@ -42,9 +42,9 @@ class G5Container:
 # G5Node 硬编码大小: Next(8) + Value(4) + padding(4) = 16 字节
 define G5NODE_SIZE = 16
 
-def new_g5node(pool: memhub.MemBuddy | t.CPtr) -> G5Node | t.CPtr:
+def new_g5node(pool: memhub.MemBuddy*) -> G5Node*:
     """从 pool 分配并零初始化一个 G5Node"""
-    ptr: G5Node | t.CPtr = pool.alloc(G5NODE_SIZE)
+    ptr: G5Node* = pool.alloc(G5NODE_SIZE)
     if ptr is None: return None
     string.memset(ptr, 0, G5NODE_SIZE)
     return ptr
@@ -53,7 +53,7 @@ def new_g5node(pool: memhub.MemBuddy | t.CPtr) -> G5Node | t.CPtr:
 # GSList 硬编码大小: Head(8) + Tail(8) + Count(8) = 24 字节
 define G5LIST_SIZE = 24
 
-def new_g5list(pool: memhub.MemBuddy | t.CPtr) -> GSList[G5Node] | t.CPtr:
+def new_g5list(pool: memhub.MemBuddy*) -> GSList[G5Node]*:
     """从 pool 分配并零初始化一个 GSList 容器（Head/Tail/Count 全零）"""
     gsl: t.CPtr = pool.alloc(G5LIST_SIZE)
     if gsl is None: return None
@@ -64,9 +64,9 @@ def new_g5list(pool: memhub.MemBuddy | t.CPtr) -> GSList[G5Node] | t.CPtr:
 # G5Container 硬编码大小: List(8) = 8 字节
 define G5CONTAINER_SIZE = 8
 
-def new_g5container(pool: memhub.MemBuddy | t.CPtr) -> G5Container | t.CPtr:
+def new_g5container(pool: memhub.MemBuddy*) -> G5Container*:
     """从 pool 分配并零初始化一个 G5Container"""
-    ptr: G5Container | t.CPtr = pool.alloc(G5CONTAINER_SIZE)
+    ptr: G5Container* = pool.alloc(G5CONTAINER_SIZE)
     if ptr is None: return None
     string.memset(ptr, 0, G5CONTAINER_SIZE)
     return ptr
@@ -83,43 +83,43 @@ def new_g5container(pool: memhub.MemBuddy | t.CPtr) -> G5Container | t.CPtr:
 # 所有字段。其他模块通过函数调用获取字段值，绕过 stub 限制。
 # ============================================================
 
-def g5list_get_head(lst: GSList[G5Node] | t.CPtr) -> G5Node | t.CPtr:
+def g5list_get_head(lst: GSList[G5Node]*) -> G5Node*:
     """获取链表头节点"""
     if lst is None: return None
     return lst.Head
 
 
-def g5list_get_tail(lst: GSList[G5Node] | t.CPtr) -> G5Node | t.CPtr:
+def g5list_get_tail(lst: GSList[G5Node]*) -> G5Node*:
     """获取链表尾节点"""
     if lst is None: return None
     return lst.Tail
 
 
-def g5list_get_count(lst: GSList[G5Node] | t.CPtr) -> sizet:
+def g5list_get_count(lst: GSList[G5Node]*) -> sizet:
     """获取链表节点数"""
     if lst is None: return 0
     return lst.Count
 
 
-def g5list_set_head(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
+def g5list_set_head(lst: GSList[G5Node]*, node: G5Node*):
     """设置链表头节点"""
     if lst is None: return
     lst.Head = node
 
 
-def g5list_set_tail(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
+def g5list_set_tail(lst: GSList[G5Node]*, node: G5Node*):
     """设置链表尾节点"""
     if lst is None: return
     lst.Tail = node
 
 
-def g5list_set_count(lst: GSList[G5Node] | t.CPtr, count: sizet):
+def g5list_set_count(lst: GSList[G5Node]*, count: sizet):
     """设置链表节点数"""
     if lst is None: return
     lst.Count = count
 
 
-def g5list_append(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
+def g5list_append(lst: GSList[G5Node]*, node: G5Node*):
     """将 node 追加到链表末尾（O(1)）
 
     直接操作 Head/Tail/Count 字段，不依赖 GSList.append 方法
@@ -139,22 +139,22 @@ def g5list_append(lst: GSList[G5Node] | t.CPtr, node: G5Node | t.CPtr):
 # G5Node 访问器
 # ============================================================
 
-def g5node_get_value(node: G5Node | t.CPtr) -> int:
+def g5node_get_value(node: G5Node*) -> int:
     if node is None: return 0
     return node.Value
 
 
-def g5node_set_value(node: G5Node | t.CPtr, value: int):
+def g5node_set_value(node: G5Node*, value: int):
     if node is None: return
     node.Value = value
 
 
-def g5node_get_next(node: G5Node | t.CPtr) -> G5Node | t.CPtr:
+def g5node_get_next(node: G5Node*) -> G5Node*:
     if node is None: return None
     return node.Next
 
 
-def g5node_set_next(node: G5Node | t.CPtr, next_node: G5Node | t.CPtr):
+def g5node_set_next(node: G5Node*, next_node: G5Node*):
     if node is None: return
     node.Next = next_node
 
@@ -163,11 +163,11 @@ def g5node_set_next(node: G5Node | t.CPtr, next_node: G5Node | t.CPtr):
 # G5Container 访问器
 # ============================================================
 
-def g5container_get_list(container: G5Container | t.CPtr) -> GSList[G5Node] | t.CPtr:
+def g5container_get_list(container: G5Container*) -> GSList[G5Node]*:
     if container is None: return None
     return container.List
 
 
-def g5container_set_list(container: G5Container | t.CPtr, lst: GSList[G5Node] | t.CPtr):
+def g5container_set_list(container: G5Container*, lst: GSList[G5Node]*):
     if container is None: return
     container.List = lst

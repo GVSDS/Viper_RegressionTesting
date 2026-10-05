@@ -18,18 +18,16 @@ define POOL_SIZE = 524288
 define DUMP_SIZE = 262144
 
 
-def classify_list(lst: list[ast.AST | t.CPtr] | t.CPtr, depth: int):
+def classify_list(lst: list[ast.AST*]*, depth: int):
     """递归遍历 list[AST | t.CPtr] 容器，逐元素分类（orelse/args/comparators 等）"""
     if lst is None:
         return
     n: sizet = lst.__len__()
-    i: sizet = 0
-    while i < n:
+    for i in range(n):
         classify_print(lst.get(i), depth + 1)
-        i += 1
 
 
-def classify_print(node: ast.AST | t.CPtr, depth: int):
+def classify_print(node: ast.AST*, depth: int):
     """递归遍历 parse 树，用 isinstance 运行时判定每个节点的类别并打印。
 
     依赖 TPV isinstance 的 vtable 子类集合比较：
@@ -40,10 +38,8 @@ def classify_print(node: ast.AST | t.CPtr, depth: int):
     """
     if node is None:
         return
-    sp: int = 0
-    while sp < depth:
+    for sp in range(depth):
         printf("  ")
-        sp += 1
     if isinstance(node, ast.Stmt) != 0:
         printf("STMT  %s\n", node.type_name())
     elif isinstance(node, ast.ExprNode) != 0:
@@ -55,43 +51,43 @@ def classify_print(node: ast.AST | t.CPtr, depth: int):
     # 直接访问 node.value 会在 AST 基类字段表 fast-fail（按需过滤原则）。
     k: int = node.kind()
     if k == ast.ASTKind.Assign:
-        asg: ast.Assign | t.CPtr = (ast.Assign | t.CPtr)(node)
+        asg: ast.Assign* = (ast.Assign*)(node)
         classify_print(asg.value, depth + 1)
     elif k == ast.ASTKind.If:
-        ifn: ast.If | t.CPtr = (ast.If | t.CPtr)(node)
+        ifn: ast.If* = (ast.If*)(node)
         classify_print(ifn.test, depth + 1)
         classify_list(ifn.orelse, depth + 1)
     elif k == ast.ASTKind.While:
-        whl: ast.While | t.CPtr = (ast.While | t.CPtr)(node)
+        whl: ast.While* = (ast.While*)(node)
         classify_print(whl.test, depth + 1)
         classify_list(whl.orelse, depth + 1)
     elif k == ast.ASTKind.For:
-        for_nd: ast.For | t.CPtr = (ast.For | t.CPtr)(node)
+        for_nd: ast.For* = (ast.For*)(node)
         classify_print(for_nd.iter, depth + 1)
         classify_print(for_nd.target, depth + 1)
         classify_list(for_nd.orelse, depth + 1)
     elif k == ast.ASTKind.Return:
-        ret_nd: ast.Return | t.CPtr = (ast.Return | t.CPtr)(node)
+        ret_nd: ast.Return* = (ast.Return*)(node)
         classify_print(ret_nd.value, depth + 1)
     elif k == ast.ASTKind.Expr:
-        expr_nd: ast.Expr | t.CPtr = (ast.Expr | t.CPtr)(node)
+        expr_nd: ast.Expr* = (ast.Expr*)(node)
         classify_print(expr_nd.value, depth + 1)
     elif k == ast.ASTKind.BinOp:
-        bin_nd: ast.BinOp | t.CPtr = (ast.BinOp | t.CPtr)(node)
+        bin_nd: ast.BinOp* = (ast.BinOp*)(node)
         classify_print(bin_nd.left, depth + 1)
         classify_print(bin_nd.right, depth + 1)
     elif k == ast.ASTKind.UnaryOp:
-        una_nd: ast.UnaryOp | t.CPtr = (ast.UnaryOp | t.CPtr)(node)
+        una_nd: ast.UnaryOp* = (ast.UnaryOp*)(node)
         classify_print(una_nd.operand, depth + 1)
     elif k == ast.ASTKind.Compare:
-        cmp_nd: ast.Compare | t.CPtr = (ast.Compare | t.CPtr)(node)
+        cmp_nd: ast.Compare* = (ast.Compare*)(node)
         classify_print(cmp_nd.left, depth + 1)
         classify_list(cmp_nd.comparators, depth + 1)
     elif k == ast.ASTKind.BoolOp:
-        bool_nd: ast.BoolOp | t.CPtr = (ast.BoolOp | t.CPtr)(node)
+        bool_nd: ast.BoolOp* = (ast.BoolOp*)(node)
         classify_list(bool_nd.values, depth + 1)
     elif k == ast.ASTKind.Call:
-        call_nd: ast.Call | t.CPtr = (ast.Call | t.CPtr)(node)
+        call_nd: ast.Call* = (ast.Call*)(node)
         classify_print(call_nd.func, depth + 1)
         classify_list(call_nd.args, depth + 1)
     else:
@@ -99,10 +95,8 @@ def classify_print(node: ast.AST | t.CPtr, depth: int):
     # children（语句 body 块）
     if node.children is not None:
         n: sizet = node.children.__len__()
-        i: sizet = 0
-        while i < n:
+        for i in range(n):
             classify_print(node.children.get(i), depth + 1)
-            i += 1
 
 
 def main() -> CInt | CExport:
@@ -116,7 +110,7 @@ def main() -> CInt | CExport:
     if arena == None:
         printf("FAIL: arena alloc failed\n")
         return 1
-    mbuddy_obj: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, ARENA_SIZE)
+    mbuddy_obj: memhub.MemBuddy* = memhub.MemBuddy(arena, ARENA_SIZE)
     if mbuddy_obj == None:
         printf("FAIL: mbuddy init failed\n")
         return 1
@@ -129,7 +123,7 @@ def main() -> CInt | CExport:
     if pool_mem == None:
         printf("FAIL: malloc for pool failed\n")
         return 1
-    pool: memhub.MemPool | t.CPtr = memhub.MemPool(pool_mem, POOL_SIZE)
+    pool: memhub.MemPool* = memhub.MemPool(pool_mem, POOL_SIZE)
     if pool == None:
         printf("FAIL: memhub.MemPool init failed\n")
         return 1
@@ -139,7 +133,7 @@ def main() -> CInt | CExport:
     if dump_mem == None:
         printf("FAIL: malloc for dump failed\n")
         return 1
-    dump_buf: char | t.CPtr = char(dump_mem, t.CPtr)
+    dump_buf: char* = char(dump_mem, t.CPtr)
 
     # 综合测试源码：覆盖 CPython 主要语法
     src: str = """x = 1
@@ -186,7 +180,7 @@ class Point:
         stdlib.free(pool_mem)
         stdlib.free(dump_mem)
         return 1
-    tree: ast.AST | t.CPtr = ast.parse_tokens(pool, tokens_dbg)
+    tree: ast.AST* = ast.parse_tokens(pool, tokens_dbg)
     if tree == None:
         printf("FAIL: parse returned None\n")
         stdlib.free(pool_mem)
@@ -216,18 +210,16 @@ class Point:
     # 断言 2: 顶层 body 每条语句均为 Stmt
     top_ok: int = 1
     top_n: sizet = tree.children.__len__()
-    i2: sizet = 0
-    while i2 < top_n:
-        top_node: ast.AST | t.CPtr = tree.children.get(i2)
+    for i2 in range(top_n):
+        top_node: ast.AST* = tree.children.get(i2)
         if isinstance(top_node, ast.Stmt) == 0:
             top_ok = 0
             printf("FAIL: top-level node not Stmt: %s\n", top_node.type_name())
-        i2 += 1
     if top_ok != 0:
         printf("PASS: all %lld top-level nodes are Stmt\n", top_n)
 
     # 断言 3: Assign 是 Stmt 且不是 ExprNode
-    first_assign: ast.Assign | t.CPtr = (ast.Assign | t.CPtr)(tree.children.get(0))
+    first_assign: ast.Assign* = (ast.Assign*)(tree.children.get(0))
     if isinstance(first_assign, ast.Stmt) != 0 and isinstance(first_assign, ast.ExprNode) == 0:
         printf("PASS: Assign is Stmt, not ExprNode\n")
     else:
@@ -242,9 +234,9 @@ class Point:
 
     # 断言 5: 表达式语句 Expr（如 print(x)）属于 Stmt（Statement 语义）
     if top_n >= 15:
-        if_node: ast.If | t.CPtr = (ast.If | t.CPtr)(tree.children.get(14))
+        if_node: ast.If* = (ast.If*)(tree.children.get(14))
         if if_node.children is not None and if_node.children.__len__() > 0:
-            expr_stmt: ast.Expr | t.CPtr = (ast.Expr | t.CPtr)(if_node.children.get(0))
+            expr_stmt: ast.Expr* = (ast.Expr*)(if_node.children.get(0))
             if isinstance(expr_stmt, ast.Stmt) != 0 and isinstance(expr_stmt, ast.ExprNode) == 0:
                 printf("PASS: Expr(stmt) is Stmt, not ExprNode (%s)\n", expr_stmt.type_name())
             else:

@@ -10,8 +10,8 @@ import testcheck
 
 
 # 全局内存池
-arena: uint8 | t.CPtr = None
-pool: memhub.MemPool | t.CPtr = None
+arena: uint8* = None
+pool: memhub.MemPool* = None
 
 # 外部函数: clock() 用于性能计时
 def clock() -> t.CLong | t.CExtern: pass
@@ -25,19 +25,19 @@ define CLOCK_PER_SEC = 1000
 
 def test_avx2_add_sub_mul_div():
     testcheck.section("AVX2 add/sub/mul/div 4d")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(2.0)
     a.data[2] = double(3.0)
     a.data[3] = double(4.0)
 
-    b: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    b: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     b.data[0] = double(5.0)
     b.data[1] = double(6.0)
     b.data[2] = double(7.0)
     b.data[3] = double(8.0)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 4)
 
     # add
     vipersimd.simd_add4d(a.data, b.data, out.data)
@@ -70,13 +70,13 @@ def test_avx2_add_sub_mul_div():
 
 def test_avx2_neg_abs_sqrt():
     testcheck.section("AVX2 neg/abs/sqrt 4d")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(-4.0)
     a.data[2] = double(9.0)
     a.data[3] = double(-16.0)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 4)
 
     # neg
     vipersimd.simd_neg4d(a.data, out.data)
@@ -105,19 +105,19 @@ def test_avx2_neg_abs_sqrt():
 
 def test_avx2_min_max():
     testcheck.section("AVX2 min/max 4d")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(8.0)
     a.data[2] = double(3.0)
     a.data[3] = double(6.0)
 
-    b: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    b: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     b.data[0] = double(5.0)
     b.data[1] = double(2.0)
     b.data[2] = double(7.0)
     b.data[3] = double(4.0)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 4)
 
     vipersimd.simd_min4d(a.data, b.data, out.data)
     testcheck.check(out.data[0] == double(1.0), "min[0]==1", "min[0]==1")
@@ -138,16 +138,16 @@ def test_avx2_min_max():
 
 def test_avx2_scalar_ops():
     testcheck.section("AVX2 scalar broadcast ops")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(2.0)
     a.data[2] = double(3.0)
     a.data[3] = double(4.0)
 
-    s: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 1)
+    s: numpy.ndarray[double]* = numpy.zeros(pool, 1)
     s.data[0] = double(10.0)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 4)
 
     vipersimd.simd_mul_scalar4d(a.data, s.data, out.data)
     testcheck.check(out.data[0] == double(10.0), "mul_scalar[0]==10", "mul_scalar[0]==10")
@@ -165,19 +165,19 @@ def test_avx2_scalar_ops():
 
 def test_avx2_hsum_dot():
     testcheck.section("AVX2 hsum/dot 4d")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(2.0)
     a.data[2] = double(3.0)
     a.data[3] = double(4.0)
 
-    b: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    b: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     b.data[0] = double(5.0)
     b.data[1] = double(6.0)
     b.data[2] = double(7.0)
     b.data[3] = double(8.0)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 1)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 1)
 
     vipersimd.simd_hsum4d(a.data, out.data)
     testcheck.check(out.data[0] == double(10.0), "hsum==10", "hsum==10")
@@ -192,21 +192,21 @@ def test_avx2_hsum_dot():
 
 def test_avx2_fma():
     testcheck.section("AVX2 FMA 4d")
-    a: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    a: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     a.data[0] = double(1.0)
     a.data[1] = double(2.0)
     a.data[2] = double(3.0)
     a.data[3] = double(4.0)
 
-    b: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    b: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     b.data[0] = double(5.0)
     b.data[1] = double(6.0)
     b.data[2] = double(7.0)
     b.data[3] = double(8.0)
 
-    c_val: numpy.ndarray[double] | t.CPtr = numpy.ones(pool, 4)
+    c_val: numpy.ndarray[double]* = numpy.ones(pool, 4)
 
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 4)
 
     vipersimd.simd_fma4d(a.data, b.data, c_val.data, out.data)
     testcheck.check(out.data[0] == double(6.0), "fma[0]==6", "fma[0]==6")
@@ -227,9 +227,9 @@ def test_avx2_fma():
 def test_batch_array_ops():
     testcheck.section("Batch array operations")
     n: sizet = 16
-    a: numpy.ndarray[double] | t.CPtr = numpy.arange(pool, double(1.0), double(17.0), double(1.0))
-    b: numpy.ndarray[double] | t.CPtr = numpy.full(pool, 16, double(2.0))
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 16)
+    a: numpy.ndarray[double]* = numpy.arange(pool, double(1.0), double(17.0), double(1.0))
+    b: numpy.ndarray[double]* = numpy.full(pool, 16, double(2.0))
+    out: numpy.ndarray[double]* = numpy.zeros(pool, 16)
 
     # add array
     vipersimd.simd_add_array(a.data, b.data, out.data, n)
@@ -242,18 +242,18 @@ def test_batch_array_ops():
     testcheck.check(out.data[3] == double(8.0), "mul_arr[3]==8", "mul_arr[3]==8")
 
     # sqrt array
-    c: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    c: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     c.data[0] = double(4.0)
     c.data[1] = double(9.0)
     c.data[2] = double(16.0)
     c.data[3] = double(25.0)
-    out4: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    out4: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     vipersimd.simd_sqrt_array(c.data, out4.data, sizet(4))
     testcheck.check(out4.data[0] == double(2.0), "sqrt_arr[0]==2", "sqrt_arr[0]==2")
     testcheck.check(out4.data[3] == double(5.0), "sqrt_arr[3]==5", "sqrt_arr[3]==5")
 
     # abs array
-    d: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    d: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     d.data[0] = double(-1.0)
     d.data[1] = double(-2.0)
     d.data[2] = double(3.0)
@@ -264,13 +264,13 @@ def test_batch_array_ops():
     testcheck.check(out4.data[3] == double(4.0), "abs_arr[3]==4", "abs_arr[3]==4")
 
     # dot array
-    e: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 4)
+    e: numpy.ndarray[double]* = numpy.zeros(pool, 4)
     e.data[0] = double(1.0)
     e.data[1] = double(2.0)
     e.data[2] = double(3.0)
     e.data[3] = double(4.0)
-    f: numpy.ndarray[double] | t.CPtr = numpy.ones(pool, 4)
-    out1: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, 1)
+    f: numpy.ndarray[double]* = numpy.ones(pool, 4)
+    out1: numpy.ndarray[double]* = numpy.zeros(pool, 1)
     vipersimd.simd_dot_array(e.data, f.data, sizet(4), out1.data)
     testcheck.check(out1.data[0] == double(10.0), "dot_arr==10", "dot_arr==10")
 
@@ -365,53 +365,43 @@ define N_ELEM = 40000
 define N_ITER = 50000
 
 def scalar_add_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: sizet):
-    i: sizet = 0
-    da: double | t.CPtr = a
-    db: double | t.CPtr = b
-    dout: double | t.CPtr = out
-    while i < n:
+    da: double* = a
+    db: double* = b
+    dout: double* = out
+    for i in range(n):
         dout[i] = da[i] + db[i]
-        i += 1
 
 def scalar_mul_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: sizet):
-    i: sizet = 0
-    da: double | t.CPtr = a
-    db: double | t.CPtr = b
-    dout: double | t.CPtr = out
-    while i < n:
+    da: double* = a
+    db: double* = b
+    dout: double* = out
+    for i in range(n):
         dout[i] = da[i] * db[i]
-        i += 1
 
 def scalar_sqrt_array(a: t.CPtr, out: t.CPtr, n: sizet):
-    i: sizet = 0
-    da: double | t.CPtr = a
-    dout: double | t.CPtr = out
-    while i < n:
+    da: double* = a
+    dout: double* = out
+    for i in range(n):
         dout[i] = vipersimd.simd_sqrt(da[i])
-        i += 1
 
 def benchmark_simd_vs_scalar():
     testcheck.section("Benchmark: SIMD vs Scalar")
 
-    a: numpy.ndarray[double] | t.CPtr = numpy.full(pool, N_ELEM, double(1.5))
-    b: numpy.ndarray[double] | t.CPtr = numpy.full(pool, N_ELEM, double(2.5))
-    out: numpy.ndarray[double] | t.CPtr = numpy.zeros(pool, N_ELEM)
+    a: numpy.ndarray[double]* = numpy.full(pool, N_ELEM, double(1.5))
+    b: numpy.ndarray[double]* = numpy.full(pool, N_ELEM, double(2.5))
+    out: numpy.ndarray[double]* = numpy.zeros(pool, N_ELEM)
 
     # --- SIMD add benchmark ---
     t0: t.CLong = clock()
-    iter: int = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         vipersimd.simd_add_array(a.data, b.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1: t.CLong = clock()
     simd_add_ms: t.CLong = t1 - t0
 
     # --- Scalar add benchmark ---
     t0 = clock()
-    iter = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         scalar_add_array(a.data, b.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1 = clock()
     scalar_add_ms: t.CLong = t1 - t0
 
@@ -423,19 +413,15 @@ def benchmark_simd_vs_scalar():
 
     # --- SIMD mul benchmark ---
     t0 = clock()
-    iter = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         vipersimd.simd_mul_array(a.data, b.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1 = clock()
     simd_mul_ms: t.CLong = t1 - t0
 
     # --- Scalar mul benchmark ---
     t0 = clock()
-    iter = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         scalar_mul_array(a.data, b.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1 = clock()
     scalar_mul_ms: t.CLong = t1 - t0
 
@@ -447,19 +433,15 @@ def benchmark_simd_vs_scalar():
 
     # --- SIMD sqrt benchmark ---
     t0 = clock()
-    iter = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         vipersimd.simd_sqrt_array(a.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1 = clock()
     simd_sqrt_ms: t.CLong = t1 - t0
 
     # --- Scalar sqrt benchmark ---
     t0 = clock()
-    iter = 0
-    while iter < N_ITER:
+    for iter in range(N_ITER):
         scalar_sqrt_array(a.data, out.data, sizet(N_ELEM))
-        iter += 1
     t1 = clock()
     scalar_sqrt_ms: t.CLong = t1 - t0
 

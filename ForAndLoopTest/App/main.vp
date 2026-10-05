@@ -26,7 +26,7 @@ def test_for_in_str():
 def test_for_in_list():
     testcheck.section("Test 3: for v in list[str]")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     lst: list[str] = list[str](bd)
     lst.append("x")
     lst.append("y")
@@ -42,7 +42,7 @@ def test_for_in_list():
 def test_zip_list_list():
     testcheck.section("Test 4: zip(list, list)")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     la: list[str] = list[str](bd)
     la.append("a")
     la.append("b")
@@ -62,7 +62,7 @@ def test_zip_list_list():
 def test_zip_range_list():
     testcheck.section("Test 5: zip(range, list)")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     lst: list[str] = list[str](bd)
     lst.append("p")
     lst.append("q")
@@ -89,7 +89,7 @@ def test_zip_str_str():
 def test_zip_range_len_list():
     testcheck.section("Test 7: zip(range(len), list)")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     lst: list[str] = list[str](bd)
     lst.append("www")
     lst.append("gvsds")
@@ -105,7 +105,7 @@ def test_zip_range_len_list():
 def test_enumerate_list():
     testcheck.section("Test 8: enumerate(list)")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     lst: list[str] = list[str](bd)
     lst.append("alpha")
     lst.append("beta")
@@ -183,7 +183,7 @@ def test_for_else_empty_range():
 def test_for_else_list():
     testcheck.section("Test 14: for-else (list[str] 迭代耗尽 → 执行 else)")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
     lst: list[str] = list[str](bd)
     lst.append("a")
     lst.append("b")

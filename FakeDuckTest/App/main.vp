@@ -32,7 +32,7 @@ def main() -> CInt | CExport:
 
     # upper() 测试: 通过 mbuddy 分配内存，返回大写字符串
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
     # 直接字段赋值: a.__mbuddy__ = bd (语法糖, 等价于 a.set_mbuddy(bd))
     a.__mbuddy__ = bd
@@ -43,7 +43,7 @@ def main() -> CInt | CExport:
     b: str = "World"
 
     # 直接字段读取: b.__mbuddy__ (应返回 NULL)
-    b_buddy: memhub.MemBuddy | t.CPtr = b.__mbuddy__
+    b_buddy: memhub.MemBuddy* = b.__mbuddy__
     if int(b_buddy) == 0:
         stdio.printf("mbuddy OK: b.__mbuddy__ is NULL (no pollution)\n")
     else:
@@ -231,7 +231,7 @@ def main() -> CInt | CExport:
         w_str: str = "WithTest"
 
         # 验证 __mbuddy__ 已自动注入（非 NULL）
-        w_buddy: memhub.MemBuddy | t.CPtr = w_str.__mbuddy__
+        w_buddy: memhub.MemBuddy* = w_str.__mbuddy__
         testcheck.check(int(w_buddy) != 0, "with inject OK: __mbuddy__ auto-injected", "with inject FAIL: __mbuddy__ is NULL")
 
         # upper() 不需要手动设置 __mbuddy__
@@ -253,11 +253,11 @@ def main() -> CInt | CExport:
 
         # 验证多个 str 变量都获得注入
         w_str2: str = "Multiple"
-        w_buddy2: memhub.MemBuddy | t.CPtr = w_str2.__mbuddy__
+        w_buddy2: memhub.MemBuddy* = w_str2.__mbuddy__
         testcheck.check(int(w_buddy2) != 0, "with multi inject OK", "with multi inject FAIL")
 
         test_s: str = "www.gvsds.com"
-        list_s: list[str] | t.CPtr = test_s.split('.')
+        list_s: list[str]* = test_s.split('.')
         # 迭代器测试: for idx, i in zip(range(len(list_s)), list_s)
         iter_count: int = 0
         for iter_idx, i in zip(range(len(list_s)), list_s):
@@ -271,8 +271,8 @@ def main() -> CInt | CExport:
         testcheck.section("Test 10: zip(list, list) 元组解包")
         za: str = "a,b,c"
         zb: str = "1,2,3"
-        list_a: list[str] | t.CPtr = za.split(',')
-        list_b: list[str] | t.CPtr = zb.split(',')
+        list_a: list[str]* = za.split(',')
+        list_b: list[str]* = zb.split(',')
         zip_idx: int = 0
         for ca, cb in zip(list_a, list_b):
             stdio.printf("zip[%d]: '%s'='%s'\n", zip_idx, ca, cb)

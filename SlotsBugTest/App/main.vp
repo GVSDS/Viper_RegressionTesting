@@ -10,9 +10,9 @@ import ast
 class Result:
     __slots__ = ('elem_type_node', 'count_node', 'is_pointer')
 
-    def __init__(self, elem: ast.AST, count: ast.AST | t.CPtr, flag: bool) -> None:
+    def __init__(self, elem: ast.AST, count: ast.AST*, flag: bool) -> None:
         self.elem_type_node: ast.AST = elem
-        self.count_node: ast.AST | t.CPtr = count
+        self.count_node: ast.AST* = count
         self.is_pointer: bool = flag
 
 def main() -> int:

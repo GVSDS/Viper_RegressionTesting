@@ -81,7 +81,7 @@ class IntPair:
     a: int
     b: int
 
-def generic_swap(p: IntPair | t.CPtr):
+def generic_swap(p: IntPair*):
     tmp: int = (*p).a
     (*p).a = (*p).b
     (*p).b = tmp

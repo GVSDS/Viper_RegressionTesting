@@ -123,7 +123,7 @@ def main() -> CInt | CExport:
     print(val_i32)
 
     ptr_raw = stdlib.malloc(8)
-    ptr_typed = (int | t.CPtr)(ptr_raw)
+    ptr_typed = (int*)(ptr_raw)
     viperlib.snprintf(buf, 256, "cast ptr=%p", ptr_typed)
     print(buf)
 

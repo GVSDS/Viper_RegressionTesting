@@ -24,8 +24,8 @@ def test_g4node_create():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
-    n: G4Node | t.CPtr = new_g4node(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 4096)
+    n: G4Node* = new_g4node(pool)
     if n is None:
         testcheck.check(False, "new_g4node", "FAIL")
         return
@@ -40,16 +40,16 @@ def test_g4node_next_field():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
-    n1: G4Node | t.CPtr = new_g4node(pool)
-    n2: G4Node | t.CPtr = new_g4node(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 4096)
+    n1: G4Node* = new_g4node(pool)
+    n2: G4Node* = new_g4node(pool)
     if n1 is None or n2 is None:
         testcheck.check(False, "new_g4node", "FAIL")
         return
     n1.IntVal = 10
     n2.IntVal = 20
     g4node_set_next(n1, n2)
-    next_node: G4Node | t.CPtr = g4node_get_next(n1)
+    next_node: G4Node* = g4node_get_next(n1)
     if next_node is None:
         testcheck.check(False, "g4node_get_next", "FAIL")
         return
@@ -63,10 +63,10 @@ def test_g4node_chain():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
-    a: G4Node | t.CPtr = new_g4node(pool)
-    b: G4Node | t.CPtr = new_g4node(pool)
-    c: G4Node | t.CPtr = new_g4node(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 4096)
+    a: G4Node* = new_g4node(pool)
+    b: G4Node* = new_g4node(pool)
+    c: G4Node* = new_g4node(pool)
     if a is None or b is None or c is None:
         testcheck.check(False, "new_g4node", "FAIL")
         return
@@ -76,7 +76,7 @@ def test_g4node_chain():
     g4node_set_next(a, b)
     g4node_set_next(b, c)
     sum: int = a.IntVal
-    p: G4Node | t.CPtr = g4node_get_next(a)
+    p: G4Node* = g4node_get_next(a)
     sum = sum + p.IntVal
     p = g4node_get_next(p)
     sum = sum + p.IntVal
@@ -90,8 +90,8 @@ def test_caller1_direct_access():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
-    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 8192)
+    head: G4Node* = caller1.caller1_make_chain(pool)
     if head is None:
         testcheck.check(False, "caller1_make_chain", "FAIL")
         return
@@ -107,13 +107,13 @@ def test_caller2_reverse():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
-    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 8192)
+    head: G4Node* = caller1.caller1_make_chain(pool)
     if head is None:
         testcheck.check(False, "caller1_make_chain", "FAIL")
         return
     count_before: int = caller2.caller2_count_nodes(head)
-    reversed_head: G4Node | t.CPtr = caller2.caller2_reverse_chain(head)
+    reversed_head: G4Node* = caller2.caller2_reverse_chain(head)
     count_after: int = caller2.caller2_count_nodes(reversed_head)
     stdio.printf("caller2 count before=%d after=%d\n", count_before, count_after)
     testcheck.check(count_before == 3 and count_after == 3,
@@ -127,12 +127,12 @@ def test_caller3_append():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 8192)
-    head: G4Node | t.CPtr = caller1.caller1_make_chain(pool)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 8192)
+    head: G4Node* = caller1.caller1_make_chain(pool)
     if head is None:
         testcheck.check(False, "caller1_make_chain", "FAIL")
         return
-    extra: G4Node | t.CPtr = new_g4node(pool)
+    extra: G4Node* = new_g4node(pool)
     if extra is None:
         testcheck.check(False, "new_g4node", "FAIL")
         return

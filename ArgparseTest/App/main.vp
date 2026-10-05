@@ -9,7 +9,7 @@ import testcheck
 
 
 # 全局 MBuddy 指针
-_mbuddy: memhub.MemBuddy | t.CPtr
+_mbuddy: memhub.MemBuddy*
 
 
 @t.CExport
@@ -28,48 +28,48 @@ def main() -> int:
 
     # 构造模拟 argv: myprog --input test.txt -c 42 --verbose output.dat
     argv_buf: bytes = _mbuddy.alloc(8 * 7)  # 7 个指针
-    argv: str | t.CPtr = (str | t.CPtr)(argv_buf)
+    argv: str* = (str*)(argv_buf)
 
     # argv[0] = "myprog"
     s0: bytes = _mbuddy.alloc(16)
     string.strcpy(s0, "myprog")
-    argv0: str | t.CPtr = (str | t.CPtr)(uint64(argv))
+    argv0: str* = (str*)(uint64(argv))
     argv0[0] = s0
 
     # argv[1] = "--input"
     s1: bytes = _mbuddy.alloc(16)
     string.strcpy(s1, "--input")
-    argv1: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 8)
+    argv1: str* = (str*)(uint64(argv) + 8)
     argv1[0] = s1
 
     # argv[2] = "test.txt"
     s2: bytes = _mbuddy.alloc(16)
     string.strcpy(s2, "test.txt")
-    argv2: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 16)
+    argv2: str* = (str*)(uint64(argv) + 16)
     argv2[0] = s2
 
     # argv[3] = "-c"
     s3: bytes = _mbuddy.alloc(8)
     string.strcpy(s3, "-c")
-    argv3: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 24)
+    argv3: str* = (str*)(uint64(argv) + 24)
     argv3[0] = s3
 
     # argv[4] = "42"
     s4: bytes = _mbuddy.alloc(8)
     string.strcpy(s4, "42")
-    argv4: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 32)
+    argv4: str* = (str*)(uint64(argv) + 32)
     argv4[0] = s4
 
     # argv[5] = "--verbose"
     s5: bytes = _mbuddy.alloc(16)
     string.strcpy(s5, "--verbose")
-    argv5: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 40)
+    argv5: str* = (str*)(uint64(argv) + 40)
     argv5[0] = s5
 
     # argv[6] = "output.dat"
     s6: bytes = _mbuddy.alloc(16)
     string.strcpy(s6, "output.dat")
-    argv6: str | t.CPtr = (str | t.CPtr)(uint64(argv) + 48)
+    argv6: str* = (str*)(uint64(argv) + 48)
     argv6[0] = s6
 
     argc: INT = 7
@@ -105,21 +105,21 @@ def main() -> int:
     testcheck.section("Test 2: --name=value 语法")
 
     argv2_buf: bytes = _mbuddy.alloc(8 * 3)
-    argv2: str | t.CPtr = (str | t.CPtr)(argv2_buf)
+    argv2: str* = (str*)(argv2_buf)
 
     a0: bytes = _mbuddy.alloc(16)
     string.strcpy(a0, "myprog")
-    a0_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv2))
+    a0_ptr: str* = (str*)(uint64(argv2))
     a0_ptr[0] = a0
 
     a1: bytes = _mbuddy.alloc(32)
     string.strcpy(a1, "--input=hello.txt")
-    a1_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv2) + 8)
+    a1_ptr: str* = (str*)(uint64(argv2) + 8)
     a1_ptr[0] = a1
 
     a2: bytes = _mbuddy.alloc(16)
     string.strcpy(a2, "output2.dat")
-    a2_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv2) + 16)
+    a2_ptr: str* = (str*)(uint64(argv2) + 16)
     a2_ptr[0] = a2
     args2 = parser.parse_args(3, argv2)
     if args2 is not None:
@@ -140,26 +140,26 @@ def main() -> int:
     testcheck.section("Test 3: COUNT 计数动作")
 
     argv3_buf: bytes = _mbuddy.alloc(8 * 4)
-    argv3_arr: str | t.CPtr = (str | t.CPtr)(argv3_buf)
+    argv3_arr: str* = (str*)(argv3_buf)
 
     b0: bytes = _mbuddy.alloc(8)
     string.strcpy(b0, "myprog")
-    b0_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv3_arr))
+    b0_ptr: str* = (str*)(uint64(argv3_arr))
     b0_ptr[0] = b0
 
     b1: bytes = _mbuddy.alloc(8)
     string.strcpy(b1, "-v")
-    b1_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv3_arr) + 8)
+    b1_ptr: str* = (str*)(uint64(argv3_arr) + 8)
     b1_ptr[0] = b1
 
     b2: bytes = _mbuddy.alloc(8)
     string.strcpy(b2, "-v")
-    b2_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv3_arr) + 16)
+    b2_ptr: str* = (str*)(uint64(argv3_arr) + 16)
     b2_ptr[0] = b2
 
     b3: bytes = _mbuddy.alloc(16)
     string.strcpy(b3, "output3.dat")
-    b3_ptr: str | t.CPtr = (str | t.CPtr)(uint64(argv3_arr) + 24)
+    b3_ptr: str* = (str*)(uint64(argv3_arr) + 24)
     b3_ptr[0] = b3
 
     parser2 = argparse.ArgumentParser("myprog", "Count test", pool=_mbuddy)

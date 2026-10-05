@@ -33,8 +33,8 @@ class G4Node(GSListNode[G4Node]):
 
 
 # 工厂函数（与 __values.py 中的 new_value 类似）
-def new_g4node(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
-    ptr: G4Node | t.CPtr = pool.alloc(48)
+def new_g4node(pool: memhub.MemBuddy*) -> G4Node*:
+    ptr: G4Node* = pool.alloc(48)
     if ptr:
         ptr.Ty = None
         ptr.Name = None
@@ -45,9 +45,9 @@ def new_g4node(pool: memhub.MemBuddy | t.CPtr) -> G4Node | t.CPtr:
     return ptr
 
 
-def g4node_get_next(node: G4Node | t.CPtr) -> G4Node | t.CPtr:
+def g4node_get_next(node: G4Node*) -> G4Node*:
     return node.Next
 
 
-def g4node_set_next(node: G4Node | t.CPtr, next_node: G4Node | t.CPtr):
+def g4node_set_next(node: G4Node*, next_node: G4Node*):
     node.Next = next_node

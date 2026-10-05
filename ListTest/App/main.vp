@@ -16,7 +16,7 @@ def main() -> CInt | CExport:
 
     # 创建 mbuddy arena
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
     # === Test 1: 创建和 append ===
     testcheck.section("Test 1: 创建和 append")

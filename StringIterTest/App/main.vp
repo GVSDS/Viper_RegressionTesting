@@ -10,8 +10,8 @@ import inline_test
 # ============================================================
 def test_string_ptr_iter():
     testcheck.section("Test 1: string pointer iteration")
-    s: char | t.CPtr = "Hello"
-    p: char | t.CPtr = s
+    s: char* = "Hello"
+    p: char* = s
     count: int = 0
     while *p != 0:
         count += 1
@@ -23,8 +23,8 @@ def test_string_ptr_iter():
 # ============================================================
 def test_string_ascii_sum():
     testcheck.section("Test 2: string ASCII sum")
-    s: char | t.CPtr = "ABC"
-    p: char | t.CPtr = s
+    s: char* = "ABC"
+    p: char* = s
     total: int = 0
     while *p != 0:
         total += int(*p)
@@ -37,10 +37,10 @@ def test_string_ascii_sum():
 # ============================================================
 def test_manual_strcpy():
     testcheck.section("Test 3: manual strcpy via pointers")
-    src: char | t.CPtr = "Test"
+    src: char* = "Test"
     dst: t.CArray[char, 32] = [0]
-    sp: char | t.CPtr = src
-    dp: char | t.CPtr = &dst
+    sp: char* = src
+    dp: char* = &dst
     while *sp != 0:
         *dp = *sp
         sp += 1
@@ -56,8 +56,8 @@ def test_ptr_offset_compare():
     arr: t.CArray[int, 5] = [0]
     for i in range(5):
         arr[i] = i * 10
-    p: int | t.CPtr = &arr
-    start: int | t.CPtr = p
+    p: int* = &arr
+    start: int* = p
     total: int = 0
     while p != start + 5:
         total += *p
@@ -69,8 +69,8 @@ def test_ptr_offset_compare():
 # ============================================================
 def test_manual_strlen():
     testcheck.section("Test 5: manual strlen")
-    s: char | t.CPtr = "Hello World!"
-    p: char | t.CPtr = s
+    s: char* = "Hello World!"
+    p: char* = s
     length: sizet = 0
     while *p != 0:
         length += 1
@@ -82,16 +82,16 @@ def test_manual_strlen():
 # ============================================================
 def test_reverse_string_ptr():
     testcheck.section("Test 6: reverse string via pointer")
-    src: char | t.CPtr = "abcd"
+    src: char* = "abcd"
     dst: t.CArray[char, 32] = [0]
     # Find end of src
-    p: char | t.CPtr = src
+    p: char* = src
     length: int = 0
     while *p != 0:
         length += 1
         p += 1
     # Copy in reverse
-    dp: char | t.CPtr = &dst
+    dp: char* = &dst
     p = src + length - 1
     while p >= src:
         *dp = *p
@@ -107,8 +107,8 @@ def test_reverse_string_ptr():
 def test_double_pointer():
     testcheck.section("Test 7: double pointer")
     x: int = 42
-    px: int | t.CPtr = &x
-    ppx: int | t.CPtr | t.CPtr = &px
+    px: int* = &x
+    ppx: int** = &px
     # Read through double pointer
     val: int = *(*ppx)
     testcheck.check(val == 42, "double pointer (val=42)", "double pointer (val expect 42)")
@@ -121,7 +121,7 @@ def test_ptr_arithmetic():
     arr: t.CArray[int, 8] = [0]
     for i in range(8):
         arr[i] = (i + 1) * (i + 1)
-    p: int | t.CPtr = &arr
+    p: int* = &arr
     # Access arr[3] via pointer: p + 3
     val: int = *(p + 3)
     # arr[3] = 4*4 = 16
@@ -132,10 +132,10 @@ def test_ptr_arithmetic():
 # ============================================================
 def test_manual_strcmp():
     testcheck.section("Test 9: manual strcmp via pointers")
-    s1: char | t.CPtr = "Hello"
-    s2: char | t.CPtr = "Hello"
-    p1: char | t.CPtr = s1
-    p2: char | t.CPtr = s2
+    s1: char* = "Hello"
+    s2: char* = "Hello"
+    p1: char* = s1
+    p2: char* = s2
     equal: int = 1
     while *p1 != 0 and *p2 != 0:
         if *p1 != *p2:
@@ -159,7 +159,7 @@ def test_struct_ptr_access():
     v: Vec2 = Vec2()
     v.x = 10
     v.y = 20
-    p: Vec2 | t.CPtr = &v
+    p: Vec2* = &v
     # Modify through pointer
     (*p).x = 100
     (*p).y = 200

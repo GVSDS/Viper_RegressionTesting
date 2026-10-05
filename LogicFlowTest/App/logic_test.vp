@@ -65,8 +65,7 @@ def ForWithElifBranchTest(value: int):
 
 
 def WhileWithIfElifElseTest(iterations: int):
-    counter: int = 0
-    while counter < iterations:
+    for counter in range(iterations):
         if counter < 2:
             print("Phase 1: ", counter)
         elif counter < 4:
@@ -75,7 +74,6 @@ def WhileWithIfElifElseTest(iterations: int):
             print("Phase 3: ", counter)
         else:
             print("Phase 4: ", counter)
-        counter += 1
     print("While done")
 
 
@@ -136,8 +134,7 @@ def ComplexForWhileMatchTest(outer_limit: int, inner_limit: int):
     j: int = 0
     result: int = 0
     for i in range(outer_limit):
-        j = 0
-        while j < inner_limit:
+        for j in range(inner_limit):
             match (i, j):
                 case (0, 0):
                     result += 1
@@ -149,7 +146,6 @@ def ComplexForWhileMatchTest(outer_limit: int, inner_limit: int):
                     result += 1000
                 case _:
                     result += 10000
-            j += 1
     print("Complex match result: ", result)
 
 
@@ -186,19 +182,15 @@ def WhileWithBreakConditionTest(limit: int):
 
 
 def NestedWhileWithMultipleBreakPoints(depth: int, width: int):
-    d: int = 0
     w: int = 0
     count: int = 0
-    while d < depth:
-        w = 0
-        while w < width:
+    for d in range(depth):
+        for w in range(width):
             if w == 2:
                 break
             if d == 1 and w == 1:
                 c.Break
             count += 1
-            w += 1
-        d += 1
     print("Nested break count: ", count)
 
 
@@ -221,9 +213,8 @@ def ForWithMatchCaseInLoopTest(iterations: int):
 
 
 def ComplexLogicWithElifChains(a: int, b: int, c_val: int):
-    i: int = 0
     result: int = 0
-    while i < 10:
+    for i in range(10):
         if i < a:
             if i < b:
                 result += 1
@@ -240,7 +231,6 @@ def ComplexLogicWithElifChains(a: int, b: int, c_val: int):
             result += 6
         else:
             result += 7
-        i += 1
     print("Complex elif chain result: ", result)
 
 
@@ -331,9 +321,8 @@ def ComplexCaseMatchingWithRanges(start: int, end: int):
 
 
 def WhileWithElifInElifChain(limit: int):
-    i: int = 0
     result: int = 0
-    while i < limit:
+    for i in range(limit):
         if i < 2:
             if i == 0:
                 result = 1
@@ -352,7 +341,6 @@ def WhileWithElifInElifChain(limit: int):
         else:
             result = 7
         print("Chain result[", i, "]: ", result)
-        i += 1
 
 
 def ForWithCaseNoBreakNested(inner_limit: int):

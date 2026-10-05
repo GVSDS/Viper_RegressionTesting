@@ -24,7 +24,7 @@ def main() -> CInt | CExport:
 
     # 初始化全局 MBuddy 内存分配器
     arena: bytes = stdlib.malloc(ARENA_SIZE)
-    mbuddy_obj: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, ARENA_SIZE)
+    mbuddy_obj: memhub.MemBuddy* = memhub.MemBuddy(arena, ARENA_SIZE)
 
     # 将 MBuddy 对象赋值给所有需要内存分配的模块
     sys._mbuddy = mbuddy_obj

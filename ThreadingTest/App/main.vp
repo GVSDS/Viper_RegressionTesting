@@ -45,7 +45,7 @@ def _basic_worker(arg: t.CPtr) -> t.CPtr:
 
 # 传参: 通过 arg 指针自增 100 次（c.Deref/c.DerefAs 读写）
 def _increment_worker(arg: t.CPtr) -> t.CPtr:
-    ip: int | t.CPtr = (int | t.CPtr)(arg)
+    ip: int* = (int*)(arg)
     i: int
     for i in range(100):
         c.DerefAs(ip, *ip + 1)
@@ -54,7 +54,7 @@ def _increment_worker(arg: t.CPtr) -> t.CPtr:
 
 # Lock: 持锁自增全局计数器
 def _lock_worker(arg: t.CPtr) -> t.CPtr:
-    lk: vthreading.Lock | t.CPtr = (vthreading.Lock | t.CPtr)(arg)
+    lk: vthreading.Lock* = (vthreading.Lock*)(arg)
     global _shared_count
     for i in range(LOCK_ITER):
         lk.acquire()
@@ -65,7 +65,7 @@ def _lock_worker(arg: t.CPtr) -> t.CPtr:
 
 # Event: 等待事件被唤醒后置位完成标志
 def _event_worker(arg: t.CPtr) -> t.CPtr:
-    ev: vthreading.Event | t.CPtr = (vthreading.Event | t.CPtr)(arg)
+    ev: vthreading.Event* = (vthreading.Event*)(arg)
     global _evt_done
     r: int = ev.wait(5000)
     if r == 1:
@@ -75,7 +75,7 @@ def _event_worker(arg: t.CPtr) -> t.CPtr:
 
 # Condition 消费者: 循环等待 _cond_ready 就绪（限次防挂起）
 def _cond_consumer(arg: t.CPtr) -> t.CPtr:
-    cond: vthreading.Condition | t.CPtr = (vthreading.Condition | t.CPtr)(arg)
+    cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
     tries: int = 0
     cond.acquire()
@@ -88,7 +88,7 @@ def _cond_consumer(arg: t.CPtr) -> t.CPtr:
 
 # Condition 生产者: 延迟后置位 _cond_ready 并 notify
 def _cond_producer(arg: t.CPtr) -> t.CPtr:
-    cond: vthreading.Condition | t.CPtr = (vthreading.Condition | t.CPtr)(arg)
+    cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
     vthreading.sleep_ms(50)
     cond.acquire()
@@ -100,7 +100,7 @@ def _cond_producer(arg: t.CPtr) -> t.CPtr:
 
 # RWLock 读者: 持读锁反复读共享值
 def _rw_reader(arg: t.CPtr) -> t.CPtr:
-    rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
+    rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
     i: int
     for i in range(RW_ITER * 10):
@@ -112,7 +112,7 @@ def _rw_reader(arg: t.CPtr) -> t.CPtr:
 
 # RWLock 写者: 持写锁自增共享值
 def _rw_writer(arg: t.CPtr) -> t.CPtr:
-    rwl: vthreading.RWLock | t.CPtr = (vthreading.RWLock | t.CPtr)(arg)
+    rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
     i: int
     for i in range(RW_ITER):

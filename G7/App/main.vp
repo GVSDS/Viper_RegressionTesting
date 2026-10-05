@@ -24,8 +24,8 @@ def test_value_struct_fields():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
-    node: Value | t.CPtr = pool.alloc(48)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 4096)
+    node: Value* = pool.alloc(48)
     if node is None:
         testcheck.check(False, "alloc Value", "FAIL")
         return

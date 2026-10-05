@@ -120,7 +120,7 @@ def test_comparison_types():
 
 # --- Test 12: 指针与整数互转 ---
 def test_ptr_int_cast():
-    buf: uint32 | t.CPtr = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not buf:
         testcheck.fail("VirtualAlloc returned NULL")
         return
@@ -128,7 +128,7 @@ def test_ptr_int_cast():
     addr: uint64 = uint64(buf)
     stdio.printf("  ptr->int: addr=0x%lx\n", addr)
     # 整数转指针
-    p2: uint32 | t.CPtr = (uint32 | t.CPtr)(addr)
+    p2: uint32* = (uint32*)(addr)
     p2[0] = 0x12345678
     testcheck.check(buf[0] == 0x12345678, "ptr<->int roundtrip", "ptr<->int roundtrip failed")
 

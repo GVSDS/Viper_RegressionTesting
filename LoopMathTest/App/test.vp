@@ -78,17 +78,13 @@ def WhileWithElifElseTest(start: int, end: int):
 
 
 def NestedWhileWithMacrosTest(outer_limit: int, inner_limit: int):
-    outer: int = 0
     inner: int = 0
     total_ops: int = 0
-    while outer < outer_limit:
-        inner = 0
-        while inner < inner_limit:
+    for outer in range(outer_limit):
+        for inner in range(inner_limit):
             if inner == config.TRUE:
                 print("Inner loop break condition at: ", inner)
             total_ops += 1
-            inner += 1
-        outer += 1
     print("Total operations: ", total_ops)
 
 
@@ -114,9 +110,8 @@ def ComplexConditionTest(a: int, b: int, c_val: int):
 
 
 def RetryLoopTest(retry_count: int) -> int:
-    attempt: int = 0
     success: int = 0
-    while attempt < retry_count:
+    for attempt in range(retry_count):
         if attempt < config.MAX_RETRY:
             print("Attempt: ", attempt, " less than max")
             success = attempt * 2
@@ -126,7 +121,6 @@ def RetryLoopTest(retry_count: int) -> int:
         else:
             print("Beyond max retry")
             success = -2
-        attempt += 1
     return success
 
 
@@ -189,10 +183,8 @@ def CompoundAssignmentMathTest(a: int, b: int) -> int:
 def PowerAndModuloTest(base: int, exponent: int) -> int:
     result: int = 1
     temp: int = 0
-    i: int = 0
-    while i < exponent:
+    for i in range(exponent):
         result *= base
-        i += 1
     print("Power: ", result)
     temp = result % config.MODULO_DIVISOR
     print("Power mod: ", temp)
@@ -226,17 +218,15 @@ def MixedArithmeticTest(x: int, y: int, z: int) -> int:
 
 
 def MathWithWhileLoopTest(start: int, count: int) -> int:
-    idx: int = 0
     accumulator: int = 0
     multiplier: int = config.MATH_SCALE
-    while idx < count:
+    for idx in range(count):
         temp: int = (start + idx) * multiplier
         temp = temp + config.MATH_OFFSET
         if temp > config.THRESHOLD:
             temp = config.THRESHOLD
         accumulator += temp
         multiplier += 1
-        idx += 1
     print("Accumulator: ", accumulator)
     return accumulator
 
@@ -245,12 +235,10 @@ def ComplexNestedMathTest(a: int, b: int) -> int:
     layer1: int = 0
     layer2: int = 0
     layer3: int = 0
-    i: int = 0
     layer1 = (a + b) * config.MATH_SCALE
     print("Layer1: ", layer1)
-    while i < config.BIT_RANGE:
+    for i in range(config.BIT_RANGE):
         layer2 += layer1 >> 1
-        i += 1
     print("Layer2: ", layer2)
     layer3 = layer1 + layer2 - config.MATH_OFFSET
     print("Layer3: ", layer3)
@@ -261,8 +249,7 @@ def ComplexNestedMathTest(a: int, b: int) -> int:
 
 def ConditionalMathChainTest(value: int) -> int:
     result: int = 0
-    step: int = 0
-    while step < config.LOOP_LIMIT:
+    for step in range(config.LOOP_LIMIT):
         if step < 5:
             result += step * config.MATH_SCALE
             print("step<5: ", result)
@@ -275,7 +262,6 @@ def ConditionalMathChainTest(value: int) -> int:
         else:
             result = result * config.EXPONENT_BASE % config.MODULO_DIVISOR
             print("step>=15: ", result)
-        step += 1
     return result
 
 

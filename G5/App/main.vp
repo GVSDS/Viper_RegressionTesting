@@ -32,10 +32,10 @@ define GSLIST_SIZE = 24  # Head(8) + Tail(8) + Count(8)
 
 @t.NoVTable
 class G5ListWrapper:
-    List: GSList[G5Node] | t.CPtr
+    List: GSList[G5Node]*
 
-    def __init__(self, pool: memhub.MemBuddy | t.CPtr):
-        gsl: GSList[G5Node] | t.CPtr = pool.alloc(GSLIST_SIZE)
+    def __init__(self, pool: memhub.MemBuddy*):
+        gsl: GSList[G5Node]* = pool.alloc(GSLIST_SIZE)
         if gsl is None:
             self.List = None
             return
@@ -76,13 +76,13 @@ def test_g5node_next():
 
 def test_gslist_create():
     testcheck.section("Test 3: GSList[G5Node] create")
-    lst: GSList[G5Node] | t.CPtr = GSList[G5Node]()
+    lst: GSList[G5Node]* = GSList[G5Node]()
     if lst is None:
         testcheck.check(False, "GSList[G5Node]() is None", "FAIL")
         return
     # 检查初始状态
-    head: G5Node | t.CPtr = lst.Head
-    tail: G5Node | t.CPtr = lst.Tail
+    head: G5Node* = lst.Head
+    tail: G5Node* = lst.Tail
     count: sizet = lst.Count
     testcheck.check(head is None, "initial Head is None", "expect None")
     testcheck.check(tail is None, "initial Tail is None", "expect None")
@@ -91,7 +91,7 @@ def test_gslist_create():
 
 def test_gslist_append():
     testcheck.section("Test 4: GSList[G5Node].append 3 nodes")
-    lst: GSList[G5Node] | t.CPtr = GSList[G5Node]()
+    lst: GSList[G5Node]* = GSList[G5Node]()
     if lst is None:
         testcheck.check(False, "GSList[G5Node]() is None", "FAIL")
         return
@@ -111,14 +111,14 @@ def test_gslist_append():
     testcheck.check(count == 3, "Count = 3 after 3 appends", "expect 3")
 
     # 验证 Head
-    head: G5Node | t.CPtr = lst.Head
+    head: G5Node* = lst.Head
     if head is None:
         testcheck.check(False, "Head is None", "FAIL")
         return
     testcheck.check(head.Value == 1, "Head.Value = 1", "expect 1")
 
     # 验证 Tail
-    tail: G5Node | t.CPtr = lst.Tail
+    tail: G5Node* = lst.Tail
     if tail is None:
         testcheck.check(False, "Tail is None", "FAIL")
         return
@@ -126,7 +126,7 @@ def test_gslist_append():
 
     # 遍历链表验证顺序
     sum: int = 0
-    cur: G5Node | t.CPtr = lst.Head
+    cur: G5Node* = lst.Head
     while cur is not None:
         sum = sum + cur.Value
         cur = cur.Next
@@ -143,7 +143,7 @@ def test_wrapper_list_field():
     if arena is None:
         testcheck.check(False, "malloc arena", "FAIL")
         return
-    pool: memhub.MemBuddy | t.CPtr = memhub.MemBuddy(arena, 4096)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, 4096)
     wrapper: G5ListWrapper = G5ListWrapper(pool)
     if wrapper is None:
         testcheck.check(False, "G5ListWrapper(pool) is None", "FAIL")
@@ -157,7 +157,7 @@ def test_wrapper_list_field():
     wrapper.List.append(n)
 
     # 通过 wrapper.List 访问 GSList 字段
-    head: G5Node | t.CPtr = wrapper.List.Head
+    head: G5Node* = wrapper.List.Head
     if head is None:
         testcheck.check(False, "wrapper.List.Head is None", "FAIL")
         return

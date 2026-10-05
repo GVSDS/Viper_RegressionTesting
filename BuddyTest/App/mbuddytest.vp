@@ -13,7 +13,7 @@ import w32.win32base
 
 # 线程函数: 在共享 MBuddy 上执行 alloc/free (测试 spinlock 线程安全)
 def _thread_alloc_free(param: t.CPtr) -> uint32:
-    bd: memhub.MemBuddy | t.CPtr = (memhub.MemBuddy | t.CPtr)(param)
+    bd: memhub.MemBuddy* = (memhub.MemBuddy*)(param)
     i: CInt
     for i in range(100):
         p: bytes = bd.alloc(32)
@@ -258,11 +258,9 @@ def mbuddy_main() -> CInt:
             bd6.free(retry)
 
     # 释放所有块
-    idx: CInt = 1
-    while idx < alloc_count:
+    for idx in range(1, alloc_count):
         cur_p: bytes = t.CPtr(ptrs[idx])
         bd6.free(cur_p)
-        idx += 1
 
     # 全部释放后应能合并回初始分解块数 (6)
     testcheck.check(bd6.free_count() == 6,

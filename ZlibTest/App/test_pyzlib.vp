@@ -141,7 +141,7 @@ def test_compressobj():
 
     out_length: sizet = 0
 
-    s: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
+    s: pyzlib.Compress* = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                          pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                                          pyzlib.Z_DEFAULT_STRATEGY, None, 0)
     check("compressobj created", s != None, "compressobj is None")
@@ -212,7 +212,7 @@ def test_decompressobj():
                                               pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
-    d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
+    d: pyzlib.Decompress* = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
     check("decompressobj created", d != None, "decompressobj is None")
     check("eof is false initially", d.eof == 0, "eof should be 0")
     print_separator()
@@ -246,7 +246,7 @@ def test_decompressobj_max_length():
                                               pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
-    d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
+    d: pyzlib.Decompress* = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
 
     dec_length: sizet = 0
     dec: BYTEPTR = d.decompress(compressed, out_length,
@@ -295,7 +295,7 @@ def test_decompressobj_unused_data():
     stdlib.free(compressed)
     printf("  Combined (compressed + \"EXTRA\"): %zu bytes\n", total_length)
 
-    d: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
+    d: pyzlib.Decompress* = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
 
     dec_length: sizet = 0
     dec: BYTEPTR = d.decompress(combined, total_length,
@@ -327,13 +327,13 @@ def test_compress_copy():
     printf("  Input: \"%s\"\n", inp)
 
     out_length: sizet = 0
-    c1: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
+    c1: pyzlib.Compress* = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                           pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                                           pyzlib.Z_DEFAULT_STRATEGY, None, 0)
     c1.compress(BYTEPTR(inp), input_length, &out_length)
     printf("  Original: compressed %zu bytes so far\n", out_length)
 
-    c2: pyzlib.Compress | t.CPtr = c1.copy()
+    c2: pyzlib.Compress* = c1.copy()
     check("compress copy OK", c2 != None, "copy returned None")
     printf("  Copied compressobj\n")
 
@@ -370,8 +370,8 @@ def test_decompress_copy():
                                               pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.MAX_WBITS, &out_length)
     printf("  Compressed: %zu bytes\n", out_length)
 
-    d1: pyzlib.Decompress | t.CPtr = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
-    d2: pyzlib.Decompress | t.CPtr = d1.copy()
+    d1: pyzlib.Decompress* = pyzlib.decompressobj(None, pyzlib.MAX_WBITS, None, 0)
+    d2: pyzlib.Decompress* = d1.copy()
     check("decompress copy OK", d2 != None, "copy returned None")
     printf("  Copied decompressobj\n")
 
@@ -526,7 +526,7 @@ def test_zdict():
     printf("  Input     : \"%s\" (%zu bytes)\n", inp, input_length)
 
     out_length: sizet = 0
-    s: pyzlib.Compress | t.CPtr = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
+    s: pyzlib.Compress* = pyzlib.compressobj(None, pyzlib.Z_DEFAULT_COMPRESSION, pyzlib.DEFLATED,
                                          pyzlib.MAX_WBITS, pyzlib.DEF_MEM_LEVEL,
                                          pyzlib.Z_DEFAULT_STRATEGY,
                                          BYTEPTR(dict), strlen(dict))
