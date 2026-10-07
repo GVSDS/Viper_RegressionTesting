@@ -37,9 +37,9 @@ export def main() -> int:
     # &s is i8** (char**); implicit pointer casts require matching depth, so annotate str*.
     ptr_var: str* = &s
     val_var: int = 42
-    if c.CIf(ctraits.isptr(ptr_var)):
+    cif ctraits.isptr(ptr_var):
         print("ptr_var is pointer")
-    if c.CIf(not ctraits.isptr(val_var)):
+    cif not ctraits.isptr(val_var):
         print("val_var is not pointer")
 
     testcheck.section("placeholder")

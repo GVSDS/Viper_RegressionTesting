@@ -53,7 +53,7 @@
 | 29 | [OopInheritTest](OopInheritTest/App/main.vp) | OOP 继承多态：@t.CVTable 虚方法覆盖、链式调用、运算符重载、三层继承 | 虚分派、运算符重载、链式调用 |
 | 30 | [MemhubTest](MemhubTest/App/main.vp) | MemManager 多态：基类指针虚分派 alloc/free、calloc 内部调虚函数 | 虚方法多态、继承体系 |
 | 31 | [EnumTest](EnumTest/App/main.vp) | 枚举：CEnum 取值 + REnum 携带数据变体，match/case 解构字段 | CEnum、REnum、match 解构 |
-| 32 | [DefineTest](DefineTest/App/main.vp) | 编译期宏：CDefine 常量/宏函数、c.CIf/CIfdef/CIfndef 条件编译、platmacro 平台宏 | 编译期宏、条件编译、平台探测 |
+| 32 | [DefineTest](DefineTest/App/main.vp) | 编译期宏：CDefine 常量/宏函数、`cif`/`celif`/`celse` 条件编译（`defined()` 谓词）、platmacro 平台宏 | 编译期宏、条件编译、平台探测 |
 | 33 | [ClosureTest](ClosureTest/App/main.vp) | 闭包作用域：global/nonlocal 嵌套/lambda 捕获/循环变量/global 数组 | 闭包、nonlocal/global、lambda |
 | 34 | [ClosureTest2](ClosureTest2/App/main.vp) | 闭包进阶：nonlocal 条件分支/多变量 swap/引用 vs 值捕获/三层嵌套/结构体修改 | 引用捕获语义、多层级 nonlocal |
 | 35 | [G3](G3/App/main.vp) | GSListNode F-bounded 泛型继承：`class Node(GSListNode[Node])` 链遍历求和 | 递归泛型/自引用特化 |

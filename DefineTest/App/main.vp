@@ -8,7 +8,7 @@ import testcheck
 
 
 # ============================================================
-# DefineTest: CDefine constants/macros, c.CIf family, platmacro.
+# DefineTest: CDefine constants/macros, cif/celif/celse chains, defined(), platmacro.
 # Prints results for manual inspection.
 # ============================================================
 
@@ -140,127 +140,129 @@ def test_define_combined() -> CInt:
 
 
 def test_cif_basic() -> CInt:
-    if c.CIf(ENABLED):
+    cif ENABLED:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(DISABLED):
+    cif DISABLED:
         print(0)
-    else:
+    celse:
         print(1)
-    if c.CIf(MAX_SIZE > 512):
+    cif MAX_SIZE > 512:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(MIN_VAL > 0):
+    cif MIN_VAL > 0:
         print(0)
-    else:
+    celse:
         print(1)
     return 0
 
 def test_cif_elif_else() -> CInt:
-    val: CInt32T = 2
-    if c.CIf(val == 1):
+    # A cif chain can only be pruned at compile time, so the chain selector must be a CDefine
+    # constant (a runtime variable is rejected).
+    define VAL = 2
+    cif VAL == 1:
         print(1)
-    elif c.CIf(val == 2):
+    celif VAL == 2:
         print(2)
-    elif c.CIf(val == 3):
+    celif VAL == 3:
         print(3)
-    else:
+    celse:
         print(0)
-    if c.CIf(val > 10):
+    cif VAL > 10:
         print(10)
-    elif c.CIf(val > 5):
+    celif VAL > 5:
         print(5)
-    else:
-        print(val)
+    celse:
+        print(VAL)
     return 0
 
 def test_cifdef_cifndef() -> CInt:
-    if c.CIfdef(MAX_SIZE):
+    cif defined(MAX_SIZE):
         print(MAX_SIZE)
-    else:
+    celse:
         print(0)
-    if c.CIfdef(UNDEFINED_MACRO_XYZ):
+    cif defined(UNDEFINED_MACRO_XYZ):
         print(0)
-    else:
+    celse:
         print(1)
-    if c.CIfndef(UNDEFINED_MACRO_XYZ):
+    cif not defined(UNDEFINED_MACRO_XYZ):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfndef(MAX_SIZE):
+    cif not defined(MAX_SIZE):
         print(0)
-    else:
+    celse:
         print(1)
     return 0
 
 def test_cif_platform() -> CInt:
-    if c.CIfdef(_WIN32):
+    cif defined(_WIN32):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfdef(__x86_64__):
+    cif defined(__x86_64__):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(SIZEOF_VOID_P == 8):
+    cif SIZEOF_VOID_P == 8:
         print(8)
-    elif c.CIf(SIZEOF_VOID_P == 4):
+    celif SIZEOF_VOID_P == 4:
         print(4)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_cif_nested() -> CInt:
-    if c.CIf(ENABLED):
-        if c.CIf(MAX_SIZE > 512):
+    cif ENABLED:
+        cif MAX_SIZE > 512:
             print(1)
-        else:
+        celse:
             print(0)
-        if c.CIfdef(PAGE_SIZE):
+        cif defined(PAGE_SIZE):
             print(PAGE_SIZE)
-        else:
+        celse:
             print(0)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_cif_expr() -> CInt:
-    if c.CIf(MASK_BYTE & 0x0F):
+    cif MASK_BYTE & 0x0F:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf((MAX_SIZE >> SHIFT_BITS) > 0):
+    cif (MAX_SIZE >> SHIFT_BITS) > 0:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(ENABLED and MAX_SIZE > 0):
+    cif ENABLED and MAX_SIZE > 0:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(DISABLED or MAX_SIZE > 0):
+    cif DISABLED or MAX_SIZE > 0:
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_platmacro_platform() -> CInt:
-    if c.CIfdef(platmacro.IS_WINDOWS):
+    cif defined(platmacro.IS_WINDOWS):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.IS_WINDOWS == 1):
+    cif platmacro.IS_WINDOWS == 1:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.IS_LINUX == 0):
+    cif platmacro.IS_LINUX == 0:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.IS_X86_64 == 1):
+    cif platmacro.IS_X86_64 == 1:
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
@@ -274,32 +276,32 @@ def test_platmacro_sizes() -> CInt:
     return 0
 
 def test_platmacro_endian() -> CInt:
-    if c.CIf(platmacro.IS_LITTLE_ENDIAN == 1):
+    cif platmacro.IS_LITTLE_ENDIAN == 1:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.IS_BIG_ENDIAN == 0):
+    cif platmacro.IS_BIG_ENDIAN == 0:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.BYTE_ORDER_LE == 1):
+    cif platmacro.BYTE_ORDER_LE == 1:
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_platmacro_features() -> CInt:
-    if c.CIf(platmacro.HAS_SSE2 == 1):
+    cif platmacro.HAS_SSE2 == 1:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.HAS_AVX == 1):
+    cif platmacro.HAS_AVX == 1:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIf(platmacro.HAS_NEON == 0):
+    cif platmacro.HAS_NEON == 0:
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
@@ -307,72 +309,72 @@ def test_platmacro_align() -> CInt:
     print(platmacro.ALIGNOF_INT)
     print(platmacro.ALIGNOF_PTR)
     print(platmacro.ALIGNOF_DOUBLE)
-    if c.CIf(platmacro.ALIGNOF_PTR == 8):
+    cif platmacro.ALIGNOF_PTR == 8:
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_cifdef_cross_module() -> CInt:
-    if c.CIfdef(platmacro.IS_WINDOWS):
-        if c.CIf(platmacro.PTR_SIZE == 8):
+    cif defined(platmacro.IS_WINDOWS):
+        cif platmacro.PTR_SIZE == 8:
             print(64)
-        else:
+        celse:
             print(32)
-    else:
+    celse:
         print(0)
-    if c.CIfndef(platmacro.IS_ARM64):
+    cif not defined(platmacro.IS_ARM64):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfdef(platmacro.HAS_AVX2):
+    cif defined(platmacro.HAS_AVX2):
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_cifdef_guard() -> CInt:
     define MY_HEADER_GUARD = 1
-    if c.CIfndef(MY_HEADER_GUARD):
+    cif not defined(MY_HEADER_GUARD):
         print(0)
-    else:
+    celse:
         print(1)
-    if c.CIfdef(MY_HEADER_GUARD):
+    cif defined(MY_HEADER_GUARD):
         print(1)
-    else:
+    celse:
         print(0)
     return 0
 
 def test_cifdef_undefined() -> CInt:
-    if c.CIfndef(NONEXISTENT_MACRO_ABC):
+    cif not defined(NONEXISTENT_MACRO_ABC):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfndef(THIS_IS_ALSO_NOT_DEFINED):
+    cif not defined(THIS_IS_ALSO_NOT_DEFINED):
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfdef(NONEXISTENT_MACRO_ABC):
+    cif defined(NONEXISTENT_MACRO_ABC):
         print(0)
-    else:
+    celse:
         print(1)
     return 0
 
 def test_cifdef_complex() -> CInt:
-    if c.CIfdef(platmacro.IS_WINDOWS) and c.CIf(platmacro.PTR_SIZE == 8):
+    cif defined(platmacro.IS_WINDOWS) and platmacro.PTR_SIZE == 8:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfndef(platmacro.IS_ARM64) and c.CIf(platmacro.IS_X86_64 == 1):
+    cif not defined(platmacro.IS_ARM64) and platmacro.IS_X86_64 == 1:
         print(1)
-    else:
+    celse:
         print(0)
-    if c.CIfdef(platmacro.HAS_SSE2):
-        if c.CIfdef(platmacro.HAS_AVX):
+    cif defined(platmacro.HAS_SSE2):
+        cif defined(platmacro.HAS_AVX):
             print(2)
-        else:
+        celse:
             print(1)
-    else:
+    celse:
         print(0)
     return 0
 
@@ -381,7 +383,7 @@ def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 
-    testcheck.begin("DefineTest: CDefine 宏与 c.CIf 测试")
+    testcheck.begin("DefineTest: CDefine 宏与 cif 测试")
 
     testcheck.section("CDefine 基础")
     test_basic_define()
@@ -394,7 +396,7 @@ def main() -> int:
     test_define_string()
     test_define_combined()
 
-    testcheck.section("c.CIf")
+    testcheck.section("cif / celif / celse")
     test_cif_basic()
     test_cif_elif_else()
     test_cifdef_cifndef()
@@ -409,7 +411,7 @@ def main() -> int:
     test_platmacro_features()
     test_platmacro_align()
 
-    testcheck.section("c.CIfdef 综合")
+    testcheck.section("defined() 综合")
     test_cifdef_cross_module()
     test_cifdef_guard()
     test_cifdef_undefined()
