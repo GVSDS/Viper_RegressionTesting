@@ -134,6 +134,43 @@ def CaseDtorOverwrite() -> int:
     return 0
 
 
+# (10) P1 异常/传播出口：raise 真正**离开函数**前必须释放（用 __del__ 计数验证恰好一次）。
+#     对照点：被本函数 except 捕获的 raise 不得提前释放（对象还在用）——见 CaseRaiseCaught。
+class MyError(Exception):
+    pass
+
+
+def CaseRaiseExitCallee() -> int:
+    p: DtorPoint* = new heap slife DtorPoint(5)
+    if p.x != 5: return 1
+    raise MyError("boom")           # 离开函数前：__del__ + free
+
+
+def CaseRaiseExit() -> int:
+    before: int = dtor_hits
+    try:
+        CaseRaiseExitCallee()
+    except MyError:
+        pass
+    if dtor_hits != before + 1: return 1     # 多一次=double free，少一次=异常路径泄漏
+    return 0
+
+
+# 对照：异常被**本函数**捕获时不得提前释放（对象在 except 体里仍可用），出口才释放
+def CaseRaiseCaught() -> int:
+    before: int = dtor_hits
+    ok: int = 0
+    try:
+        p: DtorPoint* = new heap slife DtorPoint(6)
+        raise MyError("caught")
+    except MyError:
+        # 对象必须**还活着**：若编译器在 raise 处就释放了，这里就是 use-after-free
+        if p.x == 6: ok = 1
+    if ok == 0: return 2
+    if dtor_hits != before + 1: return 1     # 只在函数出口释放一次
+    return 0
+
+
 export def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
@@ -156,6 +193,10 @@ export def main() -> int:
     if dtor_hits != 1: fails += 1
     fails += CaseDtorOverwrite()
     if dtor_hits != 4: fails += 1
+
+    # P1 异常出口：传播出去（离开函数）恰好 1 次；被本函数捕获时不得提前释放、出口 1 次
+    fails += CaseRaiseExit()
+    fails += CaseRaiseCaught()
 
     if fails != 0:
         stdio.printf("NewLifetimeTest FAILED, %d case(s) wrong\n", fails)
