@@ -1,0 +1,28 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**，对照工程：NewLifetimeTest）
+#
+# §4.3 判据 5：`slife` 对象由编译器独占释放 —— 禁止手动 free。
+# 理由：出口已经会自动 free 一次，再手动 free 就是 double-free。
+# 期望报错：LifetimeError。
+# =============================================================================
+
+
+novirtual class Point:
+    x: int
+    y: int
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    p: Point* = new heap slife Point(1, 2)
+    stdlib.free(p)          # ← 必须被拒：slife 由编译器在函数出口释放
+    return 0

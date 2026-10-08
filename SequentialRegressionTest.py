@@ -36,9 +36,10 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 # ============================================================
 # 单独运行支持：--escape / --only
 # ============================================================
-# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符）：
-#   Test/ 下：NewTest；仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest"]
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII）：
+#   Test/ 下：NewTest、NewLifetimeTest（正向）、NewLifetimeFreeTest（负向）；
+#   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeFreeTest"]
 
 # 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
 # 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
@@ -49,6 +50,20 @@ NEGATIVE_PROJECTS = {
     "EscapeTest": "LifetimeError",
     "EscapeMethodTest": "LifetimeError",
     "EscapeXmodTest": "LifetimeError",
+    # M3 §4.3 判据5：对 slife 对象手动 free → LifetimeError
+    "NewLifetimeFreeTest": "LifetimeError",
+}
+
+# IR 断言：项目名 → 生成 IR 中**必须出现**的子串。
+# 动机：M3 owned slife 的"出口释放"只靠"运行不崩"是证明不了的（漏了释放 = 纯泄漏，
+# 进程照样退出码 0），必须直接断言生成的 IR 里出现了释放调用。
+# 形式注意：`{build_dir}/temp/**.ll` 里是 **LLVM dialect 文本**（mlir-opt 的输入），
+# 调用长这样 `llvm.call @free(%9) : (!llvm.ptr) -> ()`，不是经典 IR 的 `call void @free`；
+# 用 `llvm.call @free` 才能匹配到调用（`llvm.func @free` 是声明那一行，不会被匹配）。
+# 约定：纳入 IR 断言的项目**不得**自己写 free，否则用户代码的 free 会把断言蒙混过关
+# （NewLifetimeTest 正是因此不含任何用户级 free）。
+IR_EXPECT = {
+    "NewLifetimeTest": ["llvm.call @free"],
 }
 
 
@@ -176,6 +191,45 @@ def find_output_dirs(proj_dir, proj_config):
             seen.add(d)
             uniq.append(d)
     return uniq
+
+
+def find_ll_files(proj_dir, proj_config):
+    """收集项目构建目录下的所有 .ll（TPV 布局：{build_dir}/temp/<xx>/<sha1>.ll）"""
+    bd = proj_config.get('build_dir') or '.tpv_build'
+    root = os.path.abspath(os.path.join(proj_dir, bd))
+    if not os.path.isdir(root):
+        return []
+    out = []
+    for dp, _dn, fns in os.walk(root):
+        for fn in fns:
+            if fn.endswith('.ll'):
+                out.append(os.path.join(dp, fn))
+    return out
+
+
+def check_ir_expect(proj_dir, proj_config, name):
+    """IR 断言：在生成的 .ll 里检查 IR_EXPECT[name] 的每个子串都出现。
+
+    返回 (ok, 说明)。未配置 IR_EXPECT 的项目恒 (True, "")。
+    找不到任何 .ll 视为**失败**（fail-fast：静默跳过等于没断言）。
+    """
+    wants = IR_EXPECT.get(name)
+    if not wants:
+        return True, ""
+    lls = find_ll_files(proj_dir, proj_config)
+    if not lls:
+        return False, f"IR 断言失败：{name} 的构建目录下找不到任何 .ll（检查 build_dir 配置）"
+    text = ""
+    for p in lls:
+        try:
+            with open(p, 'r', encoding='utf-8', errors='replace') as f:
+                text += f.read()
+        except Exception as e:
+            return False, f"IR 断言失败：读取 {p} 出错: {e}"
+    missing = [w for w in wants if w not in text]
+    if missing:
+        return False, f"IR 断言失败：{name} 生成的 .ll 中未见 {missing}（共 {len(lls)} 个 .ll）"
+    return True, f"IR 断言通过（{len(wants)} 项 / {len(lls)} 个 .ll）"
 
 
 def run_executable(exe_path):
@@ -325,6 +379,15 @@ def main():
             print(f"  [运行] project.json 解析失败: {e}")
             print(f"\n在 {name} 读取 project.json 失败，立即终止（请修正该文件后重跑）。")
             return 1
+
+        # ---------- IR 断言（可选，见 IR_EXPECT） ----------
+        ir_ok, ir_msg = check_ir_expect(proj_dir, proj_config, name)
+        if not ir_ok:
+            print(f"  [IR] {ir_msg}")
+            print(f"\n在 {name} IR 断言失败，立即终止。")
+            return 1
+        if ir_msg:
+            print(f"  [IR] {ir_msg}")
 
         output_dirs = find_output_dirs(proj_dir, proj_config)
         exes = []

@@ -121,8 +121,8 @@
 
 ## 一·附、生命期 / 逃逸（escape）相关测试
 
-验证 M1–M2.4 的生命期检查（栈地址逃逸、借用传播、函数逃逸摘要）与 `new` 描述符分配。
-因历史原因前 4 个位于**仓库根**（不在 `Test/` 下），`NewTest` 位于 `Test/`：
+验证 M1–M3 的生命期检查（栈地址逃逸、借用传播、函数逃逸摘要）、`new` 描述符分配，
+以及 `new heap slife` 的 RAII 自动释放（M3）。因历史原因前 4 个位于**仓库根**（不在 `Test/` 下）：
 
 | 项目 | 位置 | 期望结果 |
 |---|---|---|
@@ -131,6 +131,8 @@
 | EscapeMethodTest | 仓库根 `EscapeMethodTest/` | **编译失败**：方法 / `__init__` / 嵌套函数交出栈地址 → `LifetimeError`（三用例互斥，一次开一条） |
 | EscapeXmodTest | 仓库根 `EscapeXmodTest/` | **编译失败**：跨模块摘要（`.vpi` 落盘 `# esc=`）路径 → `LifetimeError` |
 | NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 4 行：`stack`(显式 slife) / `heap` / `stack默认slife`（验证**缺省规则**：省略生命期时 stack→slife、heap/memgr→hlife）/ `memgr` |
+| NewLifetimeTest | [Test/NewLifetimeTest/](NewLifetimeTest/App/main.vp) | 编译通过、退出码 0（**M3 owned slife RAII**：出口释放 / 循环内覆盖释放 / 别名只释放一次 / 嵌套函数登记隔离 / early return / void 裸 return / 仅分支里 new 时 `free(NULL)` / stack slife 不释放）。**另含 IR 断言**：IR 中必须出现 `llvm.call @free` |
+| NewLifetimeFreeTest | [Test/NewLifetimeFreeTest/](NewLifetimeFreeTest/App/main.vp) | **编译失败**：对 `slife` 对象手动 `stdlib.free(p)` → `LifetimeError`（§4.3 判据5，编译器独占释放） |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
 
@@ -138,9 +140,15 @@
 python Test/regression_test.py --escape            # 只跑上表全部项目
 python Test/regression_test.py --only NewTest      # 只跑指定项目（逗号分隔可多个）
 python Test/SequentialRegressionTest.py --escape --exe <TransPyV.exe> --rebuild-includes
+python Test/SequentialRegressionTest.py --only NewLifetimeTest --exe <TransPyV.exe>
 ```
 
 > `--escape` / `--only` 会在 `Test/<名>` 与**仓库根** `<名>` 两处查找 `project.json` / `project.vpj`，所以根级 escape 项目也能直接跑；`--escape` 会忽略 README 的难度顺序。
+
+**IR 断言**：`SequentialRegressionTest.py` 的 `IR_EXPECT`（项目名 → 生成 IR 中必须出现的子串）在编译成功后、运行前，把 `{build_dir}` 下所有 `.ll` 拼起来做子串检查；找不到 `.ll` 视为断言失败（fail-fast，不静默跳过）。
+> `{build_dir}/temp/**.ll` 里是 **LLVM dialect 文本**（mlir-opt 的输入），调用形如 `llvm.call @free(%9) : (!llvm.ptr) -> ()`（不是经典 IR 的 `call void @free`），所以断言串用 `llvm.call @free`（`llvm.func @free` 是声明行，不会被匹配）。
+> 之所以加 IR 断言：M3 的"出口释放"只靠"运行没崩"证明不了——**漏了释放是纯泄漏，进程照样退出码 0**；必须直接断言释放调用出现过。
+> 因此纳入该断言的项目**不得自己写 free**（否则用户代码的 `free` 会蒙混过关）：`NewLifetimeTest` 正是刻意不含任何用户级 `free`。
 
 **负向断言**（"应报 `LifetimeError`"）需要 TransPyV 编译——`NegativeTest/run_negative_tests.py` 用的是 TPC，而 `new` 描述符与 `LifetimeError` 只在 TPV 侧实现，故单独提供：
 
@@ -149,7 +157,7 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
 python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
 ```
 
-> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
+> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
 
 负向项目在 `SequentialRegressionTest.py` 里是**反向判定**（`NEGATIVE_PROJECTS`）：编译失败且输出含 `LifetimeError` 才算通过，且**不再进入运行阶段**；编译成功 = 漏检，直接终止。`regression_test.py --escape` 会**剔除**这些项目（该脚本要求"编译成功 + 能跑"），负向断言请用 `SequentialRegressionTest.py --escape` 或上面的 `run_lifetime_negative_tests.py`。
 

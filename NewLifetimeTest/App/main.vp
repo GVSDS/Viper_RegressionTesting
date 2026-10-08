@@ -1,0 +1,131 @@
+from stdint import *
+import w32.win32console
+import t, c
+from t import CInt, CExport
+import stdio
+
+
+# =============================================================================
+# M3 owned slife：`new heap slife …` 的 RAII 自动释放（函数级出口统一 free）
+# 设计见 Debugger/ownership-and-new.md §4.2（释放点）/ §4.3（硬约束）。
+#
+# 语义：`new heap slife` 得到 malloc 的对象，**由编译器独占释放**——在引入该绑定的
+# 最内层作用域出口（函数的所有 return / 隐式收尾）`free` 它；赋值处若已有旧对象则
+# 先"覆盖释放"（循环里反复 new 因此不累积）；手动 free 被编译期拒绝（见 NewLifetimeFreeTest）。
+#
+# 本工程是**正向**工程：编译必须成功、运行必须退出码 0。每个 Case 返回 0 才算通过，
+# main 累加失败数并在末尾打印结论。
+#
+# IR 断言：本工程**刻意不写任何用户级 free**（否则断言会被用户代码蒙混过关）。
+# SequentialRegressionTest 的 IR_EXPECT 会检查生成的 IR 里出现 `llvm.call @free`
+# （temp/**.ll 是 LLVM dialect 文本，调用写作 `llvm.call @free(%9) : (!llvm.ptr) -> ()`），
+# 那只能来自 M3 的出口释放——缺释放（泄漏）是运行期看不出来的，必须直接断言 IR。
+# =============================================================================
+
+
+novirtual class Point:
+    x: int
+    y: int
+
+
+# (1) 普通出口：字段在释放前可读，函数返回时 free(p)
+def CaseBasic() -> int:
+    p: Point* = new heap slife Point(1, 2)
+    if p.x != 1: return 1
+    if p.y != 2: return 2
+    return 0
+
+
+# (2) 循环内反复 new：靠"覆盖释放"不累积。
+#     第二次赋值前必须先 free 旧值（缺了=泄漏，多了/漏判=double-free 崩）
+def CaseLoop(n: int) -> int:
+    i: int = 0
+    while i < n:
+        p: Point* = new heap slife Point(i, i + 1)
+        if p.x != i: return 1
+        i += 1
+    return 0
+
+
+# (3) 别名：q 只是借用 p 的对象，出口必须只释放一次（释放两次会 abort）
+def CaseAlias() -> int:
+    p: Point* = new heap slife Point(3, 4)
+    q: Point* = p
+    if q.x != 3: return 1
+    return 0
+
+
+# (4) 真·嵌套函数：内层在编译期与外层共享同一张登记表，必须各自隔离——
+#     内层出口只能释放内层对象（否则外层对象被提前/重复释放）
+def CaseNestedDef() -> int:
+    a: Point* = new heap slife Point(5, 6)
+
+    def Inner() -> int:
+        b: Point* = new heap slife Point(7, 8)
+        return b.y
+
+    r: int = Inner()
+    if r != 8: return 1
+    if a.x != 5: return 2
+    return 0
+
+
+# (5) 多出口：early return 的两条路径都要释放。
+#     注意返回**错误码**而不是字段值：成功分支若 `return p.x`（=9），main 里的 `fails +=`
+#     会把它当成失败数累加（现场踩过：19 = 9 + 10，看着像 19 个用例错了，其实全过）。
+def CaseEarlyReturn(flag: int) -> int:
+    p: Point* = new heap slife Point(9, 10)
+    if flag != 0:
+        if p.x != 9: return 1
+        return 0
+    if p.y != 10: return 2
+    return 0
+
+
+# (6) void 函数 + 裸 return：裸 return 与隐式收尾两条出口都要释放
+def CaseVoidBare(flag: int) -> None:
+    p: Point* = new heap slife Point(11, 12)
+    if flag != 0:
+        return
+    stdio.printf("void-slife x=%d\n", p.x)
+
+
+# (7) 只有分支里才 new：flag=0 时该语句运行期不执行，出口必须 free(NULL)。
+#     缺"入口块置空"就会 free 栈垃圾 → 堆损坏/abort
+def CaseBranchOnly(flag: int) -> int:
+    p: Point* = None
+    if flag != 0:
+        p = new heap slife Point(13, 14)
+        if p.x != 13: return 1
+    return 0
+
+
+# (8) stack slife：帧内 alloca，随帧消失，**不得**释放（对栈地址 free 会 abort）
+def CaseStack() -> int:
+    p: Point* = new stack slife Point(15, 16)
+    if p.x != 15: return 1
+    return 0
+
+
+def main() -> CInt | CExport:
+    w32.win32console.SetConsoleCP(65001)
+    w32.win32console.SetConsoleOutputCP(65001)
+
+    fails: int = 0
+    fails += CaseBasic()
+    fails += CaseLoop(200)
+    fails += CaseAlias()
+    fails += CaseNestedDef()
+    fails += CaseEarlyReturn(1)
+    fails += CaseEarlyReturn(0)
+    fails += CaseBranchOnly(0)
+    fails += CaseBranchOnly(1)
+    fails += CaseStack()
+    CaseVoidBare(1)
+    CaseVoidBare(0)
+
+    if fails != 0:
+        stdio.printf("NewLifetimeTest FAILED, %d case(s) wrong\n", fails)
+        return 1
+    stdio.printf("NewLifetimeTest OK: owned-slife RAII cases passed\n")
+    return 0
