@@ -142,6 +142,15 @@ python Test/SequentialRegressionTest.py --escape --exe <TransPyV.exe> --rebuild-
 
 > `--escape` / `--only` 会在 `Test/<名>` 与**仓库根** `<名>` 两处查找 `project.json` / `project.vpj`，所以根级 escape 项目也能直接跑；`--escape` 会忽略 README 的难度顺序。
 
+**负向断言**（"应报 `LifetimeError`"）需要 TransPyV 编译——`NegativeTest/run_negative_tests.py` 用的是 TPC，而 `new` 描述符与 `LifetimeError` 只在 TPV 侧实现，故单独提供：
+
+```bash
+python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
+python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
+```
+
+> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
+
 ---
 
 ## 二、建议实现顺序（难度升序，共 68 步）

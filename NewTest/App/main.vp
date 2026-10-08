@@ -3,6 +3,8 @@ import w32.win32console
 import t, c
 from t import CInt, CExport
 import stdio
+import stdlib
+import memhub
 
 
 # =============================================================================
@@ -32,11 +34,12 @@ def main() -> CInt | CExport:
     p2: Point* = new heap Point(3, 4)
     stdio.printf("heap : %d %d\n", p2.x, p2.y)
 
-    # (3) memgr(x)：从 memhub 管理器取存储
-    #     待确认 memhub 管理器的构造 API（MemBuddy 建立方式）后打开本段：
-    # m: memhub.MemBuddy* = <构造管理器>
-    # p3: Point* = new memgr(m) hlife Point(5, 6)
-    # stdio.printf("memgr: %d %d\n", p3.x, p3.y)
+    # (3) memgr(x)：从 memhub 管理器取存储（管理器构造方式见 Test/MemhubTest）
+    arena: bytes = stdlib.malloc(65536)
+    m: memhub.MemBuddy = memhub.MemBuddy(arena, 65536)
+    p3: Point* = new memgr(m) hlife Point(5, 6)
+    stdio.printf("memgr: %d %d\n", p3.x, p3.y)
+    stdlib.free(arena)
 
     # 非法组合（应报 LifetimeError）——要验证时打开其中一条：
     #   1) 语义矛盾：bad: Point* = new stack hlife Point(7, 8)
