@@ -133,6 +133,7 @@
 | NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 4 行：`stack`(显式 slife) / `heap` / `stack默认slife`（验证**缺省规则**：省略生命期时 stack→slife、heap/memgr→hlife）/ `memgr` |
 | NewLifetimeTest | [Test/NewLifetimeTest/](NewLifetimeTest/App/main.vp) | 编译通过、退出码 0（**M3 owned slife RAII**：出口释放 / 循环内覆盖释放 / 别名只释放一次 / 嵌套函数登记隔离 / early return / void 裸 return / 仅分支里 new 时 `free(NULL)` / stack slife 不释放；**§3.6 析构调度**：出口释放恰好 1 次 `__del__`、循环 3 轮共 3 次）。**另含 IR 断言**：IR 中必须出现 `llvm.call @free` |
 | NewLifetimeFreeTest | [Test/NewLifetimeFreeTest/](NewLifetimeFreeTest/App/main.vp) | **编译失败**：对 `slife` 对象手动 `stdlib.free(p)` → `LifetimeError`（§4.3 判据5，编译器独占释放；手动 `del p` 同样被拒） |
+| NewLifetimeAsyncTest | [Test/NewLifetimeAsyncTest/](NewLifetimeAsyncTest/App/main.vp) | **编译失败**：协程体（`async`）里的 `new heap slife` → `LifetimeError`（§4.2：状态机拆分 body，释放点无法确定；`new stack` / `new … hlife` 不受限） |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
 
@@ -157,7 +158,7 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
 python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
 ```
 
-> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
+> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
 
 负向项目在 `SequentialRegressionTest.py` 里是**反向判定**（`NEGATIVE_PROJECTS`）：编译失败且输出含 `LifetimeError` 才算通过，且**不再进入运行阶段**；编译成功 = 漏检，直接终止。`regression_test.py --escape` 会**剔除**这些项目（该脚本要求"编译成功 + 能跑"），负向断言请用 `SequentialRegressionTest.py --escape` 或上面的 `run_lifetime_negative_tests.py`。
 

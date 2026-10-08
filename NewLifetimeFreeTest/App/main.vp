@@ -1,7 +1,5 @@
 from stdint import *
 import w32.win32console
-import t, c
-from t import CInt, CExport
 import stdlib
 
 
@@ -19,7 +17,7 @@ novirtual class Point:
     y: int
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 

@@ -1,0 +1,27 @@
+from stdint import *
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**，对照工程：NewLifetimeTest）
+#
+# 协程体（async）里的 `new heap slife` 必须被拒：AsyncGenMixin 的状态机会把 body 拆成多个
+# state 块并多次转译，编译器无法确定释放点 → CallGenCtor._translate_new_expr 在此 fail-fast
+# （LifetimeError，提示改用 `new heap hlife` 或把分配挪进普通函数）。
+#
+# 说明见 Debugger/ownership-and-new.md §4.2 的「async 的收口」。
+# `new stack`（帧内 alloca，本来就无需释放）与 `new … hlife`（自行管理）不受这条约束影响。
+# =============================================================================
+
+
+novirtual class Point:
+    x: int
+    y: int
+
+
+async def Bad() -> int:
+    p: Point* = new heap slife Point(1, 2)     # ← 必须被拒
+    return p.x
+
+
+export def main() -> int:
+    return 0

@@ -1,7 +1,5 @@
 from stdint import *
 import w32.win32console
-import t, c
-from t import CInt, CExport
 import stdio
 
 
@@ -136,7 +134,7 @@ def CaseDtorOverwrite() -> int:
     return 0
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 

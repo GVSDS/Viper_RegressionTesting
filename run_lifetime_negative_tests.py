@@ -31,7 +31,8 @@ PROJECT_ROOT = os.path.dirname(TEST_DIR)
 # 注意：EscapeMethodTest / EscapeXmodTest 内部有多条互斥用例（编译在第一个错误处终止），
 # 每个项目只保证"至少触发一条 LifetimeError"。
 # NewLifetimeFreeTest：M3 §4.3 判据5（对 slife 对象手动 free）。
-NEGATIVE_PROJECTS = ["EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest"]
+# NewLifetimeAsyncTest：M3 §4.2（协程体里的 `new heap slife` → 释放点无法确定，fail-fast）。
+NEGATIVE_PROJECTS = ["EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest"]
 EXPECT_KEYWORD = "LifetimeError"
 COMPILE_TIMEOUT = 300
 
