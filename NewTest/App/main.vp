@@ -13,7 +13,11 @@ import memhub
 #   heap  → call i8* @malloc(i64 sizeof) + bitcast 到 T*
 #   memgr → call i8* @<Mgr>.alloc(i64 sizeof) + bitcast 到 T*
 # 本工程做冒烟验证：能编译、能跑出正确字段值。
-# 描述符顺序无关；省略来源 = heap（D3），省略生命期由来源决定。
+# 描述符顺序无关；**缺省规则**（D3 / §3.2）：
+#   省略来源   → heap
+#   省略生命期 → 由**来源**决定：stack → slife（帧生命期），heap / memgr → hlife
+#   于是：`new stack Point(7,8)` ≡ `new stack slife Point(7,8)`（stack 默认 slife）
+#         `new Point(3,4)`       ≡ `new heap hlife Point(3,4)`（完全省略即堆 + 自由生命期）
 # =============================================================================
 
 
@@ -34,11 +38,15 @@ def main() -> CInt | CExport:
     p2: Point* = new heap Point(3, 4)
     stdio.printf("heap : %d %d\n", p2.x, p2.y)
 
-    # (3) memgr(x)：从 memhub 管理器取存储（管理器构造方式见 Test/MemhubTest）
+    # (3) stack + **生命期缺省** → slife（与 (1) 显式写 slife 等价，专门验证缺省规则）
+    p3: Point* = new stack Point(7, 8)
+    stdio.printf("stack默认slife: %d %d\n", p3.x, p3.y)
+
+    # (4) memgr(x)：从 memhub 管理器取存储（管理器构造方式见 Test/MemhubTest）
     arena: bytes = stdlib.malloc(65536)
     m: memhub.MemBuddy = memhub.MemBuddy(arena, 65536)
-    p3: Point* = new memgr(m) hlife Point(5, 6)
-    stdio.printf("memgr: %d %d\n", p3.x, p3.y)
+    p4: Point* = new memgr(m) hlife Point(5, 6)
+    stdio.printf("memgr: %d %d\n", p4.x, p4.y)
     stdlib.free(arena)
 
     # 非法组合（应报 LifetimeError）——要验证时打开其中一条：

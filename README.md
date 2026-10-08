@@ -130,7 +130,7 @@
 | EscapeOkTest | 仓库根 `EscapeOkTest/` | 编译通过并输出 `Hi/hello/AB/x/aa/loop`（值拷贝/静态/帧内使用等豁免不得误报） |
 | EscapeMethodTest | 仓库根 `EscapeMethodTest/` | **编译失败**：方法 / `__init__` / 嵌套函数交出栈地址 → `LifetimeError`（三用例互斥，一次开一条） |
 | EscapeXmodTest | 仓库根 `EscapeXmodTest/` | **编译失败**：跨模块摘要（`.vpi` 落盘 `# esc=`）路径 → `LifetimeError` |
-| NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 `stack` / `heap` 的字段值（`memgr(x)` 段待确认管理器构造 API） |
+| NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 4 行：`stack`(显式 slife) / `heap` / `stack默认slife`（验证**缺省规则**：省略生命期时 stack→slife、heap/memgr→hlife）/ `memgr` |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
 
