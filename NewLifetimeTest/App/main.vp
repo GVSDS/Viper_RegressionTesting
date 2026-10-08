@@ -107,6 +107,35 @@ def CaseStack() -> int:
     return 0
 
 
+# (9) §3.6 析构调度：slife 释放时**先**调 `__del__`、**再** free（对齐 TPC MemoryOps）。
+#     用一个计数全局量验证析构确实被调度，且每个释放点恰好一次。
+dtor_hits: int = 0
+
+
+novirtual class DtorPoint:
+    x: int
+
+    def __del__(self) -> None:
+        global dtor_hits
+        dtor_hits += 1
+
+
+# 出口释放 → 恰好 1 次 __del__
+def CaseDtor() -> int:
+    p: DtorPoint* = new heap slife DtorPoint(3)
+    if p.x != 3: return 1
+    return 0
+
+
+# 循环内反复 new → 2 次覆盖释放 + 出口 1 次 = 3 次 __del__（析构跟释放点一一对应）
+def CaseDtorOverwrite() -> int:
+    i: int = 0
+    while i < 3:
+        p: DtorPoint* = new heap slife DtorPoint(i)
+        i += 1
+    return 0
+
+
 def main() -> CInt | CExport:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
@@ -123,6 +152,12 @@ def main() -> CInt | CExport:
     fails += CaseStack()
     CaseVoidBare(1)
     CaseVoidBare(0)
+
+    # §3.6 析构调度：出口释放恰好 1 次；循环 3 轮（2 次覆盖 + 1 次出口）共 3 次
+    fails += CaseDtor()
+    if dtor_hits != 1: fails += 1
+    fails += CaseDtorOverwrite()
+    if dtor_hits != 4: fails += 1
 
     if fails != 0:
         stdio.printf("NewLifetimeTest FAILED, %d case(s) wrong\n", fails)
