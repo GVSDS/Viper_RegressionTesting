@@ -24,6 +24,11 @@ novirtual class Point:
     y: int
 
 
+# §7.2/M4 前提件冒烟：泛型类的 callee 是下标形式（Box[int]），`new` 必须先特化再取存储
+class Box[T]:
+    v: T
+
+
 export def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
@@ -46,6 +51,15 @@ export def main() -> int:
     p4: Point* = new memgr(m) hlife Point(5, 6)
     stdio.printf("memgr: %d %d\n", p4.x, p4.y)
     stdlib.free(arena)
+
+    # (5) §7.2/M4 前提件：**泛型类**的存储也走 `new` 描述符（`Box[int]` 先特化，再复用描述符存储）。
+    #     这是把 list/dict/hashtable 从"类内 __new__ 从池取本体"迁到"调用点 new memgr(pool) …"的前提：
+    #     _translate_generic_ctor_call 之前只会 _alloca_at_entry（栈），会忽略描述符存储。
+    arena2: bytes = stdlib.malloc(65536)
+    m2: memhub.MemBuddy = memhub.MemBuddy(arena2, 65536)
+    b: Box[int]* = new memgr(m2) hlife Box[int](7)
+    stdio.printf("generic-in-pool: %d\n", b.v)
+    stdlib.free(arena2)
 
     # 非法组合（应报 LifetimeError）——要验证时打开其中一条：
     #   1) 语义矛盾：bad: Point* = new stack hlife Point(7, 8)
