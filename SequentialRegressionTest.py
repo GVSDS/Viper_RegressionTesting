@@ -109,7 +109,11 @@ def build_compile_cmd(args):
     """
     suffix = " --rebuild-includes" if args.rebuild_includes else ""
     if args.exe:
-        return f'"{args.exe}" --project {{project}} --clean{suffix}'
+        # 必须绝对化：每个项目都在自己的目录里执行（cwd=项目目录），相对 --exe 会按各自
+        # 层级解析到不同位置——根级 escape 项目只深一层能命中，Test/NewTest 深两层就报
+        # "The system cannot find the path specified."（实测踩过）。
+        exe_abs = os.path.abspath(args.exe)
+        return f'"{exe_abs}" --project {{project}} --clean{suffix}'
     if args.compiler:
         return args.compiler
     return f'D:\\Python312\\python.exe -u "{PROJECTRANS}" --project {{project}} --clean{suffix}'
@@ -225,6 +229,9 @@ def main():
     parser.add_argument("--only", default=None,
                         help="只跑指定项目（逗号分隔，名字即目录名），忽略 README 顺序")
     args = parser.parse_args()
+    if args.exe and not os.path.isfile(os.path.abspath(args.exe)):
+        print(f"错误: --exe 不存在: {os.path.abspath(args.exe)}")
+        return 1
     compile_cmd = build_compile_cmd(args)
 
     print("=" * 70)

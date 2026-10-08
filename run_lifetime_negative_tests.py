@@ -63,6 +63,11 @@ def main() -> int:
                     help="每次编译追加 --rebuild-includes（全量重编 includes）")
     args = ap.parse_args()
 
+    # --exe 绝对化 + 存在性校验：编译以 cwd=项目目录 执行，相对路径会随项目层级错位
+    exe_abs = os.path.abspath(args.exe)
+    if not os.path.isfile(exe_abs):
+        print(f"错误: --exe 不存在: {exe_abs}")
+        return 1
     names = [n.strip() for n in args.only.split(",") if n.strip()] if args.only else NEGATIVE_PROJECTS
     suffix = " --rebuild-includes" if args.rebuild_includes else ""
 
@@ -76,7 +81,7 @@ def main() -> int:
             skipped.append((name, "找不到 project.json / project.vpj"))
             print(f"[SKIP] {name}: 找不到 project.json / project.vpj")
             continue
-        cmd = f'"{args.exe}" --project "{proj_file}" --clean{suffix}'
+        cmd = f'"{exe_abs}" --project "{proj_file}" --clean{suffix}'
         try:
             r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
                                encoding='utf-8', errors='replace',
