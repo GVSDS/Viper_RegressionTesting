@@ -41,7 +41,7 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 #             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
 #             NewLifetimeUseAfterFreeTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeFieldEscapeTest"]
 
 # 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
 # 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
@@ -61,6 +61,8 @@ NEGATIVE_PROJECTS = {
     "NewLifetimeUseAfterFreeTest": "LifetimeError",
     # P2：关键字实参路径（stdlib.free(p = p) 之后再用 p）
     "NewLifetimeWillFreeKwargTest": "LifetimeError",
+    # P3：obj.f = &local（堆对象字段收下本帧栈地址）
+    "NewLifetimeFieldEscapeTest": "LifetimeError",
 }
 
 # IR 断言：项目名 → 生成 IR 中**必须出现**的子串。

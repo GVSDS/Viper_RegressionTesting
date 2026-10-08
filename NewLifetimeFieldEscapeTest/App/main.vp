@@ -1,0 +1,28 @@
+from stdint import *
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）：P3 —— 禁止把生命期更短的右值赋给生命期更长的左值
+#
+# §12-P3 的一般规则：右值生命期比目标左值的存储更短 → 报 LifetimeError。
+# 本工程是规则点名的实例：`obj.f = &local`
+#   · 左值 h.p 的存储属于**堆对象**（h 由 `new heap hlife` 得到）→ 活得比本帧长；
+#   · 右值 &local 是**本帧栈地址**（LIFE_FRAME）→ 出帧即成悬垂指针。
+# 期望报错：LifetimeError。
+#
+# 对照（必须放行，由 --escape 集里的既有正向工程保证不误报）：
+#   · `local_struct.f = &local2`：左值也在本帧（LIFE_FRAME）→ 两者同命，合法；
+#   · `p = &local`：p 是本帧局部指针槽（LIFE_FRAME）→ 合法。
+# 注意 h 必须在**同一个函数**里 `new`，否则它作为形参进来时 Life=UNKNOWN（保守放行）。
+# =============================================================================
+
+
+novirtual class Holder:
+    p: int*
+
+
+export def main() -> int:
+    h: Holder* = new heap hlife Holder()
+    local: int = 7
+    h.p = &local          # ← 必须被拒：把本帧栈地址写进堆对象字段
+    return 0

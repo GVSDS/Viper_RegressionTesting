@@ -138,6 +138,7 @@
 | NewLifetimeUseAfterFreeTest | [Test/NewLifetimeUseAfterFreeTest/](NewLifetimeUseAfterFreeTest/App/main.vp) | **编译失败**：P2 —— `free(p)` 之后读/传 `p` → `LifetimeError`（使用已释放变量） |
 | NewLifetimeWillFreeOkTest | [Test/NewLifetimeWillFreeOkTest/](NewLifetimeWillFreeOkTest/App/main.vp) | **编译成功 + 退出码 0**：P2 合法用法 —— 首次 `free` 本身合法；同名变量**重新赋值**会清除失效态，其后可再用、再 `free`（防误报） |
 | NewLifetimeWillFreeKwargTest | [Test/NewLifetimeWillFreeKwargTest/](NewLifetimeWillFreeKwargTest/App/main.vp) | **编译失败**：P2 **关键字实参**路径 —— `stdlib.free(p = p)` 之后再用 `p` → `LifetimeError` |
+| NewLifetimeFieldEscapeTest | [Test/NewLifetimeFieldEscapeTest/](NewLifetimeFieldEscapeTest/App/main.vp) | **编译失败**：P3 —— `h.p = &local`（堆对象字段收下本帧栈地址）→ `LifetimeError` |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
 
@@ -162,7 +163,7 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
 python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
 ```
 
-> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest` / `NewLifetimeWillFreeTest` / `NewLifetimeUseAfterFreeTest` / `NewLifetimeWillFreeKwargTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
+> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest` / `NewLifetimeWillFreeTest` / `NewLifetimeUseAfterFreeTest` / `NewLifetimeWillFreeKwargTest` / `NewLifetimeFieldEscapeTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
 
 负向项目在 `SequentialRegressionTest.py` 里是**反向判定**（`NEGATIVE_PROJECTS`）：编译失败且输出含 `LifetimeError` 才算通过，且**不再进入运行阶段**；编译成功 = 漏检，直接终止。`regression_test.py --escape` 会**剔除**这些项目（该脚本要求"编译成功 + 能跑"），负向断言请用 `SequentialRegressionTest.py --escape` 或上面的 `run_lifetime_negative_tests.py`。
 
