@@ -1,0 +1,31 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 正向工程：P2 willFree 的合法用法（编译必须成功、运行退出码 0）
+#
+# 对照负向工程 NewLifetimeWillFreeTest（二次 free）/ NewLifetimeUseAfterFreeTest（用已释放）。
+# 本工程验证两件事：
+#   (a) free(p) 之后**不再使用** p 是合法的（包括首次 free 本身）；
+#   (b) 对同名变量**重新赋值**会清除"已失效"状态，其后可正常使用并再次 free。
+# (b) 是防止误报的关键：编译器必须把失效态当成"变量当前值"的属性，而不是永久的变量属性。
+# =============================================================================
+
+
+def Use(x: rawptr) -> int:
+    return 0
+
+
+export def main() -> int:
+    p: rawptr = stdlib.malloc(8)
+    Use(p)
+    stdlib.free(p)          # 合法：p 在此之后失效
+    p = stdlib.malloc(16)   # 重新赋值 → 重新有效（清除失效态）
+    Use(p)                  # 合法
+    stdlib.free(p)          # 合法：再次失效
+
+    q: rawptr = stdlib.malloc(24)
+    Use(q)
+    stdlib.free(q)
+    return 0

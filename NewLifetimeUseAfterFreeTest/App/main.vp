@@ -1,0 +1,24 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**，对照工程：NewLifetimeWillFreeOkTest）
+#
+# P2 willFree 标注驱动：`@life(willFree(p))` 标注的调用返回后，实参变量即失效；
+# 其后对它做任何**读取**（取值、参与表达式、作为实参传递）都必须在编译期被拒。
+#
+# 本工程：Use(p) 在 free(p) 之后读 p → 使用已释放变量。
+# 期望报错：LifetimeError。
+# =============================================================================
+
+
+def Use(x: rawptr) -> int:
+    return 0
+
+
+export def main() -> int:
+    p: rawptr = stdlib.malloc(8)
+    stdlib.free(p)
+    Use(p)                  # ← 必须被拒：p 已失效（使用已释放变量）
+    return 0

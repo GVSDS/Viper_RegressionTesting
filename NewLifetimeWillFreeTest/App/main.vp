@@ -1,0 +1,21 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**，对照工程：NewLifetimeWillFreeOkTest）
+#
+# P2 willFree 标注驱动：`includes/stdlib.vp` 的 free 带 `@life(willFree(p))`，
+# 语义 = "该实参所指对象在本调用返回后失效"。编译器读到被调者的该标注后，把对应
+# **实参变量槽**标为"已失效"，其后再读/传/再 free → LifetimeError（fail-fast）。
+#
+# 本工程：第二次 free(p) 必须在编译期被拒（p 在第一次 free 后已失效）。
+# 期望报错：LifetimeError。
+# =============================================================================
+
+
+export def main() -> int:
+    p: rawptr = stdlib.malloc(8)
+    stdlib.free(p)
+    stdlib.free(p)          # ← 必须被拒：p 已失效（二次释放）
+    return 0

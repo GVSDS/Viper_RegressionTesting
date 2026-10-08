@@ -36,10 +36,12 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 # ============================================================
 # 单独运行支持：--escape / --only
 # ============================================================
-# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构）：
-#   Test/ 下：NewTest、NewLifetimeTest（正向）、NewLifetimeFreeTest / NewLifetimeAsyncTest（负向）；
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构 + P2 willFree）：
+#   Test/ 下：NewTest、NewLifetimeTest、NewLifetimeWillFreeOkTest（正向）、
+#             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
+#             NewLifetimeUseAfterFreeTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest"]
 
 # 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
 # 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
@@ -54,6 +56,9 @@ NEGATIVE_PROJECTS = {
     "NewLifetimeFreeTest": "LifetimeError",
     # M3 §4.2：协程体（async）里的 `new heap slife` → 释放点无法确定，fail-fast
     "NewLifetimeAsyncTest": "LifetimeError",
+    # P2 willFree：`stdlib.free` 带 @life(willFree(p))，二次释放/释放后使用 → LifetimeError
+    "NewLifetimeWillFreeTest": "LifetimeError",
+    "NewLifetimeUseAfterFreeTest": "LifetimeError",
 }
 
 # IR 断言：项目名 → 生成 IR 中**必须出现**的子串。
