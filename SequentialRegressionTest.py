@@ -40,6 +40,17 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 #   Test/ 下：NewTest；仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
 ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest"]
 
+# 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
+# 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
+# 逃逸检查拒绝；编译成功 = 编译器漏检（判 FAIL 并终止）。
+#   注：EscapeMethodTest / EscapeXmodTest 内含多条互斥用例（编译在第一个错误处终止），
+#   故只保证"至少触发一条"。
+NEGATIVE_PROJECTS = {
+    "EscapeTest": "LifetimeError",
+    "EscapeMethodTest": "LifetimeError",
+    "EscapeXmodTest": "LifetimeError",
+}
+
 
 def find_project_file(proj_dir):
     """项目目录下找 project.json（Test/ 约定）或 project.vpj（仓库根约定）"""
@@ -268,6 +279,23 @@ def main():
             print(f"异常: {e}")
             print_tail(str(e))
             print(f"\n在 {name} 编译异常，立即终止。")
+            return 1
+
+        # ---------- 负向项目：反向判定（期望失败），且不进入运行阶段 ----------
+        if name in NEGATIVE_PROJECTS:
+            want_kw: str = NEGATIVE_PROJECTS[name]
+            if compile_ok:
+                print(f"漏检 ({elapsed:.1f}s)：负向项目竟编译成功，应报 {want_kw}")
+                print_tail(output)
+                print(f"\n在 {name} 漏检（应拒绝却通过），立即终止。")
+                return 1
+            if want_kw.lower() in output.lower():
+                print(f"通过（已按预期拒绝: {want_kw}, {elapsed:.1f}s）")
+                passed += 1
+                continue
+            print(f"失败（报错方向不符，未见 {want_kw}）")
+            print_tail(output)
+            print(f"\n在 {name} 报错方向不符，立即终止。")
             return 1
 
         if not compile_ok:

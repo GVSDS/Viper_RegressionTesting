@@ -89,6 +89,11 @@ def find_test_projects():
 #   Test/ 下：NewTest；仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
 ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest"]
 
+# 负向项目（**期望编译失败**，见 SequentialRegressionTest.NEGATIVE_PROJECTS）：
+# 本脚本按"编译必须成功 + 能跑"判定，纳入会误报，故 --escape 时剔除；
+# 负向断言请用 SequentialRegressionTest（反向判定）或 run_lifetime_negative_tests.py。
+NEGATIVE_PROJECT_NAMES = {"EscapeTest", "EscapeMethodTest", "EscapeXmodTest"}
+
 
 def find_project_file(proj_dir):
     """项目目录下找 project.json（Test/ 约定）或 project.vpj（仓库根约定）"""
@@ -218,7 +223,8 @@ def main():
     print()
 
     if args.escape:
-        projects = select_named_projects(ESCAPE_PROJECTS)
+        projects = [p for p in select_named_projects(ESCAPE_PROJECTS) if p[0] not in NEGATIVE_PROJECT_NAMES]
+        print("（负向项目已剔除；负向断言请用 SequentialRegressionTest 或 run_lifetime_negative_tests.py）")
     elif args.only:
         projects = select_named_projects([n.strip() for n in args.only.split(",") if n.strip()])
     else:

@@ -151,6 +151,8 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe 
 
 > 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
 
+负向项目在 `SequentialRegressionTest.py` 里是**反向判定**（`NEGATIVE_PROJECTS`）：编译失败且输出含 `LifetimeError` 才算通过，且**不再进入运行阶段**；编译成功 = 漏检，直接终止。`regression_test.py --escape` 会**剔除**这些项目（该脚本要求"编译成功 + 能跑"），负向断言请用 `SequentialRegressionTest.py --escape` 或上面的 `run_lifetime_negative_tests.py`。
+
 ---
 
 ## 二、建议实现顺序（难度升序，共 68 步）
