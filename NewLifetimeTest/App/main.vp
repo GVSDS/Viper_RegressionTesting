@@ -171,32 +171,44 @@ def CaseRaiseCaught() -> int:
     return 0
 
 
+# 失败可诊断：每个 case 失败时打印名字与返回码（否则只有一个总数，无法定位是哪条挂了）
+def Check(name: str, rc: int, fails: int) -> int:
+    if rc != 0:
+        stdio.printf("  FAIL %s: rc=%d\n", name, rc)
+        return fails + 1
+    return fails
+
+
 export def main() -> int:
     w32.win32console.SetConsoleCP(65001)
     w32.win32console.SetConsoleOutputCP(65001)
 
     fails: int = 0
-    fails += CaseBasic()
-    fails += CaseLoop(200)
-    fails += CaseAlias()
-    fails += CaseNestedDef()
-    fails += CaseEarlyReturn(1)
-    fails += CaseEarlyReturn(0)
-    fails += CaseBranchOnly(0)
-    fails += CaseBranchOnly(1)
-    fails += CaseStack()
+    fails = Check("CaseBasic", CaseBasic(), fails)
+    fails = Check("CaseLoop", CaseLoop(200), fails)
+    fails = Check("CaseAlias", CaseAlias(), fails)
+    fails = Check("CaseNestedDef", CaseNestedDef(), fails)
+    fails = Check("CaseEarlyReturn(1)", CaseEarlyReturn(1), fails)
+    fails = Check("CaseEarlyReturn(0)", CaseEarlyReturn(0), fails)
+    fails = Check("CaseBranchOnly(0)", CaseBranchOnly(0), fails)
+    fails = Check("CaseBranchOnly(1)", CaseBranchOnly(1), fails)
+    fails = Check("CaseStack", CaseStack(), fails)
     CaseVoidBare(1)
     CaseVoidBare(0)
 
     # §3.6 析构调度：出口释放恰好 1 次；循环 3 轮（2 次覆盖 + 1 次出口）共 3 次
-    fails += CaseDtor()
-    if dtor_hits != 1: fails += 1
-    fails += CaseDtorOverwrite()
-    if dtor_hits != 4: fails += 1
+    fails = Check("CaseDtor", CaseDtor(), fails)
+    if dtor_hits != 1:
+        stdio.printf("  FAIL dtor_hits after CaseDtor: %d (want 1)\n", dtor_hits)
+        fails += 1
+    fails = Check("CaseDtorOverwrite", CaseDtorOverwrite(), fails)
+    if dtor_hits != 4:
+        stdio.printf("  FAIL dtor_hits after CaseDtorOverwrite: %d (want 4)\n", dtor_hits)
+        fails += 1
 
     # P1 异常出口：传播出去（离开函数）恰好 1 次；被本函数捕获时不得提前释放、出口 1 次
-    fails += CaseRaiseExit()
-    fails += CaseRaiseCaught()
+    fails = Check("CaseRaiseExit", CaseRaiseExit(), fails)
+    fails = Check("CaseRaiseCaught", CaseRaiseCaught(), fails)
 
     if fails != 0:
         stdio.printf("NewLifetimeTest FAILED, %d case(s) wrong\n", fails)
