@@ -156,9 +156,11 @@ def CaseRaiseExit() -> int:
     return 0
 
 
-# 对照：异常被**本函数**捕获时不得提前释放（对象在 except 体里仍可用），出口才释放
-def CaseRaiseCaught() -> int:
-    before: int = dtor_hits
+# 对照：异常被**本函数**捕获时不得提前释放（对象在 except 体里仍可用），出口才释放。
+# 注意：释放发生在**被调函数返回那一刻**，所以 dtor 计数必须在**调用方**检查——
+# 在被调函数自己体内、return 之前检查（原写法）计数必然还没变，恒判失败（测试自身的 bug，
+# 与 CaseRaiseExit 的差别正在于那边对象属于被调函数）。
+def CaseRaiseCaughtInner() -> int:
     ok: int = 0
     try:
         p: DtorPoint* = new heap slife DtorPoint(6)
@@ -167,7 +169,14 @@ def CaseRaiseCaught() -> int:
         # 对象必须**还活着**：若编译器在 raise 处就释放了，这里就是 use-after-free
         if p.x == 6: ok = 1
     if ok == 0: return 2
-    if dtor_hits != before + 1: return 1     # 只在函数出口释放一次
+    return 0
+
+
+def CaseRaiseCaught() -> int:
+    before: int = dtor_hits
+    rc: int = CaseRaiseCaughtInner()
+    if rc != 0: return rc
+    if dtor_hits != before + 1: return 1     # 内部函数出口恰好释放一次
     return 0
 
 
