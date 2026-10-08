@@ -1,0 +1,26 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）：P2 willFree 的**关键字实参**路径
+#
+# 模块级调用的实参可以是关键字形式（`stdlib.free(p = x)`）。标注驱动的失效标记
+# 必须同样覆盖这条路径：被标注的形参位按"关键字名 → 形参名"映射到实参后标记。
+# 本工程：关键字传参后继续使用该变量 → 必须报 LifetimeError。
+#
+# 另两条路径（手工验证用，语法依赖较多故不建独立工程）：
+#   · 方法调用：在类方法上 `@life(willFree(p))`，`obj.Release(x)` 后使用 x → LifetimeError
+#   · 取地址：`stdlib.free(p)` 之后 `&p` → LifetimeError
+# =============================================================================
+
+
+def Use(x: rawptr) -> int:
+    return 0
+
+
+export def main() -> int:
+    p: rawptr = stdlib.malloc(8)
+    stdlib.free(p = p)      # 关键字实参：p 在此之后失效
+    Use(p)                  # ← 必须被拒：使用已释放变量（关键字实参路径）
+    return 0
