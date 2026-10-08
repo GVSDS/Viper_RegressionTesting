@@ -82,6 +82,38 @@ def find_test_projects():
     return projects
 
 
+# ============================================================
+# 单独运行支持：--escape / --only
+# ============================================================
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符）：
+#   Test/ 下：NewTest；仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest"]
+
+
+def find_project_file(proj_dir):
+    """项目目录下找 project.json（Test/ 约定）或 project.vpj（仓库根约定）"""
+    for fn in ("project.json", "project.vpj"):
+        p = os.path.join(proj_dir, fn)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def select_named_projects(names):
+    """按名字解析项目：优先 Test/<name>，其次仓库根 <name>（根级 escape 测试）"""
+    sel = []
+    for n in names:
+        d = os.path.join(TEST_DIR, n)
+        if not os.path.isdir(d):
+            d = os.path.join(PROJECT_ROOT, n)
+        pj = find_project_file(d)
+        if pj is None:
+            print(f"  跳过 {n}: 找不到 project.json / project.vpj")
+            continue
+        sel.append((n, d, pj))
+    return sel
+
+
 def compile_project(name, proj_dir, proj_json_path):
     """编译单个测试项目，返回 (success, elapsed, output)"""
     cmd = f'D:\\Python312\\python.exe -u "{PROJECTRANS}" --project "{proj_json_path}" --clean'
@@ -172,12 +204,25 @@ def extract_error_context(stdout, stderr, context_lines=5):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(description="TransPyC 回归测试（可用 --escape/--only 单独跑子集）")
+    ap.add_argument("--escape", action="store_true",
+                    help="只跑 escape 相关项目（生命期/逃逸检查 + new 描述符）")
+    ap.add_argument("--only", default=None,
+                    help="只跑指定项目（逗号分隔，名字即目录名）")
+    args = ap.parse_args()
+
     print("=" * 70)
     print("TransPyC 回归测试")
     print("=" * 70)
     print()
 
-    projects = find_test_projects()
+    if args.escape:
+        projects = select_named_projects(ESCAPE_PROJECTS)
+    elif args.only:
+        projects = select_named_projects([n.strip() for n in args.only.split(",") if n.strip()])
+    else:
+        projects = find_test_projects()
     total = len(projects)
     print(f"发现 {total} 个测试项目\n")
 

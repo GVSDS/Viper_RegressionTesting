@@ -33,6 +33,37 @@ PROJECTRANS = os.path.join(PROJECT_ROOT, "TransPyC", "Projectrans.py")
 # README.md 路径（顺序来源，原 TestsOverview.md）
 OVERVIEW = os.path.join(TEST_DIR, "README.md")
 
+# ============================================================
+# 单独运行支持：--escape / --only
+# ============================================================
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符）：
+#   Test/ 下：NewTest；仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest"]
+
+
+def find_project_file(proj_dir):
+    """项目目录下找 project.json（Test/ 约定）或 project.vpj（仓库根约定）"""
+    for fn in ("project.json", "project.vpj"):
+        p = os.path.join(proj_dir, fn)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def select_named_projects(names):
+    """按名字解析项目：优先 Test/<name>，其次仓库根 <name>（根级 escape 测试）"""
+    sel = []
+    for n in names:
+        d = os.path.join(TEST_DIR, n)
+        if not os.path.isdir(d):
+            d = os.path.join(PROJECT_ROOT, n)
+        pj = find_project_file(d)
+        if pj is None:
+            print(f"  跳过 {n}: 找不到 project.json / project.vpj")
+            continue
+        sel.append((n, d, pj))
+    return sel
+
 # 编译超时（秒）
 COMPILE_TIMEOUT = 300
 # 运行超时（秒）
@@ -178,6 +209,10 @@ def main():
                         help="每次编译追加 --rebuild-includes：清空 includes.binary 全量重编（修复缓存不一致）")
     parser.add_argument("--number", type=int, default=1,
                         help="从第几个案例开始（1 开始编号），编译该编号及之后的项目；默认 1")
+    parser.add_argument("--escape", action="store_true",
+                        help="只跑 escape 相关项目（生命期/逃逸检查 + new 描述符），忽略 README 顺序")
+    parser.add_argument("--only", default=None,
+                        help="只跑指定项目（逗号分隔，名字即目录名），忽略 README 顺序")
     args = parser.parse_args()
     compile_cmd = build_compile_cmd(args)
 
@@ -186,7 +221,14 @@ def main():
     print("=" * 70)
     print()
 
-    order = read_test_order()
+    if args.escape:
+        order = [n for (n, d, pj) in select_named_projects(ESCAPE_PROJECTS)]
+        args.number = 1
+    elif args.only:
+        order = [n for (n, d, pj) in select_named_projects([x.strip() for x in args.only.split(",") if x.strip()])]
+        args.number = 1
+    else:
+        order = read_test_order()
     total = len(order)
 
     start = max(1, args.number)
@@ -200,8 +242,13 @@ def main():
     for idx, name in enumerate(order, 1):
         if idx < start:
             continue
+        # 项目目录：优先 Test/<name>，其次仓库根 <name>（根级 escape 项目）
         proj_dir = os.path.join(TEST_DIR, name)
-        proj_json = os.path.join(proj_dir, "project.json")
+        if not os.path.isdir(proj_dir): proj_dir = os.path.join(PROJECT_ROOT, name)
+        proj_json = find_project_file(proj_dir)
+        if proj_json is None:
+            print(f"  [SKIP] {name}: 找不到 project.json / project.vpj")
+            continue
 
         if not os.path.isfile(proj_json):
             print(f"[{idx}/{total}] {name}: 缺少 project.json，跳过")

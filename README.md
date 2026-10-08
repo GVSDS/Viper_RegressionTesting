@@ -119,6 +119,31 @@
 
 ---
 
+## 一·附、生命期 / 逃逸（escape）相关测试
+
+验证 M1–M2.4 的生命期检查（栈地址逃逸、借用传播、函数逃逸摘要）与 `new` 描述符分配。
+因历史原因前 4 个位于**仓库根**（不在 `Test/` 下），`NewTest` 位于 `Test/`：
+
+| 项目 | 位置 | 期望结果 |
+|---|---|---|
+| EscapeTest | 仓库根 `EscapeTest/` | **编译失败**：`return Mid(&l)` → `LifetimeError`（v2 传递闭包） |
+| EscapeOkTest | 仓库根 `EscapeOkTest/` | 编译通过并输出 `Hi/hello/AB/x/aa/loop`（值拷贝/静态/帧内使用等豁免不得误报） |
+| EscapeMethodTest | 仓库根 `EscapeMethodTest/` | **编译失败**：方法 / `__init__` / 嵌套函数交出栈地址 → `LifetimeError`（三用例互斥，一次开一条） |
+| EscapeXmodTest | 仓库根 `EscapeXmodTest/` | **编译失败**：跨模块摘要（`.vpi` 落盘 `# esc=`）路径 → `LifetimeError` |
+| NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 `stack` / `heap` 的字段值（`memgr(x)` 段待确认管理器构造 API） |
+
+单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
+
+```bash
+python Test/regression_test.py --escape            # 只跑上表全部项目
+python Test/regression_test.py --only NewTest      # 只跑指定项目（逗号分隔可多个）
+python Test/SequentialRegressionTest.py --escape --exe <TransPyV.exe> --rebuild-includes
+```
+
+> `--escape` / `--only` 会在 `Test/<名>` 与**仓库根** `<名>` 两处查找 `project.json` / `project.vpj`，所以根级 escape 项目也能直接跑；`--escape` 会忽略 README 的难度顺序。
+
+---
+
 ## 二、建议实现顺序（难度升序，共 68 步）
 
 按"先基础语法 → 再类型系统 → 再容器/OOP → 再泛型/闭包难点 → 最后编译器自身库与外部集成"推进，每步按依赖关系排序。
