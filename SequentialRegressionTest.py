@@ -41,7 +41,7 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 #             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
 #             NewLifetimeUseAfterFreeTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeFieldEscapeTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"]
 
 # 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
 # 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
@@ -61,8 +61,14 @@ NEGATIVE_PROJECTS = {
     "NewLifetimeUseAfterFreeTest": "LifetimeError",
     # P2：关键字实参路径（stdlib.free(p = p) 之后再用 p）
     "NewLifetimeWillFreeKwargTest": "LifetimeError",
+    # P2：方法级标注（r.Release(p) 之后再用 p；形参位含 self 偏移）
+    "NewLifetimeWillFreeMethodTest": "LifetimeError",
+    # P2：取地址路径（stdlib.free(p) 之后 &p）
+    "NewLifetimeWillFreeAddrTest": "LifetimeError",
     # P3：obj.f = &local（堆对象字段收下本帧栈地址）
     "NewLifetimeFieldEscapeTest": "LifetimeError",
+    # P3：obj.f: T = &local（注解形态的属性目标，同一条规则；防"非 Name 目标被静默丢弃"）
+    "NewLifetimeAnnFieldEscapeTest": "LifetimeError",
 }
 
 # IR 断言：项目名 → 生成 IR 中**必须出现**的子串。

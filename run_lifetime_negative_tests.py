@@ -34,7 +34,7 @@ PROJECT_ROOT = os.path.dirname(TEST_DIR)
 # NewLifetimeAsyncTest：M3 §4.2（协程体里的 `new heap slife` → 释放点无法确定，fail-fast）。
 # NewLifetimeWillFreeTest / NewLifetimeUseAfterFreeTest：P2（@life(willFree(p)) 标注驱动——
 #   二次释放 / 释放后使用，对应正向工程 NewLifetimeWillFreeOkTest）。
-NEGATIVE_PROJECTS = ["EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeFieldEscapeTest"]
+NEGATIVE_PROJECTS = ["EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"]
 EXPECT_KEYWORD = "LifetimeError"
 COMPILE_TIMEOUT = 300
 

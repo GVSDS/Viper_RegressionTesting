@@ -1,0 +1,32 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）
+#
+# P2 willFree —— **方法级**标注路径。`includes/stdlib.vp` 的 `free` 上那处 `@life(willFree(p))`
+# 走的是**模块级函数调用**；本工程覆盖另一条独立链路：
+#   · 注册：StructGenMixin._RegisterClassMethods → _RegisterFuncWillFree（键 "Class.method"）；
+#   · 查询：CallGenCall._translate_method_call 的 wf_mask_mc = get_param_willfree_method(...)；
+#   · 形参位映射：实参链含 self（bit 0），故用户第 ai 个实参对应形参位 (ai+1)。
+#
+# 本工程：`r.Release(p)` 之后 p 即失效，再 `free(p)` 必须被拒（二次释放）。
+# 期望报错：LifetimeError。
+# =============================================================================
+
+
+novirtual class Resource:
+    id: int
+
+    @life(willFree(p))
+    def Release(self, p: rawptr) -> None:
+        stdlib.free(p)
+
+
+export def main() -> int:
+    r: Resource* = new heap hlife Resource(1)
+    p: rawptr = stdlib.malloc(8)
+    r.Release(p)            # ← 本调用后 p 失效（被调者带 @life(willFree(p))）
+    stdlib.free(p)          # ← 必须被拒：p 已失效（二次释放）
+    return 0

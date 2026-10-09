@@ -1,0 +1,26 @@
+from stdint import *
+import stdlib
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）
+#
+# P2 willFree —— **取地址**路径。变量被 @life(willFree(...)) 标注的调用消费后只是"值失效"，
+# 但 `&p` 同样是把指向已释放对象的指针交出去（后续解引用即 use-after-free），
+# 必须与**读取**同一口径拒绝。
+#   检查点：ExprGenOps 的 AddrOf 分支（`_FreedCheck`），与 ExprGenName 的读取路径同源。
+#
+# 本工程：`free(p)` 之后取 `&p`。
+# 期望报错：LifetimeError。
+# =============================================================================
+
+
+def Use(x: rawptr*) -> int:
+    return 0
+
+
+export def main() -> int:
+    p: rawptr = stdlib.malloc(8)
+    stdlib.free(p)
+    Use(&p)                 # ← 必须被拒：对已失效变量取地址
+    return 0

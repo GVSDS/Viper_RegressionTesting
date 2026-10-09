@@ -1,0 +1,30 @@
+from stdint import *
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）：P3 —— 注解赋值的**属性目标**同样受"长命左值"约束
+#
+# §12-P3 的实例：`obj.f: T = <短命右值>`。与普通赋值 `obj.f = <短命右值>` 是**同一条规则**，
+# 只是语法形态是 AnnAssign（带类型注解）。此前 translate_annassign 对非 Name 目标直接 return 0，
+# 整条语句被**静默丢弃**（既不报错也不写出）——本工程同时守住"不静默"与"P3 必须拦截"两点。
+#
+# 判据（见 AssignGenMixin._translate_lvalue_annassign）：
+#   · 左值 h.p 的存储属于**堆对象**（h 由 `new heap hlife` 得到）→ 活得比本帧长；
+#   · 右值 &local 是**本帧栈地址**（LIFE_FRAME）→ 出帧即成悬垂指针。
+# 期望报错：LifetimeError。
+#
+# 对照（必须放行）：`local_struct.f: int* = &local2`（左值也在本帧，FRAME）→ 两者同命，合法；
+#                  `h.p: int* = heap_ptr`（右值生命期不短于左值）→ 合法。
+# 注意 h 必须在**同一个函数**里 `new`，否则它作为形参进来时 Life=UNKNOWN（保守放行）。
+# =============================================================================
+
+
+novirtual class Holder:
+    p: int*
+
+
+export def main() -> int:
+    h: Holder* = new heap hlife Holder()
+    local: int = 7
+    h.p: int* = &local          # ← 必须被拒：注解形态的属性赋值把本帧栈地址写进堆对象字段
+    return 0

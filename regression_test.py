@@ -90,12 +90,12 @@ def find_test_projects():
 #             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
 #             NewLifetimeUseAfterFreeTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeFieldEscapeTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"]
 
 # 负向项目（**期望编译失败**，见 SequentialRegressionTest.NEGATIVE_PROJECTS）：
 # 本脚本按"编译必须成功 + 能跑"判定，纳入会误报，故 --escape 时剔除；
 # 负向断言请用 SequentialRegressionTest（反向判定）或 run_lifetime_negative_tests.py。
-NEGATIVE_PROJECT_NAMES = {"EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeFieldEscapeTest"}
+NEGATIVE_PROJECT_NAMES = {"EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"}
 
 
 def find_project_file(proj_dir):

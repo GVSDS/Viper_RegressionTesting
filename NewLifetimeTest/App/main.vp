@@ -106,6 +106,17 @@ def CaseStack() -> int:
     return 0
 
 
+# (11) P3 注解形态的属性目标：`p.x: int = 42` 必须**真的写出**。
+#      此前 translate_annassign 对非 Name 目标直接 return 0，整条语句被静默丢弃
+#      （既不报错也不写），这里守"写出"这一半；"长命左值收短命右值"由
+#      NewLifetimeAnnFieldEscapeTest 守另一半。
+def CaseAnnFieldStore() -> int:
+    p: Point* = new heap slife Point(1, 2)
+    p.x: int = 42
+    if p.x != 42: return 1
+    return 0
+
+
 # (9) §3.6 析构调度：slife 释放时**先**调 `__del__`、**再** free（对齐 TPC MemoryOps）。
 #     用一个计数全局量验证析构确实被调度，且每个释放点恰好一次。
 dtor_hits: int = 0
@@ -227,6 +238,7 @@ export def main() -> int:
     fails = Check("CaseBranchOnly(0)", CaseBranchOnly(0), fails)
     fails = Check("CaseBranchOnly(1)", CaseBranchOnly(1), fails)
     fails = Check("CaseStack", CaseStack(), fails)
+    fails = Check("CaseAnnFieldStore", CaseAnnFieldStore(), fails)
     CaseVoidBare(1)
     CaseVoidBare(0)
 
