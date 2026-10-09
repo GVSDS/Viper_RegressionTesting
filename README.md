@@ -131,7 +131,7 @@
 | EscapeMethodTest | 仓库根 `EscapeMethodTest/` | **编译失败**：方法 / `__init__` / 嵌套函数交出栈地址 → `LifetimeError`（三用例互斥，一次开一条） |
 | EscapeXmodTest | 仓库根 `EscapeXmodTest/` | **编译失败**：跨模块摘要（`.vpi` 落盘 `# esc=`）路径 → `LifetimeError` |
 | NewTest | [Test/NewTest/](NewTest/App/main.vp) | 编译通过并输出 4 行：`stack`(显式 slife) / `heap` / `stack默认slife`（验证**缺省规则**：省略生命期时 stack→slife、heap/memgr→hlife）/ `memgr` |
-| NewLifetimeTest | [Test/NewLifetimeTest/](NewLifetimeTest/App/main.vp) | 编译通过、退出码 0（**M3 owned slife RAII**：出口释放 / 循环内覆盖释放 / 别名只释放一次 / 嵌套函数登记隔离 / early return / void 裸 return / 仅分支里 new 时 `free(NULL)` / stack slife 不释放；**§3.6 析构调度**：出口释放恰好 1 次 `__del__`、循环 3 轮共 3 次）。**另含 IR 断言**：IR 中必须出现 `llvm.call @free` |
+| NewLifetimeTest | [Test/NewLifetimeTest/](NewLifetimeTest/App/main.vp) | 编译通过、退出码 0（**M3 owned slife RAII**：出口释放 / 循环内覆盖释放 / 别名只释放一次 / 嵌套函数登记隔离 / early return / void 裸 return / 仅分支里 new 时 `free(NULL)` / stack slife 不释放；**§3.6 析构调度**：出口释放恰好 1 次 `__del__`、循环 3 轮共 3 次；**P1 异常出口**：传播出去恰好 1 次、被本函数捕获时不得提前释放；**P4 别名所有权转移**：`q = p` 后改写 p 不析构、出口只释放 q 一次）。**另含 IR 断言**：IR 中必须出现 `llvm.call @free` |
 | NewLifetimeFreeTest | [Test/NewLifetimeFreeTest/](NewLifetimeFreeTest/App/main.vp) | **编译失败**：对 `slife` 对象手动 `stdlib.free(p)` → `LifetimeError`（§4.3 判据5，编译器独占释放；手动 `del p` 同样被拒） |
 | NewLifetimeAsyncTest | [Test/NewLifetimeAsyncTest/](NewLifetimeAsyncTest/App/main.vp) | **编译失败**：协程体（`async`）里的 `new heap slife` → `LifetimeError`（§4.2：状态机拆分 body，释放点无法确定；`new stack` / `new … hlife` 不受限） |
 | NewLifetimeWillFreeTest | [Test/NewLifetimeWillFreeTest/](NewLifetimeWillFreeTest/App/main.vp) | **编译失败**：P2 `@life(willFree(p))` 标注驱动 —— `free(p)` 之后再 `free(p)` → `LifetimeError`（二次释放） |

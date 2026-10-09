@@ -45,7 +45,8 @@ def CaseLoop(n: int) -> int:
     return 0
 
 
-# (3) 别名：q 只是借用 p 的对象，出口必须只释放一次（释放两次会 abort）
+# (3) 别名：P4 后 `q = p` 是**所有权转移**（q 接管、p 交出）——出口只释放 q 恰好一次
+#     （p 的影子已置 0，出口对它 free(NULL)）。释放两次会 abort。
 def CaseAlias() -> int:
     p: Point* = new heap slife Point(3, 4)
     q: Point* = p
@@ -180,6 +181,18 @@ def CaseRaiseCaught() -> int:
     return 0
 
 
+# P4 别名所有权转移：`q = p` 后 **q 接管生命周期**（影子标志从 p 移到 q）。
+# 于是对 p 重新赋值不得释放对象（否则 q 立刻悬垂）；出口只释放 q 恰好一次。
+def CaseOwnershipTransfer() -> int:
+    before: int = dtor_hits
+    p: DtorPoint* = new heap slife DtorPoint(4)
+    q: DtorPoint* = p
+    p = None                    # P4：所有权已在 q，这一步**不得**触发析构
+    if dtor_hits != before: return 1     # 未转移时这里会析构一次（对象被提前释放）
+    if q.x != 4: return 2                # 对象必须仍然有效（值仍在）
+    return 0
+
+
 # 失败可诊断：每个 case 失败时打印名字与返回码（否则只有一个总数，无法定位是哪条挂了）
 def Check(name: str, rc: int, fails: int) -> int:
     if rc != 0:
@@ -218,6 +231,13 @@ export def main() -> int:
     # P1 异常出口：传播出去（离开函数）恰好 1 次；被本函数捕获时不得提前释放、出口 1 次
     fails = Check("CaseRaiseExit", CaseRaiseExit(), fails)
     fails = Check("CaseRaiseCaught", CaseRaiseCaught(), fails)
+
+    # P4 别名所有权转移：函数内对 p 改写不得析构；出口释放 q 恰好一次
+    before_ot: int = dtor_hits
+    fails = Check("CaseOwnershipTransfer", CaseOwnershipTransfer(), fails)
+    if dtor_hits != before_ot + 1:
+        stdio.printf("  FAIL dtor_hits after CaseOwnershipTransfer: %d (want %d)\n", dtor_hits, before_ot + 1)
+        fails += 1
 
     if fails != 0:
         stdio.printf("NewLifetimeTest FAILED, %d case(s) wrong\n", fails)
