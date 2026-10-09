@@ -193,6 +193,18 @@ def CaseOwnershipTransfer() -> int:
     return 0
 
 
+# P4 自别名：`q = p; q = p` 不能把两个槽共持的对象释放掉
+# （覆盖释放前做运行时判等，相同则跳过）。
+def CaseSelfAliasTransfer() -> int:
+    before: int = dtor_hits
+    p: DtorPoint* = new heap slife DtorPoint(5)
+    q: DtorPoint* = p
+    q = p                       # 自别名重复赋值：不得析构
+    if dtor_hits != before: return 1
+    if q.x != 5: return 2
+    return 0
+
+
 # 失败可诊断：每个 case 失败时打印名字与返回码（否则只有一个总数，无法定位是哪条挂了）
 def Check(name: str, rc: int, fails: int) -> int:
     if rc != 0:
@@ -237,6 +249,13 @@ export def main() -> int:
     fails = Check("CaseOwnershipTransfer", CaseOwnershipTransfer(), fails)
     if dtor_hits != before_ot + 1:
         stdio.printf("  FAIL dtor_hits after CaseOwnershipTransfer: %d (want %d)\n", dtor_hits, before_ot + 1)
+        fails += 1
+
+    # P4 自别名：重复 `q = p` 不得释放共持对象；出口仍是恰好一次
+    before_sa: int = dtor_hits
+    fails = Check("CaseSelfAliasTransfer", CaseSelfAliasTransfer(), fails)
+    if dtor_hits != before_sa + 1:
+        stdio.printf("  FAIL dtor_hits after CaseSelfAliasTransfer: %d (want %d)\n", dtor_hits, before_sa + 1)
         fails += 1
 
     if fails != 0:
