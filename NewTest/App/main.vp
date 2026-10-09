@@ -61,6 +61,19 @@ export def main() -> int:
     stdio.printf("generic-in-pool: %d\n", b.v)
     stdlib.free(arena2)
 
+    # (6) 括号可省 + 标量/数组：`new stack char` / `new stack [4]char`（类型按**注解规则**解析，
+    #     故 `[N]T` 前导数组声明符与 `T*` 后缀都认）。数组返回**首元素指针**（数组名退化），
+    #     所以能直接存进 `char*`；未写到的位置是零初始化。
+    c6: char* = new stack char
+    if c6[0] != 0: return 1
+    l6: char* = new stack [4]char
+    l6[0] = 'A'
+    l6[1] = 'B'
+    if l6[0] != 'A': return 2
+    if l6[1] != 'B': return 3
+    if l6[3] != 0: return 4
+    stdio.printf("scalar/array: ok\n")
+
     # 非法组合（应报 LifetimeError）——要验证时打开其中一条：
     #   1) 语义矛盾：bad: Point* = new stack hlife Point(7, 8)
     #   2) 多来源  ：new stack heap Point(7, 8)   → 解析期报错
