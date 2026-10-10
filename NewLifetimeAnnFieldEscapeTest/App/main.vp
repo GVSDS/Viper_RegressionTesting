@@ -23,8 +23,15 @@ novirtual class Holder:
     p: int*
 
 
-export def main() -> int:
+# 逃逸必须写在**非 main** 函数里：入口 main 现在整体豁免栈逃逸检查
+# （其帧生命期 = 进程生命期），写在 main 里会被放行、负向用例失效。
+def CaseAnnField() -> int:
     h: Holder* = new heap hlife Holder()
     local: int = 7
     h.p: int* = &local          # ← 必须被拒：注解形态的属性赋值把本帧栈地址写进堆对象字段
+    return 0
+
+
+export def main() -> int:
+    CaseAnnField()
     return 0
