@@ -28,9 +28,10 @@ def Fresh() -> int*:
     return new heap hlife int
 
 
-# ret(frame)：返回值可能指向**本帧**存储 → 去向由调用点负责
-# （A2 已移除定义端对 `return <本帧地址>` 的 fail-fast：定义端无法区分
-#   "交出本帧"与"借出调用方的存储"，一律拦会误报 `return <借用形参>`。）
+# ret(frame)：返回值可能指向**本帧**存储 → 去向由调用点负责。
+# 定义端对 `return <本帧存储>` 是**声明感知**的（§14.3.2）：声明成 frame（或
+# `borrows=<该形参>`）即放行，否则 fail-fast —— 所以下面 `return l` 合法，
+# 而"无声明的 return l"会被拒（见 root/EscapeTest）。
 @life(ret(frame))
 def FrameRet() -> int*:
     l: int* = new stack int

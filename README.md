@@ -145,7 +145,7 @@
 | NewLifetimeFieldEscapeTest | [Test/NewLifetimeFieldEscapeTest/](NewLifetimeFieldEscapeTest/App/main.vp) | **编译失败**：P3 —— `h.p = &local`（堆对象字段收下本帧栈地址）→ `LifetimeError` |
 | NewLifetimeAnnFieldEscapeTest | [Test/NewLifetimeAnnFieldEscapeTest/](NewLifetimeAnnFieldEscapeTest/App/main.vp) | **编译失败**：P3 **注解形态** —— `h.p: int* = &local`（AnnAssign 属性目标，同一条规则；也守住"非 Name 目标不得被静默丢弃"）→ `LifetimeError` |
 | NewLifetimeRetOkTest | [Test/NewLifetimeRetOkTest/](NewLifetimeRetOkTest/App/main.vp) | **编译成功 + 退出码 0**：A2（§14）`@life(ret(...))` 契约**不得误报** —— `ret(heap)`/`ret(static)`/`ret(borrows=none)` 的结果存进堆对象字段；`ret(frame)`/`ret(borrows=x)` 的结果只在本帧内使用；同模块（契约表）与跨模块（`retdep.vp`，经 `.vpi` 的 `escr=`）两条取用路径都走一遍 |
-| NewLifetimeRetEscapeTest | [Test/NewLifetimeRetEscapeTest/](NewLifetimeRetEscapeTest/App/main.vp) | **编译失败**：A2 —— 同模块 `@life(ret(frame))` 的返回值被写进**堆对象字段**（长命左值）→ `LifetimeError`（A2 已移除定义端 `return <本帧地址>` 的 fail-fast，去向改由调用点按契约判定） |
+| NewLifetimeRetEscapeTest | [Test/NewLifetimeRetEscapeTest/](NewLifetimeRetEscapeTest/App/main.vp) | **编译失败**：A2 —— 同模块 `@life(ret(frame))` 的返回值被写进**堆对象字段**（长命左值）→ `LifetimeError`（定义端按声明放行 `ret(frame)`，去向由**调用点**判定） |
 | NewLifetimeRetXmodTest | [Test/NewLifetimeRetXmodTest/](NewLifetimeRetXmodTest/App/main.vp) | **编译失败**：A2 **跨模块** —— 被调者（`retdep2.vp`）声明 `@life(noescape(x), ret(borrows=x))`，结果（生命期 = 实参 = 本帧）写进堆对象字段 → `LifetimeError`（契约经对方 `.vpi` 的 `escr=` 传来） |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
