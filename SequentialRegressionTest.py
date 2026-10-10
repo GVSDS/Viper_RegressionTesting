@@ -36,12 +36,13 @@ OVERVIEW = os.path.join(TEST_DIR, "README.md")
 # ============================================================
 # 单独运行支持：--escape / --only
 # ============================================================
-# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构 + P2 willFree）：
-#   Test/ 下：NewTest、NewLifetimeTest、NewLifetimeWillFreeOkTest（正向）、
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构 +
+# P2 willFree + A2 @life(ret(...))）：
+#   Test/ 下：NewTest、NewLifetimeTest、NewLifetimeWillFreeOkTest、NewLifetimeRetOkTest（正向）、
 #             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
-#             NewLifetimeUseAfterFreeTest（负向）；
+#             NewLifetimeUseAfterFreeTest / NewLifetimeRetEscapeTest / NewLifetimeRetXmodTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeRetOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest", "NewLifetimeRetEscapeTest", "NewLifetimeRetXmodTest"]
 
 # 负向项目：**期望编译失败**且输出含指定关键字（反向判定，且不运行可执行文件）。
 # 这些项目里的用例故意交出本帧栈地址（或跨模块摘要路径），必须被 M1–M2.3 的
@@ -69,6 +70,10 @@ NEGATIVE_PROJECTS = {
     "NewLifetimeFieldEscapeTest": "LifetimeError",
     # P3：obj.f: T = &local（注解形态的属性目标，同一条规则；防"非 Name 目标被静默丢弃"）
     "NewLifetimeAnnFieldEscapeTest": "LifetimeError",
+    # A2（§14）：@life(ret(frame)) 的结果存进堆对象字段（同模块契约表 EscDirTable）
+    "NewLifetimeRetEscapeTest": "LifetimeError",
+    # A2（§14）：@life(ret(borrows=x)) 的结果存进堆对象字段（跨模块，经 .vpi 的 escr=）
+    "NewLifetimeRetXmodTest": "LifetimeError",
 }
 
 # IR 断言：项目名 → 生成 IR 中**必须出现**的子串。

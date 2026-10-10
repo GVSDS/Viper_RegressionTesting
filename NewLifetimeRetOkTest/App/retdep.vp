@@ -1,0 +1,45 @@
+from stdint import *
+
+
+# =============================================================================
+# A2（§14）`@life(ret(...))` 的被调方：五种返回值生命期契约各一条。
+#
+# 调用点（main.vp）**跨模块**取用 → 本文件的契约只能经 .vpi 行尾
+# `# esc=… escn=… escr=…` 传递（本地契约表按文件重置，调用点必然查不到）。
+# 设计与编码见 Debugger/ownership-and-new.md §14.3 / §14.3.1（GenApi.RET_KIND_*）。
+# =============================================================================
+
+
+# ret(heap)：自由生命期 → 结果可自由存进长命存储
+@life(ret(heap))
+def MkHeap() -> int*:
+    return new heap hlife int
+
+
+# ret(static)：指向静态存储（字符串常量）
+@life(ret(static))
+def MkStatic() -> char*:
+    return "static-lit"
+
+
+# ret(borrows=none)：返回值**不借用任何形参** → 非本帧
+@life(ret(borrows=none))
+def Fresh() -> int*:
+    return new heap hlife int
+
+
+# ret(frame)：返回值可能指向**本帧**存储 → 去向由调用点负责
+# （A2 已移除定义端对 `return <本帧地址>` 的 fail-fast：定义端无法区分
+#   "交出本帧"与"借出调用方的存储"，一律拦会误报 `return <借用形参>`。）
+@life(ret(frame))
+def FrameRet() -> int*:
+    l: int* = new stack int
+    return l
+
+
+# ret(borrows=x)：返回值借用形参 x —— 调用点把结果当 x 的生命期。
+# 配 `noescape(x)`：本函数只**借出** x、不把它存进长命存储，故形参 x 不算逃逸；
+# 否则调用点会先在"实参逃逸"那条路径上拦下来，掩盖 ret 契约本身。
+@life(noescape(x), ret(borrows=x))
+def IdentBorrow(x: int*) -> int*:
+    return x

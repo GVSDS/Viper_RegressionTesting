@@ -1,0 +1,56 @@
+from stdint import *
+
+
+# =============================================================================
+# 负向工程（**应当编译失败**）：A2 `@life(ret(frame))` —— 去向由**调用点**判定
+#
+# A2 移除了定义端对 `return <本帧地址>` 的 fail-fast：定义端无法区分"交出本帧"
+# 与"借出调用方的存储"（后者是 `return <借用形参>`，一律拦会误报）。取而代之：
+# 被调者用 `@life(ret(...))` 声明返回值生命期，**调用点**按声明判去向。
+#
+# 本工程验：声明为 `frame` 的返回值被写进**长命存储**时必须被拒。
+# 期望报错：LifetimeError（`a longer-lived field/element`）。
+#
+# 隔离性：FrameRet 的逃逸摘要为 0（`l` 不是形参，`return l` 不置任何逃逸位），
+#         所以下面唯一的报错来源就是 `ret(frame)` → LIFE_FRAME。
+#
+# 本文件只保留**一条**会报错的语句：编译在第一个错误处终止，多条会掩盖顺序。
+# 对照写法（`ret(borrows=x)` 的结果同样只在本帧）留作注释，见文末。
+# =============================================================================
+
+
+novirtual class Holder:
+    p: int*
+
+
+@life(ret(frame))
+def FrameRet() -> int*:
+    l: int* = new stack int
+    return l
+
+
+# 唯一用例：ret(frame) 的结果存进**堆对象**字段 → 左值长命、右值本帧 → LifetimeError
+def CaseFrame() -> int:
+    h: Holder* = new heap hlife Holder()
+    h.p = FrameRet()            # ❌ 期望 LifetimeError
+    return 0
+
+
+export def main() -> int:
+    CaseFrame()
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# 对照用例（把 main 里的 CaseFrame() 换成本函数即可，一次只开一条）：
+#
+# @life(noescape(x), ret(borrows=x))
+# def IdentBorrow(x: int*) -> int*:
+#     return x
+#
+# def CaseBorrow() -> int:
+#     h: Holder* = new heap hlife Holder()
+#     l: int* = new stack int
+#     h.p = IdentBorrow(l)     # ❌ 期望 LifetimeError（结果生命期 = l 的 = 本帧）
+#     return 0
+# -----------------------------------------------------------------------------

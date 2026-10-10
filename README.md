@@ -122,7 +122,9 @@
 ## 一·附、生命期 / 逃逸（escape）相关测试
 
 验证 M1–M3 的生命期检查（栈地址逃逸、借用传播、函数逃逸摘要）、`new` 描述符分配，
-以及 `new heap slife` 的 RAII 自动释放（M3）。因历史原因前 4 个位于**仓库根**（不在 `Test/` 下）：
+`new heap slife` 的 RAII 自动释放（M3），以及 `@life(...)` 标注面（P2 `willFree`、
+§14 `escape/stores`、`noescape/borrows`、A2 `ret(...)`：返回值生命期契约，声明优先于推断）。
+因历史原因前 4 个位于**仓库根**（不在 `Test/` 下）：
 
 | 项目 | 位置 | 期望结果 |
 |---|---|---|
@@ -142,6 +144,9 @@
 | NewLifetimeWillFreeAddrTest | [Test/NewLifetimeWillFreeAddrTest/](NewLifetimeWillFreeAddrTest/App/main.vp) | **编译失败**：P2 **取地址**路径 —— `stdlib.free(p)` 之后取 `&p` → `LifetimeError`（与读取同一口径） |
 | NewLifetimeFieldEscapeTest | [Test/NewLifetimeFieldEscapeTest/](NewLifetimeFieldEscapeTest/App/main.vp) | **编译失败**：P3 —— `h.p = &local`（堆对象字段收下本帧栈地址）→ `LifetimeError` |
 | NewLifetimeAnnFieldEscapeTest | [Test/NewLifetimeAnnFieldEscapeTest/](NewLifetimeAnnFieldEscapeTest/App/main.vp) | **编译失败**：P3 **注解形态** —— `h.p: int* = &local`（AnnAssign 属性目标，同一条规则；也守住"非 Name 目标不得被静默丢弃"）→ `LifetimeError` |
+| NewLifetimeRetOkTest | [Test/NewLifetimeRetOkTest/](NewLifetimeRetOkTest/App/main.vp) | **编译成功 + 退出码 0**：A2（§14）`@life(ret(...))` 契约**不得误报** —— `ret(heap)`/`ret(static)`/`ret(borrows=none)` 的结果存进堆对象字段；`ret(frame)`/`ret(borrows=x)` 的结果只在本帧内使用；同模块（契约表）与跨模块（`retdep.vp`，经 `.vpi` 的 `escr=`）两条取用路径都走一遍 |
+| NewLifetimeRetEscapeTest | [Test/NewLifetimeRetEscapeTest/](NewLifetimeRetEscapeTest/App/main.vp) | **编译失败**：A2 —— 同模块 `@life(ret(frame))` 的返回值被写进**堆对象字段**（长命左值）→ `LifetimeError`（A2 已移除定义端 `return <本帧地址>` 的 fail-fast，去向改由调用点按契约判定） |
+| NewLifetimeRetXmodTest | [Test/NewLifetimeRetXmodTest/](NewLifetimeRetXmodTest/App/main.vp) | **编译失败**：A2 **跨模块** —— 被调者（`retdep2.vp`）声明 `@life(noescape(x), ret(borrows=x))`，结果（生命期 = 实参 = 本帧）写进堆对象字段 → `LifetimeError`（契约经对方 `.vpi` 的 `escr=` 传来） |
 
 单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
 
@@ -166,7 +171,7 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
 python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
 ```
 
-> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest` / `NewLifetimeWillFreeTest` / `NewLifetimeUseAfterFreeTest` / `NewLifetimeWillFreeKwargTest` / `NewLifetimeWillFreeMethodTest` / `NewLifetimeWillFreeAddrTest` / `NewLifetimeFieldEscapeTest` / `NewLifetimeAnnFieldEscapeTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
+> 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest` / `NewLifetimeWillFreeTest` / `NewLifetimeUseAfterFreeTest` / `NewLifetimeWillFreeKwargTest` / `NewLifetimeWillFreeMethodTest` / `NewLifetimeWillFreeAddrTest` / `NewLifetimeFieldEscapeTest` / `NewLifetimeAnnFieldEscapeTest` / `NewLifetimeRetEscapeTest` / `NewLifetimeRetXmodTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
 
 负向项目在 `SequentialRegressionTest.py` 里是**反向判定**（`NEGATIVE_PROJECTS`）：编译失败且输出含 `LifetimeError` 才算通过，且**不再进入运行阶段**；编译成功 = 漏检，直接终止。`regression_test.py --escape` 会**剔除**这些项目（该脚本要求"编译成功 + 能跑"），负向断言请用 `SequentialRegressionTest.py --escape` 或上面的 `run_lifetime_negative_tests.py`。
 

@@ -85,17 +85,18 @@ def find_test_projects():
 # ============================================================
 # 单独运行支持：--escape / --only
 # ============================================================
-# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构 + P2 willFree）：
-#   Test/ 下：NewTest、NewLifetimeTest、NewLifetimeWillFreeOkTest（正向）、
+# escape 相关项目（生命期/逃逸检查 + M2.4 new 描述符 + M3 owned slife RAII + §3.6 析构 +
+# P2 willFree + A2 @life(ret(...))）：
+#   Test/ 下：NewTest、NewLifetimeTest、NewLifetimeWillFreeOkTest、NewLifetimeRetOkTest（正向）、
 #             NewLifetimeFreeTest / NewLifetimeAsyncTest / NewLifetimeWillFreeTest /
-#             NewLifetimeUseAfterFreeTest（负向）；
+#             NewLifetimeUseAfterFreeTest / NewLifetimeRetEscapeTest / NewLifetimeRetXmodTest（负向）；
 #   仓库根下：EscapeTest/EscapeOkTest/EscapeMethodTest/EscapeXmodTest
-ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"]
+ESCAPE_PROJECTS = ["EscapeTest", "EscapeOkTest", "EscapeMethodTest", "EscapeXmodTest", "NewTest", "NewLifetimeTest", "NewLifetimeWillFreeOkTest", "NewLifetimeRetOkTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest", "NewLifetimeRetEscapeTest", "NewLifetimeRetXmodTest"]
 
 # 负向项目（**期望编译失败**，见 SequentialRegressionTest.NEGATIVE_PROJECTS）：
 # 本脚本按"编译必须成功 + 能跑"判定，纳入会误报，故 --escape 时剔除；
 # 负向断言请用 SequentialRegressionTest（反向判定）或 run_lifetime_negative_tests.py。
-NEGATIVE_PROJECT_NAMES = {"EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest"}
+NEGATIVE_PROJECT_NAMES = {"EscapeTest", "EscapeMethodTest", "EscapeXmodTest", "NewLifetimeFreeTest", "NewLifetimeAsyncTest", "NewLifetimeWillFreeTest", "NewLifetimeUseAfterFreeTest", "NewLifetimeWillFreeKwargTest", "NewLifetimeWillFreeMethodTest", "NewLifetimeWillFreeAddrTest", "NewLifetimeFieldEscapeTest", "NewLifetimeAnnFieldEscapeTest", "NewLifetimeRetEscapeTest", "NewLifetimeRetXmodTest"}
 
 
 def find_project_file(proj_dir):

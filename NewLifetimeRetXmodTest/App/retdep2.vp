@@ -1,0 +1,24 @@
+from stdint import *
+
+
+# =============================================================================
+# A2 跨模块负例的**被调方**：契约（逃逸掩码 + 返回值生命期）只能经本模块 .vpi
+# 行尾 `# esc=… escn=… escr=…` 传到调用点 —— 本文件与 main.vp 不同模块，
+# 调用点的本地契约表按文件重置、必然查不到，命中
+# CallGenBase.lookup_ret_kind_via_vpi → VpiReader 的 escr= 缓存这条回退路径。
+# =============================================================================
+
+
+# ret(borrows=x)：返回值借用形参 x —— 调用点把结果当 x 的生命期。
+# 配 `noescape(x)`：本函数只**借出** x、不把它存进长命存储 → 形参 x 不算逃逸，
+# 于是调用点上"实参逃逸"那条路径不会先报错，判据收敛到 ret 契约本身。
+@life(noescape(x), ret(borrows=x))
+def IdentBorrow(x: int*) -> int*:
+    return x
+
+
+# 对照：`ret(frame)`（把 main 的用例换成 CaseFrame 时用）。返回值指向本帧存储。
+@life(ret(frame))
+def FrameRet() -> int*:
+    l: int* = new stack int
+    return l
