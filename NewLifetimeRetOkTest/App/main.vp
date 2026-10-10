@@ -26,6 +26,18 @@ novirtual class Holder:
     c: char*
 
 
+# 方法版 borrows 的钉桩：`ret(borrows=self)` ⇒ 结果的生命期 = **接收者**（不是实参）。
+# 调用点故意让接收者是**堆**对象、用户实参是**本帧**指针：
+#   映射正确 → 结果=堆（可存进长命存储）；
+#   若把方法误当"无 self"而不偏移 → 取成实参 0（本帧）→ 结果 FRAME → 报错 ⇒ 用例失败。
+novirtual class BorrowBox:
+    v: int*
+
+    @life(noescape(self, x), ret(borrows=self))
+    def SelfRef(self, x: int*) -> int*:
+        return self.v
+
+
 # ---- 同模块契约（走本文件 EscDirTable，不经 .vpi）----
 
 @life(ret(heap))
@@ -56,9 +68,27 @@ export def main() -> int:
     base: int* = new stack int
     pb: int* = retdep.IdentBorrow(base)
 
+    # (4) 形参位↔实参位映射的**两个方向**都用"错就报错"的方式钉住（对照 §14.3.1）：
+    #     (4a) 模块限定函数 `retdep.Identity2(fr, hp)`：**不**含 self ⇒ 形参位 = 实参位。
+    #          实参 0 故意用**本帧**指针、实参 1 用**堆**指针；borrows=1 → 结果应为堆 → 可存进 h.p。
+    #          若误按方法偏移一格 → 取成实参 0（本帧）→ 结果 FRAME → 本行报错。
+    #     (4b) 方法 `box.SelfRef(fr)`：**含** self ⇒ 形参位要偏移。接收者用**堆**对象、实参用**本帧**指针；
+    #          borrows=self → 结果应为堆（接收者）→ 可存进 out.v。
+    #          若忘了偏移 → 取成实参 0（本帧）→ 结果 FRAME → 本行报错。
+    fr: int* = new stack int
+    hp: int* = new heap hlife int
+    h.p = retdep.Identity2(fr, hp)
+
+    box: BorrowBox* = new heap hlife BorrowBox()
+    box.v = new heap hlife int
+    out: BorrowBox* = new heap hlife BorrowBox()
+    out.v = box.SelfRef(fr)
+
     if pf is None: return 1
     if pl is None: return 2
     if pb is None: return 3
+    if h.p is None: return 4
+    if out.v is None: return 5
 
     stdio.printf("RetOkTest OK: @life(ret(...)) contracts accepted\n")
     return 0

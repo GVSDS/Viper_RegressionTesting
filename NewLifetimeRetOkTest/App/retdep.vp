@@ -44,3 +44,12 @@ def FrameRet() -> int*:
 @life(noescape(x), ret(borrows=x))
 def IdentBorrow(x: int*) -> int*:
     return x
+
+
+# ret(borrows=<形参 1>)：借用**第 2 个**形参（不是第 1 个）。
+# 用途：钉住"模块限定函数调用 `retdep.Identity2(...)` **不**含 self ⇒ 形参位=实参位"这一映射。
+# 调用点故意让实参 0 是**本帧**指针、实参 1 是**堆**指针：映射正确 → 结果=堆（可存长命存储）；
+# 若把模块限定函数误当方法而偏移一格 → 取成实参 0（本帧）→ 结果 FRAME → 调用点报错 ⇒ 用例失败。
+@life(noescape(a, b), ret(borrows=1))
+def Identity2(a: int*, b: int*) -> int*:
+    return b
