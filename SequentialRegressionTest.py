@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""TransPyC 顺序回归测试脚本
+"""ViperC 顺序回归测试脚本
 
 与 regression_test.py 的区别：
-1. 按 Test/README.md「建议实现顺序」节（难度升序，68 个项目）逐个编译
+1. 按 Test/README.md「建议实现顺序」节（难度升序，77 个项目）逐个编译
 2. 每个项目编译成功后立即运行其可执行文件
 3. 编译或运行失败立刻结束（fail-fast），退出码非 0
 """
@@ -25,7 +25,7 @@ except Exception:
 # 路径
 # ============================================================
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-# 项目根目录（含 TransPyC/、TransPyV/、Test/ 等同级目录）
+# 项目根目录（含 TransPyC/、ViperC/、Test/ 等同级目录）
 PROJECT_ROOT = os.path.dirname(TEST_DIR)
 # Projectrans.py 路径：编译器入口在 <root>/TransPyC/Projectrans.py
 # （旧值 <root>/Projectrans.py 已不存在，与 regression_test.py:45-48 同一条记录）
@@ -139,7 +139,7 @@ def read_test_order():
 def build_compile_cmd(args):
     """根据 --exe/--compiler 构建编译命令模板（{project} 为项目 json 路径占位）
 
-    --exe 指定编译器可执行文件（如 TransPyV.exe），优先于 --compiler；
+    --exe 指定编译器可执行文件（如 viperc.exe），优先于 --compiler；
     两者都未指定时使用 TPC（python Projectrans.py）。
     --rebuild-includes 时追加 --rebuild-includes（全量重编 includes，
     修复 includes.binary 缓存不一致导致的 undefined symbol）。
@@ -188,19 +188,19 @@ def find_executables(output_dir):
 
 
 def find_output_dirs(proj_dir, proj_config):
-    """收集候选输出目录（TPC 与 TPV 布局一致：{build_dir}/output）
+    """收集候选输出目录（TPC 与 VPC 布局一致：{build_dir}/output）
 
     - {output_dir}（默认 output）
-    - {build_dir}/{output_dir}（build_dir 默认 .tpv_build）
+    - {build_dir}/{output_dir}（build_dir 默认 __vpcbuild__）
     - {build_dir}/output
     保序去重返回。
 
     注意：ZlibDbg 等项目的 project.json 既无 output_dir 也无 build_dir，
-    此时必须仍把 .tpv_build/output 纳入候选，否则 TPV 编译成功的 exe
+    此时必须仍把 __vpcbuild__/output 纳入候选，否则 VPC 编译成功的 exe
     定位不到（报"无可执行二进制文件"）。
     """
     od = proj_config.get('output_dir') or 'output'
-    bd = proj_config.get('build_dir') or '.tpv_build'
+    bd = proj_config.get('build_dir') or '__vpcbuild__'
     dirs = [
         os.path.abspath(os.path.join(proj_dir, od)),
         os.path.abspath(os.path.join(proj_dir, bd, od)),
@@ -216,8 +216,8 @@ def find_output_dirs(proj_dir, proj_config):
 
 
 def find_ll_files(proj_dir, proj_config):
-    """收集项目构建目录下的所有 .ll（TPV 布局：{build_dir}/temp/<xx>/<sha1>.ll）"""
-    bd = proj_config.get('build_dir') or '.tpv_build'
+    """收集项目构建目录下的所有 .ll（VPC 布局：{build_dir}/temp/<xx>/<sha1>.ll）"""
+    bd = proj_config.get('build_dir') or '__vpcbuild__'
     root = os.path.abspath(os.path.join(proj_dir, bd))
     if not os.path.isdir(root):
         return []
@@ -291,9 +291,9 @@ def print_tail(output, max_lines=40):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="TransPyC 顺序回归测试（按 README.md 顺序，失败即停）")
+        description="ViperC 顺序回归测试（按 README.md 顺序，失败即停）")
     parser.add_argument("--exe", default=None,
-                        help="编译器可执行文件（如 TransPyV.exe），用它编译测试项目（替代 TPC）")
+                        help="编译器可执行文件（如 viperc.exe），用它编译测试项目（替代 TPC）")
     parser.add_argument("--compiler", default=None,
                         help="自定义编译命令模板，用 {project} 表示项目 json 路径；默认 TPC python")
     parser.add_argument("--rebuild-includes", action="store_true",
@@ -311,7 +311,7 @@ def main():
     compile_cmd = build_compile_cmd(args)
 
     print("=" * 70)
-    print("TransPyC 顺序回归测试（按 README.md 顺序，失败即停）")
+    print("ViperC 顺序回归测试（按 README.md 顺序，失败即停）")
     print("=" * 70)
     print()
 
@@ -390,9 +390,9 @@ def main():
 
         # ---------- 编译成功后立即运行 ----------
         # project.json 解析失败必须**立刻终止并报错**：静默退化成 {} 会让下面拿不到
-        # build_dir（TPV 布局 .tpv_build/output），只在 <项目>/output 里找可执行文件，
+        # build_dir（VPC 布局 __vpcbuild__/output），只在 <项目>/output 里找可执行文件，
         # 于是明明编译成功却被判成"未找到可执行文件"。实测踩过：LLvmLiteTest 的
-        # project.json 有一个尾逗号（第 18 行 `],`）——标准 JSON 非法（TPV 自带解析器
+        # project.json 有一个尾逗号（第 18 行 `],`）——标准 JSON 非法（VPC 自带解析器
         # 宽容才编得过），此处不再吞异常。
         try:
             with open(proj_json, 'r', encoding='utf-8') as f:

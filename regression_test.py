@@ -40,7 +40,7 @@ except Exception:
 
 # 测试目录
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-# 仓库根目录（含 TransPyC/、TransPyV/、Test/ 等同级目录）
+# 仓库根目录（含 TransPyC/、ViperC/、Test/ 等同级目录）
 PROJECT_ROOT = os.path.dirname(TEST_DIR)
 # Projectrans.py 路径：编译器入口在 <root>/TransPyC/Projectrans.py
 # （旧值 <root>/Projectrans.py 已不存在 → 76 个工程全部 "can't open file" 编译失败；
@@ -285,9 +285,9 @@ def main():
                 proj_config = json.load(f)
         except Exception:
             continue
-        # 候选输出目录：TPC 与 TPV 布局一致（OutputDir = {BuildDir}/output）
+        # 候选输出目录：TPC 与 VPC 布局一致（OutputDir = {BuildDir}/output）
         od = proj_config.get('output_dir') or 'output'
-        bd = proj_config.get('build_dir') or '.tpv_build'
+        bd = proj_config.get('build_dir') or '__vpcbuild__'
         base_dirs = [
             os.path.join(proj_dir, od),
             os.path.join(proj_dir, bd, od),

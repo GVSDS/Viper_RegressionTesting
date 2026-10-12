@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""生命期/逃逸负向测试运行器（TransPyV 专用）
+"""生命期/逃逸负向测试运行器（ViperC 专用）
 
 与 NegativeTest/run_negative_tests.py 的区别：
-  · 那个脚本用 **TPC**（Python 编译器，`TransPyC.py -f`）编译并断言通用错误；
-  · `new` 描述符与 `LifetimeError` 只在 **TransPyV** 侧实现——TPC 的解析器不认识 `new`，
-    也产不出 LifetimeError，所以本脚本统一用 TransPyV.exe 编译，
+  · 那个脚本用 **TPC**（Python 编译器，`TransPyC/Projectrans.py`）编译并断言通用错误；
+  · `new` 描述符与 `LifetimeError` 只在 **ViperC** 侧实现——TPC 的解析器不认识 `new`，
+    也产不出 LifetimeError，所以本脚本统一用 viperc.exe 编译，
     断言"**编译失败且输出含 LifetimeError**"。
 
 用法：
-  python Test/run_lifetime_negative_tests.py --exe .\\TransPyV\\output\\TransPyV.exe
+  python Test/run_lifetime_negative_tests.py --exe .\\ViperC\\output\\viperc.exe
   python Test/run_lifetime_negative_tests.py --exe ... --only EscapeMethodTest
   python Test/run_lifetime_negative_tests.py --exe ... --rebuild-includes
 """
@@ -60,9 +60,9 @@ def resolve(name):
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="生命期/逃逸负向测试（只用 TransPyV 编译，断言 LifetimeError）")
+        description="生命期/逃逸负向测试（只用 ViperC 编译，断言 LifetimeError）")
     ap.add_argument("--exe", required=True,
-                    help="TransPyV 可执行文件（如 .\\TransPyV\\output\\TransPyV.exe）")
+                    help="ViperC 可执行文件（如 .\\ViperC\\output\\viperc.exe）")
     ap.add_argument("--only", default=None,
                     help="只跑指定项目（逗号分隔，名字即目录名）")
     ap.add_argument("--rebuild-includes", action="store_true",
