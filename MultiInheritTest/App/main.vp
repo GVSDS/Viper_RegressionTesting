@@ -120,7 +120,7 @@ class Vec2M:
 
 
 class Vec2Extra:
-    # Field access uses the defining class's fields (TPV model); does not
+    # Field access uses the defining class's fields (VPC model); does not
     # reference Vec2M's x/y (cross-parent field access is out of scope here).
     def extra_val(self) -> CInt:
         return 7

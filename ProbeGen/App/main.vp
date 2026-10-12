@@ -3,8 +3,8 @@
 # Translate the same source with two compiler generations, then diff the emitted IR per module
 # (module file name = source SHA1, so both sides are comparable).
 
-#   Gen 1: TransPyV\output\TransPyV.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\.tpv_build_g1
-#   Gen 2: TransPyV\.tpv_build\output\TransPyV.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\.tpv_build_g2
+#   Gen 1: ViperC\output\viperc.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\__vpcbuild___g1
+#   Gen 2: ViperC\__vpcbuild__\output\viperc.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\__vpcbuild___g2
 
 # WARNING [P6] breaks compilation from generation 2 onward; comment out [P6] to get Gen-2 IR for P1..P5.
 import t

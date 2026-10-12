@@ -656,7 +656,7 @@ def test_struct_global(pool: memhub.MemBuddy*):
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_struct_global")
 
     # ---- (1) vtable struct { i8*, i8*, i8* } ----
-    # Initializer is a TPV-generated LLVM syntax aggregate: null + bitcast symbol refs
+    # Initializer is a VPC-generated LLVM syntax aggregate: null + bitcast symbol refs
     vt1: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     vt2: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
     vt3: mlirlite.ParamNode* = core.NewParamNode(ty_i8ptr)
@@ -701,7 +701,7 @@ def test_struct_global(pool: memhub.MemBuddy*):
     gv_arr.Initializer = init_arr
     mcore.GlobalSetLinkage(gv_arr, "internal")
 
-    # ---- (2') root bare GEP (TPV pointer-global form) ----
+    # ---- (2') root bare GEP (VPC pointer-global form) ----
     # Initializer has no type prefix; it is a bare getelementptr constant expression
     gv_sp: mlirlite.GlobalVariable* = mcore.NewGlobal(mod, "sp", ty_i8ptr)
     init_sp: str = pool.alloc(192)
@@ -817,7 +817,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
 
     mod: mlirlite.LLVMModule* = mcore.NewModule("test_align_switch_asm")
 
-    # ---- (1) alloca alignment + (3) inline_asm (builder + TPV-injected forms) ----
+    # ---- (1) alloca alignment + (3) inline_asm (builder + VPC-injected forms) ----
     f1: mlirlite.Function* = mcore.CreateFunction(mod, "align_asm", ty_i32)
     mcore.AddParam(f1, ty_i32, "%x")
     e1: mlirlite.BasicBlock* = mcore.CreateBlock(f1, "entry")
@@ -836,7 +836,7 @@ def test_alloca_align_switch_asm(pool: memhub.MemBuddy*):
     v_x: mlirlite.Value* = mcore.SSAValue(ty_i32, "%x")
     mlirlite.build_store(b1, v_x, v_slot, 0)
 
-    # TPV CallGenCBuiltin injected form (inteldialect + typed input operands)
+    # VPC CallGenCBuiltin injected form (inteldialect + typed input operands)
     mlirlite.block_append_text(pool, e1,
         "%7 = call i32 asm sideeffect inteldialect \"mov $0, $1\", \"=r,r\"(i32 %x)")
 
@@ -1173,7 +1173,7 @@ def test_named_struct(pool: memhub.MemBuddy*):
     b: mlirlite.IRBuilder* = mcore.NewBuilder(fn)
     mlirlite.position_at_end(b, entry)
 
-    # ---- (4) bare-name form in mid text (hand-written / TPV-injected) ----
+    # ---- (4) bare-name form in mid text (hand-written / VPC-injected) ----
     # Print time expands it via the table; pointer form %"name"* stays !llvm.ptr
     mlirlite.block_append_text(pool, entry, "%0 = alloca %\"aa11bb22cc33dd44.Cls\"")
     mlirlite.block_append_text(pool, entry, "%1 = load i32, %\"aa11bb22cc33dd44.Cls\"* %0")
@@ -1255,7 +1255,7 @@ def test_extractvalue_multi_asm(pool: memhub.MemBuddy*):
     func: mlirlite.Function* = mcore.CreateFunction(mod, "multi_asm", ty_i32)
     entry: mlirlite.BasicBlock* = mcore.CreateBlock(func, "entry")
 
-    # (1) TPV real form: multi-result inline asm + two extractvalue (single index)
+    # (1) VPC real form: multi-result inline asm + two extractvalue (single index)
     mlirlite.block_append_text(pool, entry,
         "%2 = call {i32, i32} asm sideeffect \"mov $0, $1; mov $1, $1\", \"=r,r\"()")
     mlirlite.block_append_text(pool, entry,

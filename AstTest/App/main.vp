@@ -29,7 +29,7 @@ def classify_list(lst: list[ast.AST*]*, depth: int):
 
 def classify_print(node: ast.AST*, depth: int):
     """Recursively walk the parse tree and print each node's category at runtime
-    via TPV isinstance vtable subclass-set comparison (Stmt vs ExprNode vs other).
+    via VPC isinstance vtable subclass-set comparison (Stmt vs ExprNode vs other).
     """
     if node is None:
         return

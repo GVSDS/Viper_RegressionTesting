@@ -3,7 +3,7 @@
     "name": "GenericTest2",
     "version": "1.0.0",
     "source_dir": "./App",
-    "build_dir": "./.tpv_build",
+    "build_dir": "./__vpcbuild__",
     "compiler": {
         "cmd": "llc",
         "flags": [
