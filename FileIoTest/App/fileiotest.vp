@@ -3,11 +3,11 @@ from t import CInt, CInt32T, CUInt32T, CPtr, CChar, CExport
 from stdint import *
 import stdlib
 import viperlib
-import w32.win32base
-import w32.win32file
-import w32.win32console
-import w32.fileio
-from w32.fileio import File, FileW, MODE, FRESULT, SEEK_SET, SEEK_CUR, SEEK_END
+import win32.win32base
+import win32.win32file
+import win32.win32console
+import win32.fileio
+from win32.fileio import File, FileW, MODE, FRESULT, SEEK_SET, SEEK_CUR, SEEK_END
 
 
 define BUF_SIZE = 4096
@@ -20,20 +20,20 @@ def fileio_main():
     bytes_written: ULONG = 0
     bytes_read: ULONG = 0
 
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
-    hFile: w32.win32base.HANDLE = w32.win32file.CreateFileA(
+    hFile: win32.win32base.HANDLE = win32.win32file.CreateFileA(
         "testfile.txt",
-        w32.win32file.GENERIC_WRITE,
-        w32.win32file.FILE_SHARE_READ,
+        win32.win32file.GENERIC_WRITE,
+        win32.win32file.FILE_SHARE_READ,
         None,
-        w32.win32file.CREATE_ALWAYS,
-        w32.win32file.FILE_ATTRIBUTE_NORMAL,
+        win32.win32file.CREATE_ALWAYS,
+        win32.win32file.FILE_ATTRIBUTE_NORMAL,
         None
     )
 
-    if hFile == w32.win32base.INVALID_HANDLE_VALUE:
+    if hFile == win32.win32base.INVALID_HANDLE_VALUE:
         print("Failed to create file")
         return
 
@@ -48,32 +48,32 @@ def fileio_main():
         i = i + 1
         ch = ch + 1
 
-    result: BOOL = w32.win32file.WriteFile(hFile, write_buf, write_len, &bytes_written, None)
+    result: BOOL = win32.win32file.WriteFile(hFile, write_buf, write_len, &bytes_written, None)
     if result == 0:
         print("WriteFile failed")
     else:
         viperlib.snprintf(buf, 256, "Written %d bytes to testfile.txt", bytes_written)
         print(buf)
 
-    w32.win32file.FlushFileBuffers(hFile)
-    w32.win32base.CloseHandle(hFile)
+    win32.win32file.FlushFileBuffers(hFile)
+    win32.win32base.CloseHandle(hFile)
 
-    hFile = w32.win32file.CreateFileA(
+    hFile = win32.win32file.CreateFileA(
         "testfile.txt",
-        w32.win32file.GENERIC_READ,
-        w32.win32file.FILE_SHARE_READ,
+        win32.win32file.GENERIC_READ,
+        win32.win32file.FILE_SHARE_READ,
         None,
-        w32.win32file.OPEN_EXISTING,
-        w32.win32file.FILE_ATTRIBUTE_NORMAL,
+        win32.win32file.OPEN_EXISTING,
+        win32.win32file.FILE_ATTRIBUTE_NORMAL,
         None
     )
 
-    if hFile == w32.win32base.INVALID_HANDLE_VALUE:
+    if hFile == win32.win32base.INVALID_HANDLE_VALUE:
         print("Failed to open file for reading")
         return
 
     read_len: ULONG = 0
-    result = w32.win32file.ReadFile(hFile, read_buf, BUF_SIZE - 1, &read_len, None)
+    result = win32.win32file.ReadFile(hFile, read_buf, BUF_SIZE - 1, &read_len, None)
     if result == 0:
         print("ReadFile failed")
     else:
@@ -87,20 +87,20 @@ def fileio_main():
     print(read_buf)
     print("--- End ---")
 
-    fileSize: ULONG = w32.win32file.GetFileSize(hFile, None)
+    fileSize: ULONG = win32.win32file.GetFileSize(hFile, None)
     viperlib.snprintf(buf, 256, "File size: %d bytes", fileSize)
     print(buf)
 
-    w32.win32base.CloseHandle(hFile)
+    win32.win32base.CloseHandle(hFile)
 
-    attrs: ULONG = w32.win32file.GetFileAttributesA("testfile.txt")
-    if attrs == w32.win32base.INVALID_HANDLE_VALUE:
+    attrs: ULONG = win32.win32file.GetFileAttributesA("testfile.txt")
+    if attrs == win32.win32base.INVALID_HANDLE_VALUE:
         print("GetFileAttributes failed")
     else:
         viperlib.snprintf(buf, 256, "File attributes: 0x%X", attrs)
         print(buf)
 
-    w32.win32file.DeleteFileA("testfile.txt")
+    win32.win32file.DeleteFileA("testfile.txt")
     print("File deleted")
 
     stdlib.free(write_buf)
@@ -168,7 +168,7 @@ def fileio_with_test():
         viperlib.snprintf(buf, 256, "[with] After seek: Pos=%d", pos)
         print(buf)
 
-    w32.win32file.DeleteFileA("oop_with.txt")
+    win32.win32file.DeleteFileA("oop_with.txt")
     print("[with] test file deleted")
 
     stdlib.free(buf)
@@ -229,7 +229,7 @@ def fileio_handle_test():
     print(buf)
     fr4.close()
 
-    w32.win32file.DeleteFileA("oop_handle.txt")
+    win32.win32file.DeleteFileA("oop_handle.txt")
     print("[handle] test file deleted")
 
     stdlib.free(buf)
@@ -273,7 +273,7 @@ def fileio_rw_test():
     print(buf)
     fap.close()
 
-    w32.win32file.DeleteFileA("rw_test.txt")
+    win32.win32file.DeleteFileA("rw_test.txt")
     print("[rw] test file deleted")
 
     print("=== OOP FileIO: wide char (u\"...\") ===")
@@ -295,7 +295,7 @@ def fileio_wide_test():
     print(buf)
     fw2.close()
 
-    w32.win32file.DeleteFileA("wide_test.txt")
+    win32.win32file.DeleteFileA("wide_test.txt")
     print("[wide] test file deleted")
 
     stdlib.free(buf)
@@ -325,7 +325,7 @@ def fileio_chinese_test():
         print(buf)
         fr.close()
 
-        w32.win32file.DeleteFileW(u"中文文件.txt")
+        win32.win32file.DeleteFileW(u"中文文件.txt")
         print("[chinese] T1: deleted")
 
     # === T2: Chinese filename + Chinese wide content (WCHAR_T) ===
@@ -335,7 +335,7 @@ def fileio_chinese_test():
         print("[chinese] T2: create failed")
     else:
         # u"你好世界\n" = 5 WCHARs = 10 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw2.handle, u"你好世界\n", 10, &bytes_written, None)
+        win32.win32file.WriteFile(fw2.handle, u"你好世界\n", 10, &bytes_written, None)
         viperlib.snprintf(buf, 256, "[chinese] T2: wrote %d WCHAR bytes", bytes_written)
         print(buf)
         fw2.close()
@@ -346,7 +346,7 @@ def fileio_chinese_test():
         print(buf)
         fr2.close()
 
-        w32.win32file.DeleteFileW(u"中文内容.txt")
+        win32.win32file.DeleteFileW(u"中文内容.txt")
         print("[chinese] T2: deleted")
 
     # === T3: Chinese filename + mixed ANSI + wide content ===
@@ -357,14 +357,14 @@ def fileio_chinese_test():
     else:
         fw3.write_str("ASCII line\n")
         # u"中文行\n" = 4 WCHARs = 8 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw3.handle, u"中文行\n", 8, &bytes_written, None)
+        win32.win32file.WriteFile(fw3.handle, u"中文行\n", 8, &bytes_written, None)
         fw3.seek(0, SEEK_SET)
         n: LONG = fw3.read_all(buf, 512)
         viperlib.snprintf(buf, 256, "[chinese] T3: total %d bytes", n)
         print(buf)
         fw3.close()
 
-        w32.win32file.DeleteFileW(u"混合测试.txt")
+        win32.win32file.DeleteFileW(u"混合测试.txt")
         print("[chinese] T3: deleted")
 
     # === T4: Chinese filename + Chinese content via WriteConsoleW ===
@@ -374,7 +374,7 @@ def fileio_chinese_test():
         print("[chinese] T4: create failed")
     else:
         # u"你好，世界！\n" = 7 WCHARs = 14 bytes (UTF-16LE)
-        w32.win32file.WriteFile(fw4.handle, u"你好，世界！\n", 14, &bytes_written, None)
+        win32.win32file.WriteFile(fw4.handle, u"你好，世界！\n", 14, &bytes_written, None)
         viperlib.snprintf(buf, 256, "[chinese] T4: wrote %d WCHAR bytes", bytes_written)
         print(buf)
         fw4.close()
@@ -385,11 +385,11 @@ def fileio_chinese_test():
         print(buf)
         # Print wide content to console using WriteConsoleW
         chars_written: ULONG = 0
-        hOut: w32.win32base.HANDLE = w32.win32file.GetStdHandle(w32.win32file.STD_OUTPUT_HANDLE)
-        w32.win32console.WriteConsoleW(hOut, u"你好，世界！\n", 7, &chars_written, None)
+        hOut: win32.win32base.HANDLE = win32.win32file.GetStdHandle(win32.win32file.STD_OUTPUT_HANDLE)
+        win32.win32console.WriteConsoleW(hOut, u"你好，世界！\n", 7, &chars_written, None)
         fr4.close()
 
-        w32.win32file.DeleteFileW(u"控制台测试.txt")
+        win32.win32file.DeleteFileW(u"控制台测试.txt")
         print("[chinese] T4: deleted")
 
     stdlib.free(buf)

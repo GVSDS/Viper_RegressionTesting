@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 from t import CInt, CPtr, CChar, CInt32T, CUInt64T, CFloat64T, CExport, State
 import viperlib
@@ -257,8 +257,8 @@ class ElectricCar(Car):
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("OopInheritTest: OOP 继承与多态专项测试")
 

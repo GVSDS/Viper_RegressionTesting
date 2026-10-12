@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 from t import CInt, CExport
 import memhub
@@ -7,8 +7,8 @@ import mbuddytest
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     # BuddyTest has a negative case that deliberately double-frees. With memhub's
     # [MEMDBG] checks on (_memdbg_enable=1) the second free aborts, so disable it.

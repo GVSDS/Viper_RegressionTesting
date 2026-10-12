@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 from t import CInt, CExport
 import stdio
@@ -21,8 +21,8 @@ def bump_false(buf: bytes) -> bool:
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("if 短路机制测试")
 

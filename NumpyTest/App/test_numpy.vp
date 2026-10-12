@@ -5,7 +5,7 @@ from stdlib import calloc, free
 import string
 import math
 import memhub
-import w32.win32base
+import win32.win32base
 import t, c
 
 # ============================================================
@@ -71,7 +71,7 @@ def section_footer():
 # Timer: monotonic clock (GetTickCount64 ms -> s) via Win32 API.
 # ============================================================
 def timer_sec() -> double:
-    return double(w32.win32base.GetTickCount64()) / double(1000.0)
+    return double(win32.win32base.GetTickCount64()) / double(1000.0)
 
 
 # ============================================================
@@ -988,7 +988,7 @@ def test_numpy_correct() -> int:
     global arena, pool, test_passed, test_failed
 
     arena = calloc(2 * 1024 * 1024, 1)
-    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+    pool = new memhub.MemPool(arena, 2 * 1024 * 1024)
 
     test_passed = 0
     test_failed = 0
@@ -1038,7 +1038,7 @@ def test_numpy_edge_main() -> int:
     global arena, pool, test_passed, test_failed
 
     arena = calloc(2 * 1024 * 1024, 1)
-    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+    pool = new memhub.MemPool(arena, 2 * 1024 * 1024)
 
     test_passed = 0
     test_failed = 0
@@ -1060,7 +1060,7 @@ def bench_numpy_main() -> int:
     global arena, pool
 
     arena = calloc(8 * 1024 * 1024, 1)
-    pool = memhub.MemPool(arena, 8 * 1024 * 1024)
+    pool = new memhub.MemPool(arena, 8 * 1024 * 1024)
 
     printf("==============================================\n")
     printf("  numpy Performance Benchmark\n")
@@ -1077,7 +1077,7 @@ def test_numpy_main() -> int:
     global arena, pool
 
     arena = calloc(2 * 1024 * 1024, 1)
-    pool = memhub.MemPool(arena, 2 * 1024 * 1024)
+    pool = new memhub.MemPool(arena, 2 * 1024 * 1024)
 
     failed: int = test_numpy_correct()
     if failed == 0:

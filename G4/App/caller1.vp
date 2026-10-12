@@ -31,10 +31,10 @@ def caller1_sum_chain(head: G4Node*) -> int:
     """Sum the chain by walking Next directly."""
     if head is None:
         return 0
-    total: int = head.IntVal
+    total: int = int(head.IntVal)
     cur: G4Node* = head
     # Access Next directly (bypass g4node_get_next).
     while cur.Next is not None:
         cur = cur.Next
-        total = total + cur.IntVal
+        total = total + int(cur.IntVal)
     return total

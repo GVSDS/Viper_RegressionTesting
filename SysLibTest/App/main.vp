@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 from t import CInt, CExport
 import memhub
@@ -19,8 +19,8 @@ define ARENA_SIZE = 1048576
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     # Initialize the global MBuddy allocator.
     arena: bytes = stdlib.malloc(ARENA_SIZE)

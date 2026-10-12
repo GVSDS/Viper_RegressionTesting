@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 from t import CInt, CPtr, CChar, CInt32T, CFloat64T, CExport, State
 import viperlib
@@ -138,8 +138,8 @@ class Vec2Both(Vec2M, Vec2Extra):
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("MultiInheritTest: 多继承专项测试")
 

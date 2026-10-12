@@ -2,6 +2,7 @@ import t
 import stdio
 import string
 import testcheck
+import win32.win32memory
 
 # Define structs
 class Point():
@@ -59,7 +60,7 @@ def point_sum(p: Point) -> int:
 def test_struct_array():
     testcheck.section("Test 5: struct array")
     # Allocate a struct array
-    buf: uint8* = w32.win32memory.VirtualAlloc(None, 256, 12288, 4)
+    buf: uint8* = win32.win32memory.VirtualAlloc(None, 256, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
@@ -73,7 +74,6 @@ def test_struct_array():
     total: int = pts[0].x + pts[0].y + pts[1].x + pts[1].y
     testcheck.check(total == 10, "struct array (total=10)", "struct array (total expect 10)")
 
-import w32.win32memory
 
 def main() -> int:
     testcheck.begin("StructTest: 结构体操作基准测试")

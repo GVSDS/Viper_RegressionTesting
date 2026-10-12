@@ -4,7 +4,7 @@ from stdio import printf
 import memhub
 import json
 import string
-import w32.win32memory as win32mem
+import win32.win32memory as win32mem
 import testcheck
 
 # --- Test 1: construct JSON values (with mpool) ---

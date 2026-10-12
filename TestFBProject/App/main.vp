@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import t, c
 import testcheck
 
@@ -35,8 +35,8 @@ def raise_timeout():
 
 
 def main() -> int | t.CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("TestFBProject: 异常处理与LLVMIR测试")
 

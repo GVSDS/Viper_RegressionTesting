@@ -7,7 +7,7 @@ import stdlib
 import sys
 import string
 import ast
-import w32.win32console
+import win32.win32console
 
 
 # MBuddy arena size: 1MB
@@ -94,8 +94,8 @@ def classify_print(node: ast.AST*, depth: int):
 
 
 def main() -> CInt | CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     printf("AST Comprehensive Test Start\n")
 

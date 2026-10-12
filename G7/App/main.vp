@@ -31,7 +31,7 @@ def test_value_struct_fields():
     node.IntVal = 42
     node.FloatVal = 3.14
     # Read back and verify
-    v: int = node.IntVal
+    v: int = int(node.IntVal)
     testcheck.check(v == 42, "Value.IntVal = 42", "expect 42")
     f: double = node.FloatVal
     testcheck.check(f > 3.0 and f < 4.0, "Value.FloatVal = 3.14", "expect ~3.14")

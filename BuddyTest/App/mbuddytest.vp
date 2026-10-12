@@ -6,9 +6,9 @@ import stdlib
 import memhub
 import string
 import testcheck
-import w32.win32process
-import w32.win32sync
-import w32.win32base
+import win32.win32process
+import win32.win32sync
+import win32.win32base
 
 
 # Thread body: alloc/free on a shared MBuddy to exercise the spinlock
@@ -386,14 +386,14 @@ def mbuddy_main() -> CInt:
     # Spawn 4 threads doing concurrent alloc/free
     t_idx: CInt
     for t_idx in range(NUM_THREADS):
-        h: bytes = w32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, &tid)
+        h: bytes = win32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, &tid)
         handles[t_idx] = CUInt64T(h)
 
     # Wait for all threads to finish
     for t_idx in range(NUM_THREADS):
         h: bytes = t.CPtr(handles[t_idx])
-        w32.win32sync.WaitForSingleObject(h, w32.win32base.INFINITE)
-        w32.win32base.CloseHandle(h)
+        win32.win32sync.WaitForSingleObject(h, win32.win32base.INFINITE)
+        win32.win32base.CloseHandle(h)
 
     # Verify allocator state: self-check passes and all blocks coalesced
     testcheck.check(bd_mt.self_check() == 0, "mt: self_check OK", "mt: self_check FAILED")

@@ -2,8 +2,8 @@ from stdint import *
 import t, c
 import stdio
 import string
-import w32.win32console
-import w32.win32memory
+import win32.win32console
+import win32.win32memory
 import testcheck
 
 # PointerTest: pointer operations, global declarations, array decay, pointer arithmetic
@@ -26,7 +26,7 @@ def test_global_write_no_decl():
 
 def test_global_ptr():
     global _g_ptr
-    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = win32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if buf:
         string.memset(buf, 0, 256)
         _g_ptr = buf
@@ -45,7 +45,7 @@ def test_global_ptr_no_decl():
 # --- Test 2: pointer arithmetic and array indexing ---
 def test_pointer_arithmetic():
     """Verify pointer arithmetic computes offsets correctly."""
-    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = win32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer arithmetic: VirtualAlloc returned NULL")
         return
@@ -85,7 +85,7 @@ def test_array_decay():
 # --- Test 4: pointer type casts (CVoid/CPtr) ---
 def test_pointer_cast():
     """Cast between pointers and integers."""
-    buf: uint32* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint32* = win32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer cast: VirtualAlloc returned NULL")
         return
@@ -108,7 +108,7 @@ def test_pointer_cast():
 # --- Test 5: pointer offset (byte offset vs element offset) ---
 def test_pointer_offset():
     """CUInt8T* + N advances N bytes; CUInt32T* + N advances N*4 bytes."""
-    buf: uint8* = w32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
+    buf: uint8* = win32.win32memory.VirtualAlloc(None, 256, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer offset: VirtualAlloc returned NULL")
         return
@@ -153,8 +153,8 @@ def test_struct_pointer():
 # --- Test 7: memcpy/memset through pointers ---
 def test_memcpy_pointers():
     """Copy data between pointers with memcpy."""
-    src_buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
-    dst_buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    src_buf: uint32* = win32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    dst_buf: uint32* = win32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not src_buf or not dst_buf:
         testcheck.fail("memcpy: VirtualAlloc returned NULL")
         return
@@ -182,7 +182,7 @@ def fill_array(arr: uint32*, count: int, val: uint32):
 
 def test_pointer_param():
     """Pass a pointer as a function parameter."""
-    buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    buf: uint32* = win32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not buf:
         testcheck.fail("pointer param: VirtualAlloc returned NULL")
         return
@@ -197,11 +197,11 @@ def test_pointer_param():
 
 
 def main() -> int | t.CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     print("你好")
-    l: t.CArray[char, 2] = 0
+    l: t.CArray[char, 2] = None
     for i in "hello":
         l[0] = i
         print(l)

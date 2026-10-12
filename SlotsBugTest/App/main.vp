@@ -8,12 +8,15 @@ import ast
 # VoidType alloca; ast.expr (invalid) errors, ast.AST (valid) compiles.
 # ============================================================
 class Result:
+    elem_type_node: ast.AST
+    count_node: ast.AST*
+    is_pointer: bool
     __slots__ = ('elem_type_node', 'count_node', 'is_pointer')
 
     def __init__(self, elem: ast.AST, count: ast.AST*, flag: bool) -> None:
-        self.elem_type_node: ast.AST = elem
-        self.count_node: ast.AST* = count
-        self.is_pointer: bool = flag
+        self.elem_type_node = elem
+        self.count_node = count
+        self.is_pointer = flag
 
 def main() -> int:
     return 0

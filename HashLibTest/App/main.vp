@@ -6,7 +6,7 @@ import testcheck
 import hashlib
 import binascii
 import base64
-import w32.win32console
+import win32.win32console
 
 
 # ==============================================
@@ -23,8 +23,8 @@ def default_value_test_function(a: int, b: int = 1):
 
 
 def main() -> int | t.CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("HashLibTest: 哈希与校验测试")
 

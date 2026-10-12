@@ -2,8 +2,8 @@ from stdint import *
 import t, c
 import stdio
 import string
-import w32.win32console
-import w32.win32memory
+import win32.win32console
+import win32.win32memory
 import testcheck
 
 # TypeCastTest: type casts, zext/sext/trunc behavior,
@@ -116,7 +116,7 @@ def test_comparison_types():
 
 # --- Test 12: pointer/integer casts ---
 def test_ptr_int_cast():
-    buf: uint32* = w32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
+    buf: uint32* = win32.win32memory.VirtualAlloc(None, 64, 0x3000, 0x04)
     if not buf:
         testcheck.fail("VirtualAlloc returned NULL")
         return
@@ -159,8 +159,8 @@ def test_ternary():
 
 
 def main() -> int | t.CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("TypeCastTest: 类型转换与运算基准测试")
 

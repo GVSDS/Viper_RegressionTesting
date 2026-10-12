@@ -4,7 +4,7 @@ import stdio
 import testcheck
 import string
 import viperlib
-import w32.win32console
+import win32.win32console
 
 # ============================================================
 # VariadicTest - check snprintf/printf variadic argument passing
@@ -163,8 +163,8 @@ def test_snprintf_u8_edge():
 
 
 def main() -> int | t.CExport:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("VariadicTest: snprintf/printf variadic 参数测试")
 

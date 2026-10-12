@@ -13,9 +13,9 @@ import shutil
 import sys
 import subprocess
 import string
-import w32.fileio
-import w32.win32base
-import w32.win32process
+import win32.fileio
+import win32.win32base
+import win32.win32process
 
 
 # Temp file/dir name prefixes used by tests
@@ -174,7 +174,7 @@ def run() -> CInt:
     testcheck.section("shutil 高级文件操作")
 
     # Create test file
-    f: w32.fileio.File | CPtr = w32.fileio.File(TEST_FILE, w32.fileio.MODE.W)
+    f: win32.fileio.File | CPtr = win32.fileio.File(TEST_FILE, win32.fileio.MODE.W)
     testcheck.check(not f.closed, "create test file OK", "create test file FAILED")
     f.write_str("hello shutil")
     f.close()
@@ -203,7 +203,7 @@ def run() -> CInt:
     testcheck.check(os.mkdir(subdir) == 0, "mkdir subdir OK", "mkdir subdir FAILED")
     # Create a file inside the subdir
     subfile: str = os.path.join(subdir, "leaf.txt")
-    sf: w32.fileio.File | CPtr = w32.fileio.File(subfile, w32.fileio.MODE.W)
+    sf: win32.fileio.File | CPtr = win32.fileio.File(subfile, win32.fileio.MODE.W)
     sf.write_str("leaf")
     sf.close()
     testcheck.check(os_backend.os_exists(subfile), "create subfile OK", "create subfile FAILED")

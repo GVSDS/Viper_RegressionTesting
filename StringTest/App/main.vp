@@ -2,7 +2,7 @@ import t
 import stdio
 import string
 import testcheck
-import w32.win32memory
+import win32.win32memory
 
 def test_strlen():
     testcheck.section("Test 1: strlen")
@@ -12,7 +12,7 @@ def test_strlen():
 
 def test_strcpy():
     testcheck.section("Test 2: strcpy")
-    buf: char* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    buf: char* = win32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
@@ -23,7 +23,7 @@ def test_strcpy():
 
 def test_strcat():
     testcheck.section("Test 3: strcat (via memcpy)")
-    buf: char* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    buf: char* = win32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
@@ -45,7 +45,7 @@ def test_strcmp():
 
 def test_strncpy():
     testcheck.section("Test 5: strncpy")
-    buf: char* = w32.win32memory.VirtualAlloc(None, 64, 12288, 4)
+    buf: char* = win32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
@@ -62,7 +62,7 @@ def test_char_access():
 
 def test_snprintf():
     testcheck.section("Test 7: snprintf")
-    buf: char* = w32.win32memory.VirtualAlloc(None, 128, 12288, 4)
+    buf: char* = win32.win32memory.VirtualAlloc(None, 128, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
         return
@@ -70,8 +70,6 @@ def test_snprintf():
     stdio.snprintf(buf, 128, "value=%d hex=0x%x str=%s", 42, 255, "test")
     cmp_result: int = string.strcmp(buf, "value=42 hex=0xff str=test")
     testcheck.check(cmp_result == 0, "snprintf (result=value=42 hex=0xff str=test)", "snprintf (result mismatch)")
-
-import w32.win32memory
 
 def main() -> int:
     testcheck.begin("StringTest: 字符串操作基准测试")

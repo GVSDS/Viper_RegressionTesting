@@ -27,7 +27,7 @@ def test_g4node_create():
         testcheck.check(False, "new_g4node", "FAIL")
         return
     n.IntVal = 42
-    v: int = n.IntVal
+    v: int = int(n.IntVal)
     testcheck.check(v == 42, "G4Node.IntVal = 42", "expect 42")
 
 
@@ -50,7 +50,7 @@ def test_g4node_next_field():
     if next_node is None:
         testcheck.check(False, "g4node_get_next", "FAIL")
         return
-    v: int = next_node.IntVal
+    v: int = int(next_node.IntVal)
     testcheck.check(v == 20, "n1.Next.IntVal = 20", "expect 20")
 
 
@@ -72,11 +72,11 @@ def test_g4node_chain():
     c.IntVal = 3
     g4node_set_next(a, b)
     g4node_set_next(b, c)
-    sum: int = a.IntVal
+    sum: int = int(a.IntVal)
     p: G4Node* = g4node_get_next(a)
-    sum = sum + p.IntVal
+    sum = sum + int(p.IntVal)
     p = g4node_get_next(p)
-    sum = sum + p.IntVal
+    sum = sum + int(p.IntVal)
     testcheck.check(sum == 6, "chain sum = 1+2+3 = 6", "expect 6")
 
 

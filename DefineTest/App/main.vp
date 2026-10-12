@@ -3,7 +3,7 @@ from t import CInt, CInt32T, CUInt32T, CUInt64T, CFloat64T, CPtr, CChar, CDefine
 import viperlib
 import stdlib
 import platmacro
-import w32.win32console
+import win32.win32console
 import testcheck
 
 
@@ -380,8 +380,8 @@ def test_cifdef_complex() -> CInt:
 
 
 def main() -> int:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("DefineTest: CDefine 宏与 cif 测试")
 
