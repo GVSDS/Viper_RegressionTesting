@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""TransPyC 回归测试脚本
+"""ViperC 回归测试脚本（全集版；可用 --escape/--only 跑子集）
 
-自动遍历 Test/ 目录下所有含 project.json 的项目目录，
-通过 os.system("python ../Projectrans.py --project ...") 执行编译。
-所有项目编译完成后，多线程执行编译结果，超时 5 秒强制结束。
-stdout 出现 failed/error 等字样也汇总到错误列表，并展示匹配行及上下 5 行。
+自动遍历 Test/ 目录下所有含 project.json 的项目目录并逐个编译。
+编译命令默认走 TPC 种子（TransPyC/Projectrans.py）；给 --exe 则直推自举产物
+（如 viperc.exe），与 SequentialRegressionTest.py 的 --exe 语义一致。
+所有项目编译完成后串行执行编译结果，超时 30 秒强制结束。
+退出码非 0 表示有失败。
 """
 import os
 import sys
@@ -12,6 +13,7 @@ import json
 import time
 import subprocess
 import re
+import argparse
 
 # 强制 stdout/stderr 使用 UTF-8 编码，避免 Windows GBK 编码在打印含替换字符的输出时崩溃
 try:
@@ -123,9 +125,26 @@ def select_named_projects(names):
     return sel
 
 
-def compile_project(name, proj_dir, proj_json_path):
+def build_compile_cmd(args):
+    """根据 --exe/--compiler 构建编译命令模板（{project} 为项目 json 路径占位）
+
+    --exe 指定编译器可执行文件（如 viperc.exe），优先于 --compiler；
+    两者都未指定时使用 TPC 种子（python TransPyC/Projectrans.py）。
+    --rebuild-includes 时追加 --rebuild-includes（全量重编 includes）。
+    """
+    suffix = " --rebuild-includes" if args.rebuild_includes else ""
+    if args.exe:
+        # 必须绝对化：每个项目都在自己的目录里执行（cwd=项目目录），相对 --exe 会按各自层级解析错位
+        exe_abs = os.path.abspath(args.exe)
+        return f'"{exe_abs}" --project {{project}} --clean{suffix}'
+    if args.compiler:
+        return args.compiler
+    return f'D:\\Python312\\python.exe -u "{PROJECTRANS}" --project {{project}} --clean{suffix}'
+
+
+def compile_project(name, proj_dir, proj_json_path, compile_cmd):
     """编译单个测试项目，返回 (success, elapsed, output)"""
-    cmd = f'D:\\Python312\\python.exe -u "{PROJECTRANS}" --project "{proj_json_path}" --clean'
+    cmd = compile_cmd.format(project=proj_json_path)
 
     start = time.time()
     result = subprocess.run(
@@ -213,17 +232,27 @@ def extract_error_context(stdout, stderr, context_lines=5):
 
 
 def main():
-    import argparse
-    ap = argparse.ArgumentParser(description="TransPyC 回归测试（可用 --escape/--only 单独跑子集）")
+    ap = argparse.ArgumentParser(description="ViperC 回归测试（可用 --escape/--only 单独跑子集）")
     ap.add_argument("--escape", action="store_true",
                     help="只跑 escape 相关项目（生命期/逃逸检查 + new 描述符）")
     ap.add_argument("--only", default=None,
                     help="只跑指定项目（逗号分隔，名字即目录名）")
+    ap.add_argument("--exe", default=None,
+                    help="编译器可执行文件（如 viperc.exe），用它编译测试项目（替代 TPC 种子）")
+    ap.add_argument("--compiler", default=None,
+                    help="自定义编译命令模板，用 {project} 表示项目 json 路径；默认 TPC python")
+    ap.add_argument("--rebuild-includes", action="store_true",
+                    help="每次编译追加 --rebuild-includes：清空 includes.binary 全量重编")
     args = ap.parse_args()
+    if args.exe and not os.path.isfile(os.path.abspath(args.exe)):
+        print(f"错误: --exe 不存在: {os.path.abspath(args.exe)}")
+        return 1
+    compile_cmd = build_compile_cmd(args)
 
     print("=" * 70)
-    print("TransPyC 回归测试")
+    print("ViperC 回归测试（默认 TPC 种子；--exe 可直推 viperc.exe）")
     print("=" * 70)
+    print(f"编译命令: {compile_cmd}")
     print()
 
     if args.escape:
@@ -248,7 +277,7 @@ def main():
     for idx, (name, proj_dir, proj_json) in enumerate(projects, 1):
         print(f"[{idx}/{total}] 编译 {name} ...", end=" ", flush=True)
         try:
-            compile_ok, elapsed, output = compile_project(name, proj_dir, proj_json)
+            compile_ok, elapsed, output = compile_project(name, proj_dir, proj_json, compile_cmd)
         except subprocess.TimeoutExpired:
             print("编译超时")
             compiled.append((name, proj_dir, proj_json, False, COMPILE_TIMEOUT, "编译超时（5分钟）"))
