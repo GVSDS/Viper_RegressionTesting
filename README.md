@@ -1,4 +1,4 @@
-# TPV 测试项目总览
+# VPC 测试项目总览
 
 本文档基于 `Test/` 目录下全部 77 个测试项目（原 68 个 + 2026-10 补录 9 个）的源码总结其功能，并**按实现难度升序**排列（简单在前、困难在后），供编译器开发按序推进。另有 `NegativeTest`（负向测试容器）不计入难度序列。
 
@@ -148,14 +148,20 @@
 | NewLifetimeRetEscapeTest | [Test/NewLifetimeRetEscapeTest/](NewLifetimeRetEscapeTest/App/main.vp) | **编译失败**：A2 —— 同模块 `@life(ret(frame))` 的返回值被写进**堆对象字段**（长命左值）→ `LifetimeError`（定义端按声明放行 `ret(frame)`，去向由**调用点**判定） |
 | NewLifetimeRetXmodTest | [Test/NewLifetimeRetXmodTest/](NewLifetimeRetXmodTest/App/main.vp) | **编译失败**：A2 **跨模块** —— 被调者（`retdep2.vp`）声明 `@life(noescape(x), ret(borrows=x))`，结果（生命期 = 实参 = 本帧）写进堆对象字段 → `LifetimeError`（契约经对方 `.vpi` 的 `escr=` 传来） |
 
-单独运行（`regression_test.py` 与 `SequentialRegressionTest.py` 都支持）：
+单独运行（三个 runner 都支持 `--exe`；`--escape` / `--only` 另两个也支持）：
 
 ```bash
-python Test/regression_test.py --escape            # 只跑上表全部项目
-python Test/regression_test.py --only NewTest      # 只跑指定项目（逗号分隔可多个）
-python Test/SequentialRegressionTest.py --escape --exe <TransPyV.exe> --rebuild-includes
-python Test/SequentialRegressionTest.py --only NewLifetimeTest --exe <TransPyV.exe>
+# 全集回归（默认走 TPC 种子 TransPyC/Projectrans.py；给 --exe 则直推自举产物）
+python Test/regression_test.py --exe .\ViperC\output\viperc.exe
+python Test/regression_test.py --exe .\ViperC\output\viperc.exe --only NewTest,FuncTest
+python Test/regression_test.py --escape                     # 只跑上表全部项目（默认 TPC 种子）
+
+# 顺序回归（按下面「建议实现顺序」逐个编译+运行，失败即停）
+python Test/SequentialRegressionTest.py --escape --exe <viperc.exe> --rebuild-includes
+python Test/SequentialRegressionTest.py --only NewLifetimeTest --exe <viperc.exe>
 ```
+
+> `--exe` 会被**绝对化**（每个项目在自己的目录里执行，相对路径会按项目层级错位）；`--rebuild-includes` 追加 `--rebuild-includes`（清空 `includes.binary` 全量重编，修缓存不一致导致的 undefined symbol）。
 
 > `--escape` / `--only` 会在 `Test/<名>` 与**仓库根** `<名>` 两处查找 `project.json` / `project.vpj`，所以根级 escape 项目也能直接跑；`--escape` 会忽略 README 的难度顺序。
 
@@ -164,11 +170,11 @@ python Test/SequentialRegressionTest.py --only NewLifetimeTest --exe <TransPyV.e
 > 之所以加 IR 断言：M3 的"出口释放"只靠"运行没崩"证明不了——**漏了释放是纯泄漏，进程照样退出码 0**；必须直接断言释放调用出现过。
 > 因此纳入该断言的项目**不得自己写 free**（否则用户代码的 `free` 会蒙混过关）：`NewLifetimeTest` 正是刻意不含任何用户级 `free`。
 
-**负向断言**（"应报 `LifetimeError`"）需要 TransPyV 编译——`NegativeTest/run_negative_tests.py` 用的是 TPC，而 `new` 描述符与 `LifetimeError` 只在 TPV 侧实现，故单独提供：
+**负向断言**（"应报 `LifetimeError`"）需要 ViperC 编译——`NegativeTest/run_negative_tests.py` 用的是 TPC，而 `new` 描述符与 `LifetimeError` 只在 VPC 侧实现，故单独提供：
 
 ```bash
-python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe
-python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe --only EscapeMethodTest
+python Test/run_lifetime_negative_tests.py --exe .\ViperC\output\viperc.exe
+python Test/run_lifetime_negative_tests.py --exe .\ViperC\output\viperc.exe --only EscapeMethodTest
 ```
 
 > 默认跑 `EscapeTest` / `EscapeMethodTest` / `EscapeXmodTest` / `NewLifetimeFreeTest` / `NewLifetimeAsyncTest` / `NewLifetimeWillFreeTest` / `NewLifetimeUseAfterFreeTest` / `NewLifetimeWillFreeKwargTest` / `NewLifetimeWillFreeMethodTest` / `NewLifetimeWillFreeAddrTest` / `NewLifetimeFieldEscapeTest` / `NewLifetimeAnnFieldEscapeTest` / `NewLifetimeRetEscapeTest` / `NewLifetimeRetXmodTest`：断言**编译失败且输出含 `LifetimeError`**；编译成功 = 漏检（FAIL），报错但方向不符 = SKIP。
@@ -177,7 +183,7 @@ python Test/run_lifetime_negative_tests.py --exe .\TransPyV\output\TransPyV.exe 
 
 ---
 
-## 二、建议实现顺序（难度升序，共 68 步）
+## 二、建议实现顺序（难度升序，共 77 步）
 
 按"先基础语法 → 再类型系统 → 再容器/OOP → 再泛型/闭包难点 → 最后编译器自身库与外部集成"推进，每步按依赖关系排序。
 
