@@ -1,0 +1,96 @@
+import testcheck
+import t
+
+
+# 大小端字节序专项：
+#   · 标记 `t.BigEndian` 的槽位，在（默认的）小端目标上必须以**大端字节序列**存放；
+#   · 标记 `t.LittleEndian` 的槽位与目标序一致，按目标序存放；
+#   · 无标记 = native，不参与任何交换。
+# 因此本测试既校验「读写成对交换」的语义不变式（round-trip），
+# 又**直接检查内存里的字节序列** —— 只有后者能真正证明交换发生了
+# （纯 round-trip 即使不交换也会通过，因为读写交换会互相抵消）。
+
+
+def read_byte(p: rawptr, i: int) -> int:
+    """读指针第 i 个字节；i8 按有符号解释，这里只取低 8 位。"""
+    return int(p[i]) & 0xFF
+
+
+def test_big_endian_local() -> None:
+    """大端局部变量：内存字节必须是 12 34 56 78（MSB 在前），读回值不变。"""
+    testcheck.section("BigEndian local variable")
+    x: t.CInt32T | t.BigEndian = 0x12345678
+    px: rawptr = rawptr(&x)
+    testcheck.check(read_byte(px, 0) == 0x12, "BigEndian memory byte[0] = 0x12 (MSB first)", "expect 0x12")
+    testcheck.check(read_byte(px, 1) == 0x34, "BigEndian memory byte[1] = 0x34", "expect 0x34")
+    testcheck.check(read_byte(px, 2) == 0x56, "BigEndian memory byte[2] = 0x56", "expect 0x56")
+    testcheck.check(read_byte(px, 3) == 0x78, "BigEndian memory byte[3] = 0x78 (LSB last)", "expect 0x78")
+    testcheck.check(x == 0x12345678, "BigEndian local round-trip", "expect 0x12345678")
+
+
+def test_little_endian_local() -> None:
+    """小端局部变量：小端目标上与目标序一致，内存字节是 78 56 34 12（LSB 在前）。"""
+    testcheck.section("LittleEndian local variable")
+    y: t.CInt32T | t.LittleEndian = 0x12345678
+    py: rawptr = rawptr(&y)
+    testcheck.check(read_byte(py, 0) == 0x78, "LittleEndian memory byte[0] = 0x78 (LSB first)", "expect 0x78")
+    testcheck.check(read_byte(py, 3) == 0x12, "LittleEndian memory byte[3] = 0x12", "expect 0x12")
+    testcheck.check(y == 0x12345678, "LittleEndian local round-trip", "expect 0x12345678")
+
+
+def test_be_le_differ() -> None:
+    """同一值分别按大端/小端存放，内存字节序列必须互为反转。"""
+    testcheck.section("BigEndian vs LittleEndian memory layout")
+    a: t.CInt32T | t.BigEndian = 0x22334455
+    b: t.CInt32T | t.LittleEndian = 0x22334455
+    pa: rawptr = rawptr(&a)
+    pb: rawptr = rawptr(&b)
+    testcheck.check(read_byte(pa, 0) == read_byte(pb, 3), "BE byte[0] == LE byte[3]", "expect reversed byte order")
+    testcheck.check(read_byte(pa, 1) == read_byte(pb, 2), "BE byte[1] == LE byte[2]", "expect reversed byte order")
+    testcheck.check(read_byte(pa, 0) == 0x22, "BigEndian starts with MSB (0x22)", "expect 0x22")
+
+
+class NetHeader:
+    """经典用法：结构体成员带字节序标记（对齐 TransPyC 文档里的 NetHeader）。"""
+
+    magic: t.CInt32T | t.BigEndian
+    length: t.CInt16T | t.BigEndian
+    body: t.CInt32T
+
+
+def test_struct_field_roundtrip() -> None:
+    """结构体成员：带标记的字段读写必须相等（读写成对交换的语义不变式）。"""
+    testcheck.section("Byte-order struct fields")
+    h: NetHeader = NetHeader()
+    h.magic = 0x11223344
+    h.length = 0x5566
+    h.body = 0x778899AA
+    testcheck.check(h.magic == 0x11223344, "BigEndian field magic round-trip", "expect 0x11223344")
+    testcheck.check(h.length == 0x5566, "BigEndian field length round-trip", "expect 0x5566")
+    testcheck.check(h.body == 0x778899AA, "native field body round-trip", "expect 0x778899AA")
+    # 赋值后再读第二次，确保交换是成对的、不会逐次累积
+    testcheck.check(h.magic == 0x11223344, "BigEndian field second read unchanged", "expect 0x11223344")
+
+
+def test_repeated_write() -> None:
+    """反复写入不同值，读回始终正确（交换必须成对且不残留）。"""
+    testcheck.section("Repeated writes")
+    x: t.CInt32T | t.BigEndian = 0
+    i: int = 0
+    ok: int = 1
+    for i in range(int(4)):
+        v: t.CInt32T = t.CInt32T(0x10000000 * (i + 1))
+        x = v
+        if x != v:
+            ok = 0
+    testcheck.check(ok == 1, "BigEndian repeated writes stay consistent", "expect all round-trips to match")
+
+
+def main() -> int:
+    testcheck.begin("EndianTest: BigEndian / LittleEndian byte order")
+    test_big_endian_local()
+    test_little_endian_local()
+    test_be_le_differ()
+    test_struct_field_roundtrip()
+    test_repeated_write()
+    return testcheck.end()
