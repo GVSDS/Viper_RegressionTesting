@@ -68,7 +68,9 @@ def test_string_operations():
     printf("  PyUnicode_FromString -> %s\n", utf8)
 
     # String length
-    length: CLong = cpython.PyUnicode_GetLength(py_s1)
+    # PyUnicode_GetLength 返回 CPython 的 Py_ssize_t（= ptrdiff_t，64 位）；CLong 在本目标
+    # (x86_64-pc-windows-gnu / LLP64) 只有 32 位，用 CLong 接收会触发「隐式窄化禁止」。
+    length: t.CPtrDiffT = cpython.PyUnicode_GetLength(py_s1)
     testcheck.check(length == 13, "GetLength == 13", "GetLength == 13")
 
     # String concat

@@ -109,8 +109,8 @@ extern def PyLong_FromSize_t(v: sizet) -> PyObject*
 extern def PyLong_FromDouble(v: double) -> PyObject*
 extern def PyLong_AsLong(obj: PyObject*) -> int
 extern def PyLong_AsUnsignedLong(obj: PyObject*) -> t.CUnsignedLong
-extern def PyLong_AsLongLong(obj: PyObject*) -> t.CLong
-extern def PyLong_AsUnsignedLongLong(obj: PyObject*) -> t.CUnsignedLong
+extern def PyLong_AsLongLong(obj: PyObject*) -> t.CLongLong
+extern def PyLong_AsUnsignedLongLong(obj: PyObject*) -> t.CUnsignedLongLong
 extern def PyLong_AsDouble(obj: PyObject*) -> double
 extern def PyLong_AsSsize_t(obj: PyObject*) -> t.CPtrDiffT
 extern def PyLong_AsSize_t(obj: PyObject*) -> sizet
@@ -220,7 +220,7 @@ extern def PyObject_IsTrue(obj: PyObject*) -> int
 extern def PyObject_Not(obj: PyObject*) -> int
 extern def PyObject_RichCompare(o1: PyObject*, o2: PyObject*, opid: int) -> PyObject*
 extern def PyObject_RichCompareBool(o1: PyObject*, o2: PyObject*, opid: int) -> int
-extern def PyObject_Hash(obj: PyObject*) -> t.CLong
+extern def PyObject_Hash(obj: PyObject*) -> t.CPtrDiffT
 extern def PyObject_Length(obj: PyObject*) -> sizet
 extern def PyObject_GetItem(obj: PyObject*, key: PyObject*) -> PyObject*
 extern def PyObject_SetItem(obj: PyObject*, key: PyObject*, val: PyObject*) -> int
