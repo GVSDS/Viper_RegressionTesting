@@ -354,9 +354,14 @@ def test_module_print(pool: memhub.MemBuddy*):
     testcheck.info(buf)
     dump_mlir(pool, "T06_module.mlir", buf)
 
-    testcheck.check(string.strstr(buf, "module {") is not None,
-                    "contains 'module {'",
-                    "missing 'module {'")
+    # 模块头：triple / data layout 以 llvm.* 模块属性承载（见 mlirlite/__module.vp）。设了 target 之后
+    # 就不再是裸 `module {`——mlir-translate 会把这两个属性映射回 LLVM IR 的 target triple / datalayout。
+    testcheck.check(string.strstr(buf, "module attributes {llvm.target_triple = \"x86_64-pc-windows-gnu\"") is not None,
+                    "contains 'module attributes {llvm.target_triple = \"x86_64-pc-windows-gnu\"'",
+                    "missing 'module attributes {llvm.target_triple ...'")
+    testcheck.check(string.strstr(buf, "llvm.data_layout = \"e-m:w-p270:32:32\"") is not None,
+                    "contains 'llvm.data_layout = \"e-m:w-p270:32:32\"'",
+                    "missing 'llvm.data_layout = ...'")
     testcheck.check(string.strstr(buf, "llvm.func @add") is not None,
                     "contains 'llvm.func @add'",
                     "missing add function")
