@@ -1,6 +1,3 @@
-import t
-
-
 # Cross-module: single trailing default (mirrors write in includes/json/__writer.vp)
 def one(x: int, cap: sizet = 4096) -> sizet:
     return cap

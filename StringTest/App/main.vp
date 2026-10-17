@@ -1,4 +1,3 @@
-import t
 import stdio
 import string
 import testcheck

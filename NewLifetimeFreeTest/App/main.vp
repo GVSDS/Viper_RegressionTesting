@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import stdlib
 
 
@@ -18,8 +18,8 @@ novirtual class Point:
 
 
 export def main() -> int:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     p: Point* = new heap slife Point(1, 2)
     stdlib.free(p)          # ← 必须被拒：slife 由编译器在函数出口释放

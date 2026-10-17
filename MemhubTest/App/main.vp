@@ -1,6 +1,4 @@
 from stdint import *
-import t, c
-import stdio
 import stdlib
 import testcheck
 import memhub
@@ -8,7 +6,7 @@ import memhub
 
 # Polymorphism test: call through a MemManager base pointer, verify vtable dispatch
 def test_polymorphic(mgr: memhub.MemManager*, size: sizet) -> int:
-    p: t.CPtr = mgr.alloc(size)
+    p: rawptr = mgr.alloc(size)
     if p is None:
         return 0
     mgr.free(p)
@@ -17,18 +15,17 @@ def test_polymorphic(mgr: memhub.MemManager*, size: sizet) -> int:
 
 # Test calloc polymorphism: calloc is concrete but calls the virtual self.alloc
 def test_calloc_polymorphic(mgr: memhub.MemManager*) -> int:
-    p: t.CPtr = mgr.calloc(4, 8)
+    p: rawptr = mgr.calloc(4, 8)
     if p is None:
         return 0
     # Verify zero-fill: the first byte should be 0
-    first_byte: uint8 = uint8(*uint64(p, t.CPtr))
+    first_byte: uint8 = uint8(*(uint64*(p)))
     if first_byte != 0:
         return 0
     return 1
 
 
-@t.CExport
-def main() -> int:
+export def main() -> int:
     testcheck.begin("MemhubTest: polymorphic memory manager")
 
     arena1: bytes = stdlib.malloc(65536)
@@ -38,42 +35,42 @@ def main() -> int:
     # ========== MemPool (bump) ==========
     testcheck.section("MemPool (bump)")
     pool: memhub.MemPool = memhub.MemPool(arena1, 65536)
-    p1: t.CPtr = pool.alloc(100)
+    p1: rawptr = pool.alloc(100)
     testcheck.check(p1 is not None, "MemPool alloc 100", "FAIL")
-    p2: t.CPtr = pool.alloc(200)
+    p2: rawptr = pool.alloc(200)
     testcheck.check(p2 is not None, "MemPool alloc 200", "FAIL")
     testcheck.check(uint64(p1) != uint64(p2), "MemPool different ptrs", "FAIL")
     pool.reset()
-    p3: t.CPtr = pool.alloc(100)
+    p3: rawptr = pool.alloc(100)
     testcheck.check(p3 is not None, "MemPool alloc after reset", "FAIL")
     testcheck.check(uint64(p3) == uint64(p1), "MemPool reset reuses addr", "FAIL")
 
     # ========== MemSlab (fixed block) ==========
     testcheck.section("MemSlab (fixed block)")
     slab: memhub.MemSlab = memhub.MemSlab(arena2, 65536, 64)
-    s1: t.CPtr = slab.alloc(32)
+    s1: rawptr = slab.alloc(32)
     testcheck.check(s1 is not None, "MemSlab alloc 32", "FAIL")
-    s2: t.CPtr = slab.alloc(64)
+    s2: rawptr = slab.alloc(64)
     testcheck.check(s2 is not None, "MemSlab alloc 64", "FAIL")
-    s3: t.CPtr = slab.alloc(128)
+    s3: rawptr = slab.alloc(128)
     testcheck.check(s3 is None, "MemSlab alloc > block_size fails", "FAIL")
     slab.free(s1)
-    s4: t.CPtr = slab.alloc(32)
+    s4: rawptr = slab.alloc(32)
     testcheck.check(s4 is not None, "MemSlab alloc after free", "FAIL")
     testcheck.check(uint64(s4) == uint64(s1), "MemSlab free reuse addr", "FAIL")
 
     # ========== MemBuddy (buddy system) ==========
     testcheck.section("MemBuddy (buddy system)")
     buddy: memhub.MemBuddy = memhub.MemBuddy(arena3, 65536)
-    b1: t.CPtr = buddy.alloc(100)
+    b1: rawptr = buddy.alloc(100)
     testcheck.check(b1 is not None, "MemBuddy alloc 100", "FAIL")
-    b2: t.CPtr = buddy.alloc(200)
+    b2: rawptr = buddy.alloc(200)
     testcheck.check(b2 is not None, "MemBuddy alloc 200", "FAIL")
     buddy.free(b1)
-    b3: t.CPtr = buddy.alloc(100)
+    b3: rawptr = buddy.alloc(100)
     testcheck.check(b3 is not None, "MemBuddy alloc after free", "FAIL")
     # Grow via realloc
-    b4: t.CPtr = buddy.realloc(b2, 400)
+    b4: rawptr = buddy.realloc(b2, 400)
     testcheck.check(b4 is not None, "MemBuddy realloc 200->400", "FAIL")
 
     # ========== Polymorphic dispatch (core test) ==========

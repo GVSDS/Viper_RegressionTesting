@@ -1,12 +1,9 @@
-import t, c
-from t import CInt, CInt32T, CUInt32T, CPtr, CChar, CExport
 from stdint import *
 import stdlib
 import viperlib
 import win32.win32base
 import win32.win32file
 import win32.win32console
-import win32.fileio
 from win32.fileio import File, FileW, MODE, FRESULT, SEEK_SET, SEEK_CUR, SEEK_END
 
 
@@ -39,10 +36,10 @@ def fileio_main():
 
     viperlib.snprintf(write_buf, BUF_SIZE, "Hello from TransPyC Win32 FileIO!\nLine 2: %d + %d = %d\n", 10, 20, 30)
     write_len: ULONG = 0
-    i: CInt = 0
+    i: int = 0
     ch: bytes = write_buf
     while i < BUF_SIZE:
-        if CInt(*ch) == 0:
+        if *ch == 0:
             break
         write_len = write_len + 1
         i = i + 1
@@ -82,7 +79,7 @@ def fileio_main():
 
     read_ptr: bytes = read_buf
     read_ptr = read_ptr + read_len
-    c.DerefAs(read_ptr, 0)
+    *read_ptr = 0
     print("--- File content ---")
     print(read_buf)
     print("--- End ---")

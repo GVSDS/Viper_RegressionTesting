@@ -6,7 +6,6 @@ from stdio import printf
 import stdlib
 from string import strlen
 import string
-import t, c
 
 
 test_passed: int = 0
@@ -613,7 +612,7 @@ def test_huffman_tree():
     printf("  All 32 distance codes: 5 bits each\n")
 
     printf("\n  --- Dynamic Huffman tree from frequencies ---\n")
-    dyn_freqs: t.CArray[int, 256]
+    dyn_freqs: [256]int
     string.memset(dyn_freqs, 0, dyn_freqs.__sizeof__())
     dyn_freqs['A'] = 50
     dyn_freqs['B'] = 25
@@ -643,8 +642,8 @@ def test_huffman_tree():
     printf("  Active codes: %d, max code lengthgth: %d\n", total_codes, max_length_found)
 
     printf("  Code assignments:\n")
-    names: t.CArray[str, None] = ["A","B","C","D","E","F"] # all char* array
-    syms: t.CArray[int, None] = ['A','B','C','D','E','F']
+    names: []str = ["A","B","C","D","E","F"] # all char* array
+    syms: []int = ['A','B','C','D','E','F']
     for i in range(6):
         printf("    '%s' (freq=%3d): code=0x%04X, bits=%d\n",
                 names[i], dyn_freqs[syms[i]],
@@ -663,7 +662,7 @@ def test_huffman_tree():
 
     printf("\n  --- Huffman encode/decode roundtrip ---\n")
     
-    rt_freqs: t.CArray[int, 288]
+    rt_freqs: [288]int
     string.memset(rt_freqs, 0, rt_freqs.__sizeof__())
     rt_freqs['H'] = 10
     rt_freqs['e'] = 8
@@ -684,7 +683,7 @@ def test_huffman_tree():
 
     writer = zdef.zbit_writer(None)
 
-    symbols: t.CArray[int, None] = ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', 256]
+    symbols: []int = ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', 256]
     num_symbols: int = 13
 
     for i in range(num_symbols):
@@ -710,7 +709,7 @@ def test_huffman_tree():
     stdlib.free(writer.buf)
 
     printf("\n  --- Overflow handling (many symbols, limited max_bits) ---\n")
-    of_freqs: t.CArray[int, 256]
+    of_freqs: [256]int
     for i in range(256):
         of_freqs[i] = 1
     of_freqs[256] = 1
@@ -785,7 +784,7 @@ def test_huffman_tree():
 
 
     printf("\n  --- Kraft inequality check ---\n")
-    kf_freqs: t.CArray[int, 256]
+    kf_freqs: [256]int
     string.memset(kf_freqs, 0, kf_freqs.__sizeof__())
     kf_freqs['X'] = 100
     kf_freqs['Y'] = 50

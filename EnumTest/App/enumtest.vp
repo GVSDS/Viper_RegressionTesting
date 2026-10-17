@@ -1,45 +1,40 @@
-import t, c
-from t import CInt, CPtr, CChar, CInt32T, CExport
 import viperlib
 import stdlib
 
 
-class Color(t.CEnum):
-    Red = 0
-    Green = 1
-    Blue = 2
+enum Color:
+    Red, Green, Blue
 
-
-class Option(t.REnum):
+renum Option:
     class Some:
-        value: CInt
+        value: int
     Empty = 1
 
 
-class Result(t.REnum):
+renum Result:
     class Ok:
-        value: CInt
+        value: int
     class Err:
-        msg: char | CPtr
+        msg: str
 
 
-class GeoShape(t.REnum):
+renum GeoShape:
     class GCircle:
-        radius: CInt
+        radius: int
     class GRect:
-        w: CInt
-        h: CInt
+        w: int
+        h: int
     class GPoint:
-        x: CInt
-        y: CInt
+        x: int
+        y: int
 
 
-def enum_main() -> CInt:
-    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+def enum_main() -> int:
+    buf: str = stdlib.malloc(256)
 
-    c1: CInt = Color.Red
-    c2: CInt = Color.Green
-    c3: CInt = Color.Blue
+    c1: int = Color.Red
+    c2: int = Color.Green
+    c3: int = Color.Blue
     viperlib.snprintf(buf, 256, "CEnum: Red=%d Green=%d Blue=%d", c1, c2, c3)
     print(buf)
 

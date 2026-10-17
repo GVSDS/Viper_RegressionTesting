@@ -1,4 +1,3 @@
-import t, c
 from stdint import *
 import stdio
 import coro

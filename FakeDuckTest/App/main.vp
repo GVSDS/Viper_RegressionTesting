@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CExport
 import _fakeduck
 import stdio
 import stdlib
@@ -11,7 +9,7 @@ import testcheck
 import _withcontent
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
@@ -19,7 +17,7 @@ def main() -> CInt | CExport:
     a: str = "Hello"
 
     # Type base class: str calls Type.type_id()
-    tid: CInt = a.type_id()
+    tid: int = a.type_id()
 
     if tid == 99:
         stdio.printf("Type OK: a.type_id() = %d\n", tid)

@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CExport
 import stdio
 import stdlib
 import string
@@ -10,7 +8,7 @@ import hashtable
 import testcheck
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 

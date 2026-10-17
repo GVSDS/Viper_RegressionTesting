@@ -1,9 +1,8 @@
-import t, c
 import testcheck
 import vectortest
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("VectorGenericTest: Vector 泛型测试")
     testcheck.section("Vector 泛型")
     vectortest.vector_main()

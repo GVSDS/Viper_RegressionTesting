@@ -1,12 +1,10 @@
-import t, c
-from t import CInt, CPtr, CChar
 import viperlib
 import viperio
 import stdlib
 import memhub
 
 
-def mpool_main() -> CInt:
+def mpool_main() -> int:
     buf: bytes = stdlib.malloc(256)
 
     arena: bytes = stdlib.malloc(4096)
@@ -56,7 +54,7 @@ def mpool_main() -> CInt:
     stdlib.free(arena2)
 
     arena3: bytes = stdlib.malloc(4096)
-    hpool: memhub.MemPool | CPtr = memhub.MemPool(arena3, 4096)
+    hpool: memhub.MemPool* = memhub.MemPool(arena3, 4096)
     h1: bytes = hpool.alloc(32)
     h2: bytes = hpool.alloc(64)
     if h1 != None and h2 != None:
@@ -78,7 +76,7 @@ def mpool_main() -> CInt:
 
     arena4: bytes = stdlib.malloc(4096)
     with memhub.MemPool(arena4, 4096) as bpool:
-        wb: viperio.Buf | CPtr = bpool.alloc_buf(128)
+        wb: viperio.Buf* = bpool.alloc_buf(128)
         if wb.data != None:
             viperlib.snprintf(wb.cstr(), 128, "MPool alloc_buf: hello from Buf!")
             print(wb.cstr())

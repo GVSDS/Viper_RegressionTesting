@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 import stdlib
 import memhub
@@ -14,8 +12,7 @@ from linkedlist import GSListNode, GSList
 
 
 # G5Node: inherits GSListNode[G5Node] (Phase2 path, correct specialization)
-@t.NoVTable
-class G5Node(GSListNode[G5Node]):
+novirtual class G5Node(GSListNode[G5Node]):
     Value: int
 
     def __init__(self):
@@ -27,8 +24,7 @@ class G5Node(GSListNode[G5Node]):
 # field access; a pool factory allocates it, avoiding dangling stack pointers.
 define GSLIST_SIZE = 24  # Head(8) + Tail(8) + Count(8)
 
-@t.NoVTable
-class G5ListWrapper:
+novirtual class G5ListWrapper:
     List: GSList[G5Node]*
 
     def __init__(self, pool: memhub.MemBuddy*):

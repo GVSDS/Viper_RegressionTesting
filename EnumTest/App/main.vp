@@ -1,9 +1,8 @@
-import t, c
 import testcheck
 import enumtest
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("EnumTest: 枚举类型测试")
     testcheck.section("Enum")
     enumtest.enum_main()

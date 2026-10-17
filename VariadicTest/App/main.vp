@@ -1,5 +1,4 @@
 from stdint import *
-import t, c
 import stdio
 import testcheck
 import string
@@ -17,7 +16,7 @@ def test_snprintf_u8():
     hr: uint8 = 14
     mn: uint8 = 30
     sc: uint8 = 59
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%02u:%02u:%02u", uint(hr), uint(mn), uint(sc))
     stdio.printf("Test1 (CUInt8T->%%u): [%s] (expect 14:30:59)\n", &buf)
@@ -29,7 +28,7 @@ def test_snprintf_u16():
     """Check a CUInt16T value passed to %u via t.CUnsignedInt()."""
     testcheck.section("Test 2: %u 格式化 CUInt16T")
     yr: uint16 = 2026
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%04u", uint(yr))
     stdio.printf("Test2 (CUInt16T->%%u): [%s] (expect 2026)\n", &buf)
@@ -41,7 +40,7 @@ def test_snprintf_u64():
     """Check a CUInt64T value passed to %lu."""
     testcheck.section("Test 3: %lu 格式化 CUInt64T")
     val: uint64 = 1234567890123
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%lu", val)
     stdio.printf("Test3 (CUInt64T->%%lu): [%s] (expect 1234567890123)\n", &buf)
@@ -53,7 +52,7 @@ def test_snprintf_d_neg():
     """Check %d formatting of a negative int."""
     testcheck.section("Test 4: %d 格式化负数")
     val: int = -42
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%d", val)
     stdio.printf("Test4 (CInt->%%d neg): [%s] (expect -42)\n", &buf)
@@ -64,7 +63,7 @@ def test_snprintf_d_neg():
 def test_snprintf_d_pos():
     testcheck.section("Test 5: %d 格式化正数")
     val: int = 42
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%d", val)
     stdio.printf("Test5 (CInt->%%d pos): [%s] (expect 42)\n", &buf)
@@ -75,7 +74,7 @@ def test_snprintf_d_pos():
 def test_snprintf_x():
     testcheck.section("Test 6: %x 格式化十六进制")
     val: uint32 = 0xDEADBEEF
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "0x%08x", val)
     stdio.printf("Test6 (%%x): [%s] (expect 0xdeadbeef)\n", &buf)
@@ -92,7 +91,7 @@ def test_snprintf_mixed():
     day: uint8 = 14
     mon: uint8 = 6
     yr: uint16 = 2026
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%04u-%02u-%02u %02u:%02u:%02u",
         uint(yr), uint(mon), uint(day),
@@ -117,7 +116,7 @@ def test_snprintf_multi_lu():
     v1: uint64 = 16
     v2: uint64 = 2
     v3: uint64 = 11
-    buf: t.CArray[char, 128]
+    buf: [128]char
     string.memset(&buf, 0, 128)
     viperlib.snprintf(&buf, 128, "wall=%lu work=%lu render=%lu", v1, v2, v3)
     stdio.printf("Test9 (multi %%lu): [%s] (expect wall=16 work=2 render=11)\n", &buf)
@@ -128,7 +127,7 @@ def test_snprintf_multi_lu():
 def test_snprintf_zero():
     testcheck.section("Test 10: %u 格式化 0")
     val: uint32 = 0
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%u", val)
     stdio.printf("Test10 (%%u zero): [%s] (expect 0)\n", &buf)
@@ -139,7 +138,7 @@ def test_snprintf_zero():
 def test_snprintf_large():
     testcheck.section("Test 11: %u 格式化大值")
     val: uint32 = 4294967295  # 0xFFFFFFFF
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%u", val)
     stdio.printf("Test11 (%%u max): [%s] (expect 4294967295)\n", &buf)
@@ -154,7 +153,7 @@ def test_snprintf_u8_edge():
     v127: uint8 = 127
     v128: uint8 = 128
     v255: uint8 = 255
-    buf: t.CArray[char, 64]
+    buf: [64]char
     string.memset(&buf, 0, 64)
     viperlib.snprintf(&buf, 64, "%u %u %u %u",
         uint(v0), uint(v127), uint(v128), uint(v255))
@@ -162,7 +161,7 @@ def test_snprintf_u8_edge():
     testcheck.ok("CUInt8T edge (expect 0 127 128 255)")
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 

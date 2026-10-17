@@ -1,34 +1,28 @@
-import t
 import stdio
 import testcheck
 
 
-# ClosureCallTest - minimal repro: call through a t.CPtr function pointer
-# f is t.CPtr (i8*); the compiler must treat its pointee as callable.
-
-
 # nonlocal test: a nested function mutates an outer local
-def make_counter() -> t.CPtr:
+def make_counter() -> callable[[], int]:
     count: int = 0
-
     # Inner closure captures count
     def counter() -> int:
         nonlocal count
         count = count + 1
         return count
-
     return counter
 
 
 def test_closure_call():
-    """Verify calling a t.CPtr function pointer."""
-    testcheck.section("Closure call via t.CPtr")
-    f: t.CPtr = make_counter()
+    """Verify calling a rawptr function pointer."""
+    testcheck.section("Closure call via rawptr")
+    f: callable[[], int] = make_counter()
     v: int = f()
     testcheck.check(v == 1, "f() first call = 1", "expect 1")
+    # testcheck.check(v2 == 2, "f2() first call = 2", "expect 2")
 
 
 def main() -> int:
-    testcheck.begin("ClosureCallTest: t.CPtr function pointer call")
+    testcheck.begin("ClosureCallTest: rawptr function pointer call")
     test_closure_call()
     return testcheck.end()

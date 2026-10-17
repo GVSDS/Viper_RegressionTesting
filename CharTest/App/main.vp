@@ -1,4 +1,3 @@
-import t, c
 from stdint import *
 import stdio
 
@@ -7,22 +6,22 @@ def bump(v: char) -> char:
     return char(v + 1)
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     # 1) char annotation: char = t.CChar = i8 (scalar builtin, not a pointer)
     ch: char = 65
-    stdio.printf("1 char annot: %d (expect 65)\n", int(ch))
+    stdio.printf("1 char annot: %d (expect 65)\n", ch)
 
     # 2) char() cast int to char: 300 truncates to i8, giving 44
     big: char = char(300)
-    stdio.printf("2 char cast trunc: %d (expect 44)\n", int(big))
+    stdio.printf("2 char cast trunc: %d (expect 44)\n", big)
 
     # 3) Function returns char (stored as i8)
     nx: char = bump(ch)
-    stdio.printf("3 char return: %d (expect 66)\n", int(nx))
+    stdio.printf("3 char return: %d (expect 66)\n", nx)
 
     # 4) Single-char literal 'Z' assigned to char (90)
     lit: char = 'Z'
-    stdio.printf("4 char literal: %d (expect 90)\n", int(lit))
+    stdio.printf("4 char literal: %d (expect 90)\n", lit)
 
     # 5) char in arithmetic (i8 promoted when mixed with int)
     s: int = ch + 1

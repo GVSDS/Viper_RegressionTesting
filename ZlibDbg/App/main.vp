@@ -7,7 +7,6 @@ import zlib.zhuff as zhuff
 import string
 import stdlib
 import testcheck
-import t, c
 
 
 def fill_data(data: BYTEPTR, size: sizet, seed: sizet, repeating: int):
@@ -25,7 +24,7 @@ def huffman_probe(seed: sizet, size: sizet, repeating: int):
     """
     data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
     fill_data(data, size, seed, repeating)
-    freqs: t.CArray[int, 288]
+    freqs: [288]int
     string.memset(freqs, 0, freqs.__sizeof__())
     i: sizet
     for i in range(size):
@@ -35,7 +34,7 @@ def huffman_probe(seed: sizet, size: sizet, repeating: int):
     tree = zhuff.zhuff_tree()
     tree.build_codes(freqs, 257, 15)
 
-    hist: t.CArray[int, 16]
+    hist: [16]int
     string.memset(hist, 0, hist.__sizeof__())
     active: int = 0
     no_code: int = 0
@@ -67,8 +66,8 @@ def count_freqs_probe(seed: sizet, size: sizet, repeating: int):
     data: BYTEPTR = BYTEPTR(stdlib.malloc(size))
     fill_data(data, size, seed, repeating)
 
-    lit: t.CArray[int, 288]
-    dist: t.CArray[int, 32]
+    lit: [288]int
+    dist: [32]int
     string.memset(lit, 0, lit.__sizeof__())
     string.memset(dist, 0, dist.__sizeof__())
 
@@ -164,18 +163,18 @@ def main() -> int:
     count_freqs_probe(0, 256, 1)
 
     testcheck.section("随机数据 (wbits=15)")
-    sizes: t.CArray[sizet, None] = [250, 255, 256, 257, 260, 300, 500, 1000, 4096, 20000]
+    sizes: []sizet = [250, 255, 256, 257, 260, 300, 500, 1000, 4096, 20000]
     n: int
     for n in range(10):
         roundtrip(sizet(n), sizes[n], 0, pyzlib.MAX_WBITS)
 
     testcheck.section("重复数据 (wbits=15)")
-    sizes2: t.CArray[sizet, None] = [256, 257, 300, 1000, 20000]
+    sizes2: []sizet = [256, 257, 300, 1000, 20000]
     for n in range(5):
         roundtrip(sizet(n), sizes2[n], 1, pyzlib.MAX_WBITS)
 
     testcheck.section("gzip 容器 (wbits=31)")
-    sizes3: t.CArray[sizet, None] = [300, 1000]
+    sizes3: []sizet = [300, 1000]
     for n in range(2):
         roundtrip(sizet(n), sizes3[n], 0, pyzlib.MAX_WBITS + 16)
 

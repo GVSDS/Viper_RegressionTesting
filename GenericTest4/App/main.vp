@@ -1,8 +1,6 @@
-import t
-import stdio
 import testcheck
 
-# Test 1: generic class with explicit type arg - Box[t.CInt](v)
+# Test 1: generic class with explicit type arg - Box[int](v)
 class Box[T]():
     value: T
 
@@ -16,12 +14,12 @@ class Box[T]():
         self.value = T(v)
 
 def test_explicit_box():
-    testcheck.section("Test 1: Box[t.CInt](42)")
+    testcheck.section("Test 1: Box[int](42)")
     b = Box[int](42)
     v: int = b.get()
-    testcheck.check(v == 42, "Box[t.CInt](42).get() = 42", "expect 42")
+    testcheck.check(v == 42, "Box[int](42).get() = 42", "expect 42")
 
-# Test 2: generic class with explicit type arg - Pair[t.CInt, t.CInt]
+# Test 2: generic class with explicit type arg - Pair[int, int]
 class Pair[T1, T2]():
     first: T1
     second: T2
@@ -34,10 +32,10 @@ class Pair[T1, T2]():
         return int(self.first) + int(self.second)
 
 def test_explicit_pair():
-    testcheck.section("Test 2: Pair[t.CInt, t.CInt](10, 20)")
+    testcheck.section("Test 2: Pair[int, int](10, 20)")
     p = Pair[int, int](10, 20)
     r: int = p.sum_as_int()
-    testcheck.check(r == 30, "Pair[t.CInt,t.CInt](10,20).sum = 30", "expect 30")
+    testcheck.check(r == 30, "Pair[int,int](10,20).sum = 30", "expect 30")
 
 # Test 3: generic class explicit + inferred mixed
 class Wrapper[T]():
@@ -57,7 +55,7 @@ def test_mixed_generic_class():
     w2 = Wrapper(200)
     r1: int = w1.get()
     r2: int = w2.get()
-    testcheck.check(r1 == 100 and r2 == 200, "Wrapper[t.CInt](100)=100 Wrapper(200)=200", "expect 100 200")
+    testcheck.check(r1 == 100 and r2 == 200, "Wrapper[int](100)=100 Wrapper(200)=200", "expect 100 200")
 
 # Test 4: generic class explicit - method calls
 class Counter[T]():
@@ -73,21 +71,21 @@ class Counter[T]():
         return self.count
 
 def test_explicit_counter():
-    testcheck.section("Test 4: Counter[t.CInt](0) with methods")
+    testcheck.section("Test 4: Counter[int](0) with methods")
     c = Counter[int](0)
     c.increment()
     c.increment()
     c.increment()
     r: int = c.get_count()
-    testcheck.check(r == 3, "Counter[t.CInt](0) +3 = 3", "expect 3")
+    testcheck.check(r == 3, "Counter[int](0) +3 = 3", "expect 3")
 
 # Test 5: generic class explicit - set method
 def test_explicit_box_set():
-    testcheck.section("Test 5: Box[t.CInt] set method")
+    testcheck.section("Test 5: Box[int] set method")
     b = Box[int](10)
     b.set(99)
     v: int = b.get()
-    testcheck.check(v == 99, "Box[t.CInt].set(99) get = 99", "expect 99")
+    testcheck.check(v == 99, "Box[int].set(99) get = 99", "expect 99")
 
 def main() -> int:
     testcheck.begin("GenericTest4: 泛型结构体手动传类型参数")

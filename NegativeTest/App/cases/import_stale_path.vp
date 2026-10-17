@@ -1,4 +1,3 @@
-import t, c
 # Stale pre-move path; the import is expected to fail.
 import lib.Stub.StubMergerStore as StubMergerStore
 

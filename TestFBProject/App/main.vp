@@ -1,13 +1,12 @@
 from stdint import *
 import win32.win32console
-import t, c
 import testcheck
 
 
-def add_inline(a: int, b: int) -> t.CDefine:
+define add_inline(a: int, b: int) -> int:
     return a + b
 
-def mul_inline(a: int, b: int) -> t.CDefine:
+define mul_inline(a: int, b: int) -> int:
     return a * b
 
 
@@ -34,7 +33,7 @@ def raise_timeout():
 	raise TimeoutError("operation timed out")
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
@@ -139,7 +138,7 @@ def main() -> int | t.CExport:
     x: int = 10
     y: int = 20
     r: int
-    c.LLVMIR(f"{c.LOut(r)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
+    __llvmir__(f"{irout(r)} = add i32 {irinp(x)}, {irinp(y)}")
     print("LLVMIR add result:", r)
     testcheck.check(r == 30, "LLVMIR add (10+20=30)", "LLVMIR add result mismatch")
 
@@ -153,7 +152,7 @@ def main() -> int | t.CExport:
 
     testcheck.section("Test LLVMIR with LOut")
     out_val: int = 0
-    c.LLVMIR(f"{c.LOut(out_val)} = add i32 {c.LInp(x)}, {c.LInp(y)}")
+    __llvmir__(f"{irout(out_val)} = add i32 {irinp(x)}, {irinp(y)}")
     print("LLVMIR LOut result:", out_val)
     testcheck.check(out_val == 30, "LLVMIR LOut (10+20=30)", "LLVMIR LOut result mismatch")
 

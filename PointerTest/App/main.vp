@@ -1,5 +1,3 @@
-from stdint import *
-import t, c
 import stdio
 import string
 import win32.win32console
@@ -69,7 +67,7 @@ def test_pointer_arithmetic():
 # --- Test 3: array decay to pointer ---
 def test_array_decay():
     """Pass list[t.CChar, N] to a t.CConst | str parameter."""
-    arr: t.CArray[char, 32]
+    arr: [32]char
     string.memset(&arr, 0, 32)
     # Write string manually
     src: str = "Hello"
@@ -121,7 +119,7 @@ def test_pointer_offset():
     buf[3] = 0x44  # 'D'
 
     # Read via CUInt32T* (0x44434241 on little-endian)
-    p32: uint32* = (uint32*)(t.CPtr(uint64(buf)))
+    p32: uint32* = (uint32*)(buf)
     val: uint32 = p32[0]
 
     # little-endian: 0x44434241
@@ -164,7 +162,7 @@ def test_memcpy_pointers():
         src_buf[i] = uint32(i + 1000)
 
     # Copy
-    string.memcpy(t.CPtr(uint64(dst_buf)), t.CPtr(uint64(src_buf)), 32)
+    string.memcpy(rawptr(dst_buf), rawptr(src_buf), 32)
 
     # Verify
     ok: int = 1
@@ -196,22 +194,22 @@ def test_pointer_param():
     testcheck.check(ok, "pointer as function parameter", "pointer as function parameter failed")
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
     print("你好")
-    l: t.CArray[char, 2] = None
+    l: [2]char = None
     for i in "hello":
         l[0] = i
         print(l)
     
-    #u: t.CArray[t.CUInt64T | t.BigEndian, 2] = [0x4141414141414141, 0x0000000000000000]
+    #u: [2]bigend uint64 = [0x4141414141414141, 0x0000000000000000]
     #for i in c.Addr(u):
     #    # l[0] = i
     #    stdio.printf("0x%llx\n", i)
 
-    k: t.CArray[char, 12] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C']
+    k: [12]char = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C']
     for i in k:
         stdio.printf("%c\n", i)
 

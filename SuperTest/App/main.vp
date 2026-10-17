@@ -1,6 +1,4 @@
 from stdint import *
-import t, c
-from t import CPtr, CInt, CExport
 import testcheck
 
 
@@ -10,81 +8,76 @@ import testcheck
 
 # ========== Single inheritance: super().__init__ + super().method ==========
 
-@t.CVTable
-class Animal:
-    Tag: CInt
+virtual class Animal:
+    Tag: int
 
-    def __init__(self, tag: CInt):
+    def __init__(self, tag: int):
         self.Tag = tag
 
-    def Speak(self) -> CInt:
+    def Speak(self) -> int:
         return 0
 
-    def Greet(self) -> CInt:
+    def Greet(self) -> int:
         return self.Tag + 1000
 
 
-@t.CVTable
-class Dog(Animal):
-    Breed: CInt
+virtual class Dog(Animal):
+    Breed: int
 
-    def __init__(self, tag: CInt, breed: CInt):
+    def __init__(self, tag: int, breed: int):
         super().__init__(tag)   # Call Animal.__init__ to set Tag
         self.Breed = breed
 
-    def Speak(self) -> CInt:
+    def Speak(self) -> int:
         return 1
 
-    def ParentSpeak(self) -> CInt:
+    def ParentSpeak(self) -> int:
         return super().Speak()  # Statically bind Animal.Speak -> 0 (no virtual dispatch)
 
-    def FullGreet(self) -> CInt:
+    def FullGreet(self) -> int:
         # Call parent Greet (not overridden by Dog), then add own field
         return super().Greet() + self.Breed
 
 
 # ========== Three-level chain: Grand -> Mid -> Leaf ==========
 
-@t.CVTable
-class Grand:
-    G: CInt
+virtual class Grand:
+    G: int
 
-    def __init__(self, v: CInt):
+    def __init__(self, v: int):
         self.G = v
 
-    def Base(self) -> CInt:
+    def Base(self) -> int:
         return self.G
 
 
-@t.CVTable
-class Mid(Grand):
-    M: CInt
+virtual class Mid(Grand):
+    M: int
 
-    def __init__(self, v: CInt):
+    def __init__(self, v: int):
         super().__init__(v + 1)   # Call Grand.__init__
         self.M = v
 
-    def MidOnly(self) -> CInt:
+    def MidOnly(self) -> int:
         return self.M
 
 
-@t.CVTable
-class Leaf(Mid):
-    def __init__(self, v: CInt):
+virtual class Leaf(Mid):
+    def __init__(self, v: int):
         super().__init__(v + 2)   # Call Mid.__init__ (which supers to Grand)
 
-    def GetBase(self) -> CInt:
+    def GetBase(self) -> int:
         return super().Base()     # Mid has no Base -> find Grand.Base along MRO
 
-    def CallMidOnly(self) -> CInt:
+    def CallMidOnly(self) -> int:
         return super().MidOnly()  # Call Mid.MidOnly
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     testcheck.begin("SuperTest: super() 语义测试")
 
     # --- 1. super().__init__ sets parent fields ---
-    d: Dog | CPtr = Dog(42, 7)
+    d: Dog* = Dog(42, 7)
     testcheck.check(d.Tag == 42, "super().__init__ 设置父类字段 OK",
                     "super().__init__ FAILED")
     testcheck.check(d.Breed == 7, "子类字段 OK", "子类字段 FAILED")
@@ -99,7 +92,7 @@ def main() -> CInt | CExport:
                     "FullGreet() FAILED")
 
     # --- 4. three-level super().__init__ chain (Leaf(10) -> Mid(12) -> Grand(13)) ---
-    lf: Leaf | CPtr = Leaf(10)
+    lf: Leaf* = Leaf(10)
     testcheck.check(lf.G == 13, "三层 super().__init__ 链 G OK", "三层 G FAILED")
     testcheck.check(lf.M == 12, "中间类 M OK", "中间类 M FAILED")
 

@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 from linkedlist import GSListNode
 
@@ -7,9 +5,7 @@ from linkedlist import GSListNode
 # G3: test F-bounded polymorphism.
 # class Node(GSListNode[Node]) inherits a generic base specialized on itself.
 # ============================================================
-
-@t.NoVTable
-class Node(GSListNode[Node]):
+novirtual class Node(GSListNode[Node]):
     value: int
 
     def __init__(self):

@@ -1,5 +1,3 @@
-import t
-import t as tt
 import stdio
 import testcheck
 
@@ -15,17 +13,14 @@ from t import CChar, CPtr
 # Test 1: from t import CEnum as en; class X(en)
 # ============================================================
 enum Color:
-    Red = 0
-    Green = 1
-    Blue = 2
+    Red, Green, Blue
 
 
 # ============================================================
 # Test 2: import t as tt; class X(tt.CEnum)
 # ============================================================
 enum Status:
-    Ok = 0
-    Error = 1
+    Ok, Error
 
 
 # ============================================================
@@ -90,7 +85,7 @@ val: myint = 42
 # Test 8: BigEndian byte order
 class NetHeader:
     magic: int | t.BigEndian
-    length: t.CShort | t.BigEndian
+    length: short | t.BigEndian
     normal: int
 
 

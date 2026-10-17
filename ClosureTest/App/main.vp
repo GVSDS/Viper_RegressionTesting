@@ -1,4 +1,3 @@
-import t
 import stdio
 import testcheck
 
@@ -112,7 +111,7 @@ def test_nonlocal_loop():
 # ============================================================
 # Test 8: global array operation
 # ============================================================
-g_arr: t.CArray[int, 4] = [0]
+g_arr: [4]int = None
 
 def test_global_array():
     testcheck.section("Test 8: global array")

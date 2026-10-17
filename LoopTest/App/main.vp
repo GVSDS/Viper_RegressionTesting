@@ -1,6 +1,5 @@
-import t
-import stdio
 import testcheck
+
 
 def test_for_loop():
     testcheck.section("Test 1: for loop")

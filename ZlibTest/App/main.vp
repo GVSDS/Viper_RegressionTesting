@@ -1,10 +1,5 @@
-import t
-import stdio
-import string
 import zlib.pyzlib as stdzp
 import test_pyzlib as tpz
-import w32.win32memory
-import c
 import testcheck
 
 def main() -> int:

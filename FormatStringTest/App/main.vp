@@ -1,5 +1,4 @@
 from stdint import *
-import t, c
 import ctraits
 import stdio
 import testcheck
@@ -15,7 +14,7 @@ export def main() -> int:
         b += 1
     print(b-11)
 
-    l: t.CArray[u64] = [0, 43, 2, 3, 4]
+    l: []u64 = [0, 43, 2, 3, 4]
     l[0] = 1000
     for i in l:
         stdio.printf("%llu\n", i)

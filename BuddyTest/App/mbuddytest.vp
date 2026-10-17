@@ -1,5 +1,3 @@
-import t, c
-from t import CInt, CPtr, CChar, CUInt8T, CUInt32T, CUInt64T, CSizeT
 import viperlib
 import viperio
 import stdlib
@@ -12,19 +10,19 @@ import win32.win32base
 
 
 # Thread body: alloc/free on a shared MBuddy to exercise the spinlock
-def _thread_alloc_free(param: t.CPtr) -> uint32:
+def _thread_alloc_free(param: rawptr) -> uint32:
     bd: memhub.MemBuddy* = (memhub.MemBuddy*)(param)
-    i: CInt
+    i: int
     for i in range(100):
         p: bytes = bd.alloc(32)
         if p != None:
-            p_c: CUInt8T | CPtr = CPtr(p)
-            p_c[0] = CUInt8T(i & 0xFF)
+            p_c: uint8* = uint8*(p)
+            p_c[0] = uint8(i & 0xFF)
             bd.free(p)
     return 0
 
 
-def mbuddy_main() -> CInt:
+def mbuddy_main() -> int:
     buf: bytes = stdlib.malloc(256)
 
     testcheck.begin("BuddyTest: 伙伴系统内存分配器测试")
@@ -32,7 +30,7 @@ def mbuddy_main() -> CInt:
     # === Basic alloc/free ===
     testcheck.section("基础 alloc/free")
     arena: bytes = stdlib.malloc(65536)
-    bd: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena, 65536)
+    bd: memhub.MemBuddy* = memhub.MemBuddy(arena, 65536)
 
     viperlib.snprintf(buf, 256, "stats=%lu, free_count=%lu", bd.stats(), bd.free_count())
     testcheck.info(buf)
@@ -44,12 +42,12 @@ def mbuddy_main() -> CInt:
                     "3 allocs OK", "alloc FAILED")
 
     # Write data to verify the returned pointer is usable
-    p_c: CUInt8T | CPtr = CPtr(p1)
-    p_c[0] = CUInt8T(0xAB)
-    p_c[1] = CUInt8T(0xCD)
+    p_c: uint8* = uint8*(p1)
+    p_c[0] = uint8(0xAB)
+    p_c[1] = uint8(0xCD)
     viperlib.snprintf(buf, 256, "p1[0]=0x%x p1[1]=0x%x", p_c[0], p_c[1])
     testcheck.info(buf)
-    testcheck.check(p_c[0] == CUInt8T(0xAB) and p_c[1] == CUInt8T(0xCD),
+    testcheck.check(p_c[0] == uint8(0xAB) and p_c[1] == uint8(0xCD),
                     "write/read OK", "write/read FAILED")
 
     bd.free(p1)
@@ -74,24 +72,24 @@ def mbuddy_main() -> CInt:
     arena2: bytes = stdlib.malloc(4096)
     viperlib.snprintf(buf, 256, "arena2 = %p", arena2)
     testcheck.info(buf)
-    bd2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena2, 4096)
+    bd2: memhub.MemBuddy* = memhub.MemBuddy(arena2, 4096)
 
     dirty: bytes = bd2.alloc(64)
     viperlib.snprintf(buf, 256, "dirty = %p", dirty)
     testcheck.info(buf)
-    d_c: CUInt8T | CPtr = CPtr(dirty)
-    i: CInt
+    d_c: uint8* = uint8*(dirty)
+    i: int
     for i in range(64):
-        d_c[i] = CUInt8T(0xFF)
+        d_c[i] = uint8(0xFF)
     bd2.free(dirty)
 
     cl: bytes = bd2.calloc(8, 8)
     viperlib.snprintf(buf, 256, "cl = %p (arena2=%p, dirty was=%p)", cl, arena2, dirty)
     testcheck.info(buf)
     if cl != None:
-        cl_c: CUInt8T | CPtr = CPtr(cl)
-        all_zero: CInt = 1
-        j: CInt
+        cl_c: uint8* = uint8*(cl)
+        all_zero: int = 1
+        j: int
         for j in range(64):
             if cl_c[j] != 0:
                 all_zero = 0
@@ -106,21 +104,21 @@ def mbuddy_main() -> CInt:
     # === realloc grow ===
     testcheck.section("realloc 扩展")
     arena3: bytes = stdlib.malloc(4096)
-    bd3: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena3, 4096)
+    bd3: memhub.MemBuddy* = memhub.MemBuddy(arena3, 4096)
 
     rp: bytes = bd3.alloc(32)
-    rp_c: CUInt8T | CPtr = CPtr(rp)
-    k: CInt
+    rp_c: uint8* = uint8*(rp)
+    k: int
     for k in range(32):
-        rp_c[k] = CUInt8T(k + 1)
+        rp_c[k] = uint8(k + 1)
 
     rp2: bytes = bd3.realloc(rp, 128)
     if rp2 != None:
-        rp2_c: CUInt8T | CPtr = CPtr(rp2)
-        ok: CInt = 1
-        m: CInt
+        rp2_c: uint8* = uint8*(rp2)
+        ok: int = 1
+        m: int
         for m in range(32):
-            if rp2_c[m] != CUInt8T(m + 1):
+            if rp2_c[m] != uint8(m + 1):
                 ok = 0
                 break
         testcheck.check(ok == 1, "realloc grow data preserved OK", "realloc grow data LOST")
@@ -133,24 +131,24 @@ def mbuddy_main() -> CInt:
     # === in-place shrink (verify no leak) ===
     testcheck.section("原地收缩 (realloc shrink)")
     arena_shrink: bytes = stdlib.malloc(4096)
-    bds: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_shrink, 4096)
+    bds: memhub.MemBuddy* = memhub.MemBuddy(arena_shrink, 4096)
 
     sp: bytes = bds.alloc(256)
     testcheck.check(sp != None, "alloc 256 OK", "alloc 256 FAILED")
 
-    fc_before: CSizeT = bds.free_count()
+    fc_before: sizet = bds.free_count()
     # Shrink 256 -> 32: order 4 (264) to order 1 (40); since new order <= old,
     # realloc must return the same pointer in place
     sp2: bytes = bds.realloc(sp, 32)
-    fc_after: CSizeT = bds.free_count()
+    fc_after: sizet = bds.free_count()
 
     testcheck.check(sp2 == sp, "shrink same ptr OK", "shrink ptr changed")
     testcheck.check(fc_after == fc_before, "shrink no leak OK", "shrink LEAKED blocks")
 
     # Data must remain readable/writable after shrink
-    sp_c: CUInt8T | CPtr = CPtr(sp2)
-    sp_c[0] = CUInt8T(0x42)
-    testcheck.check(sp_c[0] == CUInt8T(0x42), "shrink data OK", "shrink data FAILED")
+    sp_c: uint8* = uint8*(sp2)
+    sp_c[0] = uint8(0x42)
+    testcheck.check(sp_c[0] == uint8(0x42), "shrink data OK", "shrink data FAILED")
 
     bds.free(sp2)
     testcheck.check(bds.free_count() == 6, "shrink+free coalesce OK", "shrink+free coalesce FAILED")
@@ -160,7 +158,7 @@ def mbuddy_main() -> CInt:
     # === Edge cases ===
     testcheck.section("边界情况")
     arena4: bytes = stdlib.malloc(4096)
-    bd4: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena4, 4096)
+    bd4: memhub.MemBuddy* = memhub.MemBuddy(arena4, 4096)
 
     # alloc(0) must return None
     z: bytes = bd4.alloc(0)
@@ -185,13 +183,13 @@ def mbuddy_main() -> CInt:
     # === Illegal pointer defense ===
     testcheck.section("非法指针防护")
     arena5: bytes = stdlib.malloc(4096)
-    bd5: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena5, 4096)
+    bd5: memhub.MemBuddy* = memhub.MemBuddy(arena5, 4096)
 
     valid: bytes = bd5.alloc(32)
     testcheck.check(valid != None, "alloc for illegal test OK", "alloc FAILED")
 
     # 1. free a random address (address 1)
-    bd5.free(t.CPtr(uint64(1)))
+    bd5.free(rawptr(uint64(1)))
     testcheck.ok("free(addr=1) ignored")
 
     # 2. free NULL
@@ -199,15 +197,15 @@ def mbuddy_main() -> CInt:
     testcheck.ok("free(NULL) ignored")
 
     # 3. free an out-of-range pointer (before arena)
-    bd5.free(t.CPtr(uint64(arena5)))
+    bd5.free(rawptr(uint64(arena5)))
     testcheck.ok("free(before arena) ignored")
 
     # 4. free an out-of-range pointer (after arena)
-    bd5.free(t.CPtr(uint64(arena5) + 99999))
+    bd5.free(rawptr(uint64(arena5) + 99999))
     testcheck.ok("free(after arena) ignored")
 
     # 5. free a misaligned pointer (inside mem but not aligned)
-    bd5.free(t.CPtr(uint64(bd5.base) + 1))
+    bd5.free(rawptr(uint64(bd5.base) + 1))
     testcheck.ok("free(misaligned) ignored")
 
     # 6. a valid free must still work (block reusable after)
@@ -218,7 +216,7 @@ def mbuddy_main() -> CInt:
         bd5.free(retry5)
 
     # 7. realloc on an illegal pointer must return None
-    r_illegal: bytes = bd5.realloc(t.CPtr(1), 64)
+    r_illegal: bytes = bd5.realloc(rawptr(1), 64)
     testcheck.check(r_illegal == None, "realloc(illegal)=None OK", "realloc(illegal) should be None")
 
     stdlib.free(arena5)
@@ -226,12 +224,12 @@ def mbuddy_main() -> CInt:
     # === OOM exhaustion ===
     testcheck.section("OOM 内存耗尽")
     arena6: bytes = stdlib.malloc(4096)
-    bd6: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena6, 4096)
+    bd6: memhub.MemBuddy* = memhub.MemBuddy(arena6, 4096)
 
     # Allocate until failure
-    alloc_count: CInt = 0
+    alloc_count: int = 0
     ptrs_arr: bytes = stdlib.malloc(8 * 256)  # Pointer storage array
-    ptrs: CUInt64T | CPtr = CPtr(ptrs_arr)
+    ptrs: uint64* = uint64*(ptrs_arr)
 
     while alloc_count < 256:
         p: bytes = bd6.alloc(32)
@@ -250,7 +248,7 @@ def mbuddy_main() -> CInt:
 
     # After freeing one block, allocation must succeed again
     if alloc_count > 0:
-        first_ptr: bytes = t.CPtr(ptrs[0])
+        first_ptr: bytes = rawptr(ptrs[0])
         bd6.free(first_ptr)
         retry: bytes = bd6.alloc(32)
         testcheck.check(retry != None, "OOM: free+alloc OK", "OOM: free+alloc FAILED")
@@ -259,7 +257,7 @@ def mbuddy_main() -> CInt:
 
     # Free all blocks
     for idx in range(1, alloc_count):
-        cur_p: bytes = t.CPtr(ptrs[idx])
+        cur_p: bytes = rawptr(ptrs[idx])
         bd6.free(cur_p)
 
     # Full free must coalesce back to the initial 6 blocks
@@ -272,26 +270,26 @@ def mbuddy_main() -> CInt:
     # === Free-list state ===
     testcheck.section("空闲链表状态")
     arena7: bytes = stdlib.malloc(4096)
-    bd7: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena7, 4096)
+    bd7: memhub.MemBuddy* = memhub.MemBuddy(arena7, 4096)
 
     # Initial: non-power-of-two arena (4096 - 264 = 3832) splits into 6 blocks
     testcheck.check(bd7.free_count() == 6, "init: 6 free blocks OK", "init: free_count != 6")
 
     # After alloc: free count grows because a block is split
     a1: bytes = bd7.alloc(32)
-    fc1: CSizeT = bd7.free_count()
+    fc1: sizet = bd7.free_count()
     viperlib.snprintf(buf, 256, "after alloc(32): free_count=%lu", fc1)
     testcheck.info(buf)
     testcheck.check(fc1 > 1, "after alloc: split OK", "after alloc: no split")
 
     # Second alloc
     a2: bytes = bd7.alloc(32)
-    fc2: CSizeT = bd7.free_count()
+    fc2: sizet = bd7.free_count()
     testcheck.check(fc2 >= 1, "after 2nd alloc: free >= 1 OK", "after 2nd alloc: free < 1")
 
     # Free a1: free count must increase
     bd7.free(a1)
-    fc3: CSizeT = bd7.free_count()
+    fc3: sizet = bd7.free_count()
     testcheck.check(fc3 > fc2, "after free a1: free increased OK", "after free a1: free not increased")
 
     # Free a2: coalescing must restore the initial 6 blocks
@@ -321,19 +319,19 @@ def mbuddy_main() -> CInt:
     # === Double-free detection ===
     testcheck.section("双重 free 检测")
     arena_df: bytes = stdlib.malloc(4096)
-    bd_df: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_df, 4096)
+    bd_df: memhub.MemBuddy* = memhub.MemBuddy(arena_df, 4096)
 
     df: bytes = bd_df.alloc(64)
     testcheck.check(df != None, "df: alloc OK", "df: alloc FAILED")
 
     # First free
     bd_df.free(df)
-    fc_df1: CSizeT = bd_df.free_count()
+    fc_df1: sizet = bd_df.free_count()
     testcheck.ok("first free OK")
 
     # Second free (double free): must be silently rejected
     bd_df.free(df)
-    fc_df2: CSizeT = bd_df.free_count()
+    fc_df2: sizet = bd_df.free_count()
     testcheck.check(fc_df2 == fc_df1, "double free rejected OK", "double free CORRUPTED state")
 
     # Allocator must still be functional
@@ -347,7 +345,7 @@ def mbuddy_main() -> CInt:
     # === Self-check ===
     testcheck.section("自检功能")
     arena_sc: bytes = stdlib.malloc(4096)
-    bd_sc: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_sc, 4096)
+    bd_sc: memhub.MemBuddy* = memhub.MemBuddy(arena_sc, 4096)
 
     # Self-check on initial state
     testcheck.check(bd_sc.self_check() == 0, "self_check init OK", "self_check init FAILED")
@@ -376,22 +374,22 @@ def mbuddy_main() -> CInt:
     # === Concurrent threads (spinlock) ===
     testcheck.section("并发多线程 (spinlock)")
     arena_mt: bytes = stdlib.malloc(65536)
-    bd_mt: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_mt, 65536)
+    bd_mt: memhub.MemBuddy* = memhub.MemBuddy(arena_mt, 65536)
 
-    NUM_THREADS: CInt = 4
+    NUM_THREADS: int = 4
     handles_arr: bytes = stdlib.malloc(8 * 4)
-    handles: CUInt64T | CPtr = CPtr(handles_arr)
-    tid: CUInt32T = 0
+    handles: uint64* = uint64*(handles_arr)
+    tid: uint32 = 0
 
     # Spawn 4 threads doing concurrent alloc/free
-    t_idx: CInt
+    t_idx: int
     for t_idx in range(NUM_THREADS):
-        h: bytes = win32.win32process.CreateThread(None, 0, _thread_alloc_free, t.CPtr(bd_mt), 0, &tid)
-        handles[t_idx] = CUInt64T(h)
+        h: bytes = win32.win32process.CreateThread(None, 0, _thread_alloc_free, rawptr(bd_mt), 0, &tid)
+        handles[t_idx] = uint64(h)
 
     # Wait for all threads to finish
     for t_idx in range(NUM_THREADS):
-        h: bytes = t.CPtr(handles[t_idx])
+        h: bytes = rawptr(handles[t_idx])
         win32.win32sync.WaitForSingleObject(h, win32.win32base.INFINITE)
         win32.win32base.CloseHandle(h)
 
@@ -410,7 +408,7 @@ def mbuddy_main() -> CInt:
 
     # 1. Alloc size exactly at a block boundary
     arena_ex: bytes = stdlib.malloc(4096)
-    bd_ex: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_ex, 4096)
+    bd_ex: memhub.MemBuddy* = memhub.MemBuddy(arena_ex, 4096)
 
     # 24 + 16 = 40 > 32 (8 header + 8 sentinel), needs order 1 (64 bytes)
     exact_fit: bytes = bd_ex.alloc(24)
@@ -426,7 +424,7 @@ def mbuddy_main() -> CInt:
 
     # 2. Alloc near the largest block limit (order6 = 2048): usable = 2048 - 16,
     # so alloc(max_usable) exactly fills one order6 block
-    max_usable: CSizeT = 2048 - 16
+    max_usable: sizet = 2048 - 16
     viperlib.snprintf(buf, 256, "mem_size=%lu, max_block=2048, max_usable=%lu", bd_ex.mem_size, max_usable)
     testcheck.info(buf)
 
@@ -454,7 +452,7 @@ def mbuddy_main() -> CInt:
 
     # 4. Arena too small (only fits the 264-byte free-list overhead)
     arena_tiny: bytes = stdlib.malloc(264)
-    bd_tiny: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_tiny, 264)
+    bd_tiny: memhub.MemBuddy* = memhub.MemBuddy(arena_tiny, 264)
     testcheck.check(bd_tiny.stats() == 0, "tiny arena: stats=0 OK", "tiny arena: stats != 0")
     tiny_p: bytes = bd_tiny.alloc(32)
     testcheck.check(tiny_p == None, "tiny arena: alloc fails OK", "tiny arena: should fail")
@@ -462,7 +460,7 @@ def mbuddy_main() -> CInt:
 
     # 5. Arena fits exactly one minimal block (264 + 32 = 296)
     arena_one: bytes = stdlib.malloc(296)
-    bd_one: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_one, 296)
+    bd_one: memhub.MemBuddy* = memhub.MemBuddy(arena_one, 296)
     testcheck.check(bd_one.stats() == 32, "one block: stats=32 OK", "one block: stats != 32")
 
     # Minimal block 32 = data 16 + header 8 + sentinel 8; alloc(16) fills it
@@ -478,27 +476,27 @@ def mbuddy_main() -> CInt:
 
     # 6. Power-of-two vs non-power-of-two arena
     arena_pow2: bytes = stdlib.malloc(512)
-    bd_pow2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_pow2, 512)
+    bd_pow2: memhub.MemBuddy* = memhub.MemBuddy(arena_pow2, 512)
     # 512 - 264 = 248, decomposes to 128 + 64 + 32 = 224 (24-byte tail dropped)
     testcheck.check(bd_pow2.stats() == 224, "pow2 arena: stats=224 OK", "pow2 arena: stats != 224")
     stdlib.free(arena_pow2)
 
     arena_non2: bytes = stdlib.malloc(500)
-    bd_non2: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_non2, 500)
+    bd_non2: memhub.MemBuddy* = memhub.MemBuddy(arena_non2, 500)
     # 500 - 264 = 236, decomposes to 128 + 64 + 32 = 224 (12-byte tail dropped)
     testcheck.check(bd_non2.stats() == 224, "non-pow2 arena: stats=224 OK", "non-pow2 arena: stats != 224")
     stdlib.free(arena_non2)
 
     # 7. Stress: 1000 alloc/free cycles of the same size
     arena_stress: bytes = stdlib.malloc(4096)
-    bd_stress: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_stress, 4096)
+    bd_stress: memhub.MemBuddy* = memhub.MemBuddy(arena_stress, 4096)
 
-    s: CInt
+    s: int
     for s in range(1000):
         sp: bytes = bd_stress.alloc(64)
         if sp != None:
-            sp_c: CUInt8T | CPtr = CPtr(sp)
-            sp_c[0] = CUInt8T(s & 0xFF)
+            sp_c: uint8* = uint8*(sp)
+            sp_c[0] = uint8(s & 0xFF)
             bd_stress.free(sp)
 
     testcheck.check(bd_stress.self_check() == 0, "stress: self_check OK", "stress: self_check FAILED")
@@ -507,13 +505,13 @@ def mbuddy_main() -> CInt:
 
     # 8. Allocate all minimal blocks, then free them all
     arena_fill: bytes = stdlib.malloc(4096)
-    bd_fill: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena_fill, 4096)
+    bd_fill: memhub.MemBuddy* = memhub.MemBuddy(arena_fill, 4096)
 
-    fill_count: CInt = 0
+    fill_count: int = 0
     fill_ptrs_arr: bytes = stdlib.malloc(8 * 256)
-    fill_ptrs: CUInt64T | CPtr = CPtr(fill_ptrs_arr)
+    fill_ptrs: uint64* = uint64*(fill_ptrs_arr)
 
-    fc: CInt
+    fc: int
     for fc in range(256):
         fp: bytes = bd_fill.alloc(24)
         if fp == None:
@@ -527,9 +525,9 @@ def mbuddy_main() -> CInt:
     testcheck.check(bd_fill.self_check() == 0, "fill: self_check OK", "fill: self_check FAILED")
 
     # Free all
-    fi: CInt
+    fi: int
     for fi in range(fill_count):
-        fp2: bytes = t.CPtr(fill_ptrs[fi])
+        fp2: bytes = rawptr(fill_ptrs[fi])
         bd_fill.free(fp2)
 
     testcheck.check(bd_fill.free_count() == 6, "fill: all freed OK", "fill: leaked after free all")

@@ -1,9 +1,8 @@
-import t, c
 import testcheck
 import fileiotest
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("FileIoTest: Win32 FileIO 测试")
     testcheck.section("Win32 FileIO")
     fileiotest.fileio_main()

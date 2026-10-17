@@ -1,14 +1,12 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CExport
 import stdlib
 import stdio
 import memhub
 import testcheck
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
@@ -24,9 +22,9 @@ def main() -> CInt | CExport:
     nums.append(10)
     nums.append(20)
     nums.append(30)
-    v0: CInt = nums.get(0)
-    v1: CInt = nums.get(1)
-    v2: CInt = nums.get(2)
+    v0: int = nums.get(0)
+    v1: int = nums.get(1)
+    v2: int = nums.get(2)
     stdio.printf("v0=%d v1=%d v2=%d\n", v0, v1, v2)
     testcheck.check(v0 == 10 and v1 == 20 and v2 == 30,
                     "append+get OK (10,20,30)", "append+get FAILED")
@@ -40,13 +38,13 @@ def main() -> CInt | CExport:
     # === Test 3: set ===
     testcheck.section("Test 3: set")
     nums.set(1, 99)
-    v1b: CInt = nums.get(1)
+    v1b: int = nums.get(1)
     stdio.printf("after set(1,99): v1=%d\n", v1b)
     testcheck.check(v1b == 99, "set OK (idx1=99)", "set FAILED")
 
     # === Test 4: pop ===
     testcheck.section("Test 4: pop")
-    popped: CInt = nums.pop()
+    popped: int = nums.pop()
     stdio.printf("popped=%d\n", popped)
     testcheck.check(popped == 30, "pop OK (30)", "pop FAILED expect 30")
     n2: sizet = nums.__len__()
@@ -61,15 +59,15 @@ def main() -> CInt | CExport:
     # === Test 6: capacity growth (append past initial capacity 8) ===
     testcheck.section("Test 6: 容量增长")
     nums2 = list[int](bd)
-    i: CInt
+    i: int
     for i in range(20):
         nums2.append(i * 5)
     n4: sizet = nums2.__len__()
     stdio.printf("after 20 appends: len=%lu\n", n4)
     testcheck.check(n4 == 20, "grow len OK (20)", "grow len FAILED")
-    ok: CInt = 1
+    ok: int = 1
     for i in range(20):
-        v: CInt = nums2.get(i)
+        v: int = nums2.get(i)
         if v != i * 5:
             stdio.printf("MISMATCH at %d: got %d expect %d\n", i, v, i * 5)
             ok = 0
@@ -81,8 +79,8 @@ def main() -> CInt | CExport:
     nums2.clear()
     nums2.append(100)
     nums2.append(200)
-    va: CInt = nums2.get(0)
-    vb: CInt = nums2.get(1)
+    va: int = nums2.get(0)
+    vb: int = nums2.get(1)
     stdio.printf("re-append: va=%d vb=%d\n", va, vb)
     testcheck.check(va == 100 and vb == 200, "re-append OK", "re-append FAILED")
 

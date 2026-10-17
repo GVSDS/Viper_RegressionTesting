@@ -1,6 +1,3 @@
-import t
-import stdio
-import stdlib
 import memhub
 from g4node import G4Node, new_g4node
 

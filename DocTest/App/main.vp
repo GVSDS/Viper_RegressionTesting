@@ -1,7 +1,5 @@
-import t
 import stdio
 import string
-import c
 import testcheck
 import remote
 

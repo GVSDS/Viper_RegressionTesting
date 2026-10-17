@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 
 
@@ -7,17 +5,9 @@ import testcheck
 # Three declarations plus main; each must emit exactly one declare.
 
 
-# Test 1: t.CExtern | t.CExport - external declaration (pass body)
-# Translator must emit declare, not define.
-def ExternalDecl(x: int) -> int | t.CExtern | t.CExport: pass
-
-
-# Test 2: t.State - state declaration (same as CExtern | CExport)
-def StateDecl(x: int) -> int | t.State: pass
-
-
-# Test 3: t.State returning void
-def StateVoidDecl() -> t.State: pass
+extern def ExternalDecl(x: int) -> int
+extern def StateDecl(x: int) -> int
+extern def StateVoidDecl()
 
 
 def test_extern_decl():

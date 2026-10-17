@@ -1,8 +1,7 @@
 # ThreadingTest - vthreading coverage
 # Thread/Lock/Event/Condition/RWLock/local/id/sleep_ms/args
-import t, c
 from stdint import *
-from w32.win32base import NULL, FALSE, TRUE
+from win32.win32base import NULL, FALSE, TRUE
 import stdlib
 import testcheck
 import vthreading
@@ -23,25 +22,25 @@ TLS_NUM: int = 4
 SYS_ITER: int = 10
 
 
-# ===== Thread callbacks (signature: def worker(arg: t.CPtr) -> t.CPtr) =====
+# ===== Thread callbacks (signature: def worker(arg: rawptr) -> rawptr) =====
 
 # Thread basic: brief sleep then exit, keeps an is_alive window after start
-def _basic_worker(arg: t.CPtr) -> t.CPtr:
+def _basic_worker(arg: rawptr) -> rawptr:
     vthreading.sleep_ms(100)
     return NULL
 
 
 # Arg passing: increment through arg pointer 100 times (c.Deref/c.DerefAs)
-def _increment_worker(arg: t.CPtr) -> t.CPtr:
-    ip: int* = (int*)(arg)
+def _increment_worker(arg: rawptr) -> rawptr:
+    ip: int* = int*(arg)
     i: int
     for i in range(100):
-        c.DerefAs(ip, *ip + 1)
+        *ip = (*ip + 1)
     return NULL
 
 
 # Lock: increment a global counter while holding the lock
-def _lock_worker(arg: t.CPtr) -> t.CPtr:
+def _lock_worker(arg: rawptr) -> rawptr:
     lk: vthreading.Lock* = (vthreading.Lock*)(arg)
     global _shared_count
     for i in range(LOCK_ITER):
@@ -52,7 +51,7 @@ def _lock_worker(arg: t.CPtr) -> t.CPtr:
 
 
 # Event: wait to be woken, then set the done flag
-def _event_worker(arg: t.CPtr) -> t.CPtr:
+def _event_worker(arg: rawptr) -> rawptr:
     ev: vthreading.Event* = (vthreading.Event*)(arg)
     global _evt_done
     r: int = ev.wait(5000)
@@ -62,7 +61,7 @@ def _event_worker(arg: t.CPtr) -> t.CPtr:
 
 
 # Condition consumer: wait for _cond_ready, bounded retries to avoid hanging
-def _cond_consumer(arg: t.CPtr) -> t.CPtr:
+def _cond_consumer(arg: rawptr) -> rawptr:
     cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
     tries: int = 0
@@ -75,7 +74,7 @@ def _cond_consumer(arg: t.CPtr) -> t.CPtr:
 
 
 # Condition producer: delay, set _cond_ready, then notify
-def _cond_producer(arg: t.CPtr) -> t.CPtr:
+def _cond_producer(arg: rawptr) -> rawptr:
     cond: vthreading.Condition* = (vthreading.Condition*)(arg)
     global _cond_ready
     vthreading.sleep_ms(50)
@@ -87,7 +86,7 @@ def _cond_producer(arg: t.CPtr) -> t.CPtr:
 
 
 # RWLock reader: read the shared value repeatedly under the read lock
-def _rw_reader(arg: t.CPtr) -> t.CPtr:
+def _rw_reader(arg: rawptr) -> rawptr:
     rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
     i: int
@@ -99,7 +98,7 @@ def _rw_reader(arg: t.CPtr) -> t.CPtr:
 
 
 # RWLock writer: increment the shared value under the write lock
-def _rw_writer(arg: t.CPtr) -> t.CPtr:
+def _rw_writer(arg: rawptr) -> rawptr:
     rwl: vthreading.RWLock* = (vthreading.RWLock*)(arg)
     global _rw_value
     i: int
@@ -111,38 +110,38 @@ def _rw_writer(arg: t.CPtr) -> t.CPtr:
 
 
 # TLS: per-thread set/get self-check (store own thread ID, then read back)
-def _tls_worker(arg: t.CPtr) -> t.CPtr:
+def _tls_worker(arg: rawptr) -> rawptr:
     tls: vthreading.local = vthreading.local()
-    tls.set(t.CPtr(uint64(vthreading.get_current_thread_id())))
+    tls.set(rawptr(uint64(vthreading.get_current_thread_id())))
     tid_val: uint64 = uint64(tls.get())
     ok: int = 0
     if tid_val == uint64(vthreading.get_current_thread_id()):
         ok = 1
     tls.free()
-    return t.CPtr(uint64(ok))
+    return rawptr(uint64(ok))
 
 
 # Thread ID isolation: worker ID must differ from the main thread ID
-def _tid_worker(arg: t.CPtr) -> t.CPtr:
+def _tid_worker(arg: rawptr) -> rawptr:
     global _main_tid
     if vthreading.get_current_thread_id() == _main_tid:
-        return t.CPtr(uint64(0))
-    return t.CPtr(uint64(1))
+        return rawptr(uint64(0))
+    return rawptr(uint64(1))
 
 
 # stdlib.system concurrency: each thread calls C system(), count failures
-def _system_worker(arg: t.CPtr) -> t.CPtr:
+def _system_worker(arg: rawptr) -> rawptr:
     i: int
     fails: int = 0
     for i in range(SYS_ITER):
         r: int = stdlib.system("echo ok > NUL")
         if r != 0:
             fails += 1
-    return t.CPtr(uint64(fails))
+    return rawptr(uint64(fails))
 
 
 # ===== main =====
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("ThreadingTest: vthreading 专项测试")
 
     # ========== Thread: start/join/is_alive/get_exit_code ==========
@@ -168,10 +167,10 @@ def main() -> int | t.CExport:
     # ========== Lock: mutex increment ==========
     testcheck.section("Lock: 多线程互斥自增")
     lock: vthreading.Lock = vthreading.Lock()
-    t0: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
-    t1: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
-    t2: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
-    t3: vthreading.Thread = vthreading.Thread(_lock_worker, t.CPtr(lock))
+    t0: vthreading.Thread = vthreading.Thread(_lock_worker, rawptr(lock))
+    t1: vthreading.Thread = vthreading.Thread(_lock_worker, rawptr(lock))
+    t2: vthreading.Thread = vthreading.Thread(_lock_worker, rawptr(lock))
+    t3: vthreading.Thread = vthreading.Thread(_lock_worker, rawptr(lock))
     t0.start()
     t1.start()
     t2.start()
@@ -190,7 +189,7 @@ def main() -> int | t.CExport:
     # ========== Event: thread waits for wakeup ==========
     testcheck.section("Event: 线程等待唤醒")
     ev: vthreading.Event = vthreading.Event(FALSE, FALSE)
-    th4: vthreading.Thread = vthreading.Thread(_event_worker, t.CPtr(ev))
+    th4: vthreading.Thread = vthreading.Thread(_event_worker, rawptr(ev))
     testcheck.check(ev.is_set() == FALSE, "Event 初始未置位", "Event 初始已置位")
     th4.start()
     vthreading.sleep_ms(50)
@@ -204,8 +203,8 @@ def main() -> int | t.CExport:
     # ========== Condition: producer/consumer ==========
     testcheck.section("Condition: 生产者/消费者")
     cond: vthreading.Condition = vthreading.Condition()
-    tc: vthreading.Thread = vthreading.Thread(_cond_consumer, t.CPtr(cond))
-    tp: vthreading.Thread = vthreading.Thread(_cond_producer, t.CPtr(cond))
+    tc: vthreading.Thread = vthreading.Thread(_cond_consumer, rawptr(cond))
+    tp: vthreading.Thread = vthreading.Thread(_cond_producer, rawptr(cond))
     tc.start()
     tp.start()
     testcheck.check(tc.join(5000) != FALSE, "消费者被唤醒", "消费者等待超时")
@@ -218,9 +217,9 @@ def main() -> int | t.CExport:
     # ========== RWLock: multi-reader single-writer ==========
     testcheck.section("RWLock: 多读单写")
     rwl: vthreading.RWLock = vthreading.RWLock()
-    r1: vthreading.Thread = vthreading.Thread(_rw_reader, t.CPtr(rwl))
-    r2: vthreading.Thread = vthreading.Thread(_rw_reader, t.CPtr(rwl))
-    w1: vthreading.Thread = vthreading.Thread(_rw_writer, t.CPtr(rwl))
+    r1: vthreading.Thread = vthreading.Thread(_rw_reader, rawptr(rwl))
+    r2: vthreading.Thread = vthreading.Thread(_rw_reader, rawptr(rwl))
+    w1: vthreading.Thread = vthreading.Thread(_rw_writer, rawptr(rwl))
     r1.start()
     r2.start()
     w1.start()

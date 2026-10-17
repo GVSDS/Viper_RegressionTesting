@@ -1,21 +1,20 @@
-import t
 import stdio
 import string
 import testcheck
 import win32.win32memory
 
 # Define structs
-class Point():
+struct Point:
     x: int
     y: int
 
-class Rect():
+struct Rect:
     origin: Point
     size: Point
 
-class Node():
+struct Node:
     value: int
-    next: t.CPtr  # Node* type
+    next: rawptr  # Node* type
 
 def test_struct_basic():
     testcheck.section("Test 1: struct basic")
@@ -39,7 +38,7 @@ def test_struct_pointer():
     p.x = 42
     p.y = 84
     # Take a struct pointer
-    pp: Point* = t.CPtr(uint64(p))
+    pp: Point* = Point*(p)
     # Modify through the pointer
     pp.x = 100
     pp.y = 200

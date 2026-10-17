@@ -7,9 +7,8 @@
 #   Gen 2: ViperC\__vpcbuild__\output\viperc.exe --project Test\ProbeGen\project.vpj --clean --run --build-dir Test\ProbeGen\__vpcbuild___g2
 
 # WARNING [P6] breaks compilation from generation 2 onward; comment out [P6] to get Gen-2 IR for P1..P5.
-import t
 from stdint import *
-import w32.win32console as w32console
+import win32.win32console as win32console
 
 
 # [P1] Nested union parameter: VOIDPTR (typedef of t.CPtr) unioned with t.CPtr gives i8** on one side, i8* on the other.
@@ -18,7 +17,7 @@ extern def ProbeNestedUnion(Context: VOIDPTR*) -> BOOL
 
 
 # [P2] Struct by-value parameter: COORD without | t.CPtr gives %COORD on one side, %COORD* on the other.
-extern def ProbeCoordByVal(dwSize: w32console.COORD) -> BOOL
+extern def ProbeCoordByVal(dwSize: win32console.COORD) -> BOOL
 
 
 # [P5] Sink for the local uint8 = 1 literal: store it into a global so the code is not dead-code eliminated.
@@ -61,8 +60,7 @@ class Box:
 
 # Entry: keep main minimal, referencing each construct above so it is really translated; return 0.
 # P1/P2 are extern declarations and are not called, so their difference shows in this module's declares.
-@t.CExport
-def main() -> int:
+export def main() -> int:
     Ch: char = 'A'
     BoxInst: Box = Box()
     BoxInst.Clear()

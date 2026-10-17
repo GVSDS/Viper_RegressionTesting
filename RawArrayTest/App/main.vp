@@ -1,24 +1,23 @@
-import t, c
 from stdint import *
 import stdio
 
 
 # Module-level global fixed-size array (rawarray mirrors t.CArray)
-g_arr: rawarray[int, 4] = [10, 20, 30, 40]
+g_arr: [4]int = [10, 20, 30, 40]
 
 
 # Struct with embedded fixed-size array fields
 class Ctx:
-    state: rawarray[uint32, 5]
-    buf: rawarray[uint8, 64]
+    state: [5]uint32
+    buf: [64]uint8
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     # 1) Read global array
     stdio.printf("1 g_arr[0]=%d g_arr[3]=%d (expect 10 40)\n", g_arr[0], g_arr[3])
 
     # 2) Local fixed-size array (write + read)
-    loc: rawarray[uint32, 3] = [0, 0, 0]
+    loc: [3]uint32 = [0, 0, 0]
     loc[1] = 7
     stdio.printf("2 loc[1]=%d (expect 7)\n", loc[1])
 
@@ -37,7 +36,7 @@ def main() -> int | t.CExport:
     return 0
 
 
-def sum_arr(vals: rawarray[uint32, 3], n: int) -> int:
+def sum_arr(vals: [3]uint32, n: int) -> int:
     s: int = 0
     i: int
     for i in range(n):

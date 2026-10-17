@@ -1,5 +1,4 @@
 import config
-import t, c
 
 
 def ForRangeBasicTest(stop: int):
@@ -153,17 +152,19 @@ def ForWithCaseAndNoBreakTest(n: int):
     i: int = 0
     result: int = 0
     for i in range(n):
-        match i:
+        switch i:
             case 0:
                 result += 1
+                fallthrough
             case 1:
                 result += 2
+                fallthrough
             case 2:
                 result += 3
                 result += 10
+                fallthrough
             case _:
                 result += i
-        c.NoBreak
     print("NoBreak result: ", result)
 
 
@@ -189,7 +190,7 @@ def NestedWhileWithMultipleBreakPoints(depth: int, width: int):
             if w == 2:
                 break
             if d == 1 and w == 1:
-                c.Break
+                break
             count += 1
     print("Nested break count: ", count)
 
@@ -349,14 +350,15 @@ def ForWithCaseNoBreakNested(inner_limit: int):
     result: int = 0
     for i in range(3):
         for j in range(inner_limit):
-            match j:
+            switch j:
                 case 0:
                     result += 1
+                    fallthrough
                 case 1:
                     result += 2
+                    fallthrough
                 case _:
                     result += 3
-            c.NoBreak
     print("Nested NoBreak result: ", result)
 
 

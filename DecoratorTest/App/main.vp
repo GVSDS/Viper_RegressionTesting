@@ -1,4 +1,3 @@
-import t
 from stdio import printf
 import testcheck
 
@@ -6,10 +5,10 @@ import testcheck
 # ctx: per-call frame-local context (32 bytes); args_ptr/ret_ptr are read-write; pre-phase returns 0=skip, 1=call once, N=loop N.
 
 # @log: print enter/exit, return 1 (call once)
-def log(ctx: t.CPtr, func_name: str, phase: int,
-        args_ptr: t.CPtr,
-        ret_ptr: t.CPtr,
-        decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def log(ctx: rawptr, func_name: str, phase: int,
+        args_ptr: rawptr,
+        ret_ptr: rawptr,
+        decor_args_ptr: rawptr) -> int:
     if phase == 0:
         printf("[LOG] >> %s enter\n", func_name)
         return 1
@@ -18,10 +17,10 @@ def log(ctx: t.CPtr, func_name: str, phase: int,
         return 0
 
 # @trace: verbose tracing
-def trace(ctx: t.CPtr, func_name: str, phase: int,
-          args_ptr: t.CPtr,
-          ret_ptr: t.CPtr,
-          decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def trace(ctx: rawptr, func_name: str, phase: int,
+          args_ptr: rawptr,
+          ret_ptr: rawptr,
+          decor_args_ptr: rawptr) -> int:
     if phase == 0:
         printf("[TRACE] calling %s...\n", func_name)
         return 1
@@ -33,10 +32,10 @@ def trace(ctx: t.CPtr, func_name: str, phase: int,
 # A global is used because i8* to i32* pointer casts are not supported yet.
 _timing_tmp: int = 0
 
-def timing(ctx: t.CPtr, func_name: str, phase: int,
-           args_ptr: t.CPtr,
-           ret_ptr: t.CPtr,
-           decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def timing(ctx: rawptr, func_name: str, phase: int,
+           args_ptr: rawptr,
+           ret_ptr: rawptr,
+           decor_args_ptr: rawptr) -> int:
     global _timing_tmp
     if phase == 0:
         _timing_tmp = 100
@@ -48,10 +47,10 @@ def timing(ctx: t.CPtr, func_name: str, phase: int,
         return 0
 
 # @repeat (with args, flow hijack): call the original function N times
-def repeat(ctx: t.CPtr, func_name: str, phase: int,
-           args_ptr: t.CPtr,
-           ret_ptr: t.CPtr,
-           decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def repeat(ctx: rawptr, func_name: str, phase: int,
+           args_ptr: rawptr,
+           ret_ptr: rawptr,
+           decor_args_ptr: rawptr) -> int:
     if phase == 0:
         printf("[REPEAT] %s will run 3 times\n", func_name)
         return 3
@@ -62,10 +61,10 @@ def repeat(ctx: t.CPtr, func_name: str, phase: int,
 # @skip: skip the original call (flow hijack, returns 0)
 _skip_count: int = 0
 
-def skip(ctx: t.CPtr, func_name: str, phase: int,
-         args_ptr: t.CPtr,
-         ret_ptr: t.CPtr,
-         decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def skip(ctx: rawptr, func_name: str, phase: int,
+         args_ptr: rawptr,
+         ret_ptr: rawptr,
+         decor_args_ptr: rawptr) -> int:
     global _skip_count
     if phase == 0:
         _skip_count = _skip_count + 1
@@ -78,10 +77,10 @@ def skip(ctx: t.CPtr, func_name: str, phase: int,
 # @count_calls: count invocations (used to test recursion guard)
 _call_count: int = 0
 
-def count_calls(ctx: t.CPtr, func_name: str, phase: int,
-                args_ptr: t.CPtr,
-                ret_ptr: t.CPtr,
-                decor_args_ptr: t.CPtr) -> int | t.CExport:
+export def count_calls(ctx: rawptr, func_name: str, phase: int,
+                args_ptr: rawptr,
+                ret_ptr: rawptr,
+                decor_args_ptr: rawptr) -> int:
     global _call_count
     if phase == 0:
         _call_count = _call_count + 1
@@ -93,50 +92,43 @@ def count_calls(ctx: t.CPtr, func_name: str, phase: int,
 
 
 # --- Test 1: single @log ---
-
 @log
-def add(a: int, b: int) -> int | t.CExport:
+export def add(a: int, b: int) -> int:
     return a + b
 
 
 # --- Test 2: chained @log @trace (log(trace(f))) ---
-
 @log
 @trace
-def multiply(a: int, b: int) -> int | t.CExport:
+export def multiply(a: int, b: int) -> int:
     return a * b
 
 
 # --- Test 3: @log on void function ---
-
 @log
-def greet(name: str) -> void | t.CExport:
+export def greet(name: str):
     printf("Hello, %s!\n", name)
 
 
 # --- Test 4: @log on no-arg function ---
-
 @log
-def get_value() -> int | t.CExport:
+export def get_value() -> int:
     return 42
 
 
 # --- Test 5: @timing ---
-
 @timing
 export def compute(x: int) -> int:
     return x * x + 1
 
 
 # --- Test 6: @repeat(3) flow hijack ---
-
 @repeat(3)
 export def echo(msg: str):
     printf("  echo: %s\n", msg)
 
 
 # --- Test 7: chained @timing @log ---
-
 @timing
 @log
 export def power(base: int, exp: int) -> int:
@@ -147,42 +139,37 @@ export def power(base: int, exp: int) -> int:
 
 
 # --- Test 8: @skip flow hijack ---
-
 @skip
-def dangerous() -> int | t.CExport:
+export def dangerous() -> int:
     printf("This should NOT be printed!\n")
     return 999
 
 
 # --- Test 9: @repeat(3) with return value ---
-
 @repeat(3)
-def accumulate(x: int) -> int | t.CExport:
+export def accumulate(x: int) -> int:
     printf("  accumulate(%d)\n", x)
     return x * 10
 
 
 # --- Test 10: recursion guard, @count_calls on recursive fn ---
-
 @count_calls
-def factorial(n: int) -> int | t.CExport:
+export def factorial(n: int) -> int:
     if n <= 1:
         return 1
     return n * factorial(n - 1)
 
 
 # --- Test 11: @log on recursive fib ---
-
 @log
-def fib(n: int) -> int | t.CExport:
+export def fib(n: int) -> int:
     if n <= 1:
         return n
     return fib(n - 1) + fib(n - 2)
 
 
 # --- main ---
-
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("Decorator Test v4")
 
     # Test 1: single @log

@@ -1,7 +1,5 @@
-import t, c
 import stdio
 import stdlib
-import string
 import testcheck
 import hashlib
 import binascii
@@ -22,7 +20,7 @@ def default_value_test_function(a: int, b: int = 1):
     print(a, b)
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
@@ -32,7 +30,7 @@ def main() -> int | t.CExport:
     testcheck.section("HASHLIB")
     plain: str = "hello123"
 
-    md5_buf: t.CArray[uint8, hashlib.MD5_DIGEST_LEN]
+    md5_buf: [hashlib.MD5_DIGEST_LEN]uint8
     mctx = hashlib.md5()
     mctx.update(plain)
     mctx.final(md5_buf)
@@ -40,7 +38,7 @@ def main() -> int | t.CExport:
     print_hex(md5_buf, hashlib.MD5_DIGEST_LEN)
     testcheck.ok("HASHLIB md5 completed")
 
-    sha1_buf: t.CArray[uint8, hashlib.SHA1_DIGEST_LEN]
+    sha1_buf: [hashlib.SHA1_DIGEST_LEN]uint8
     s1ctx = hashlib.sha1()
     s1ctx.update(plain)
     s1ctx.final(sha1_buf)
@@ -48,7 +46,7 @@ def main() -> int | t.CExport:
     print_hex(sha1_buf, hashlib.SHA1_DIGEST_LEN)
     testcheck.ok("HASHLIB sha1 completed")
 
-    sha256_buf: t.CArray[uint8, hashlib.SHA256_DIGEST_LEN]
+    sha256_buf: [hashlib.SHA256_DIGEST_LEN]uint8
     s2ctx = hashlib.sha256()
     s2ctx.update(plain)
     s2ctx.final(sha256_buf)
@@ -56,7 +54,7 @@ def main() -> int | t.CExport:
     print_hex(sha256_buf, hashlib.SHA256_DIGEST_LEN)
     testcheck.ok("HASHLIB sha256 completed")
 
-    sha512_buf: t.CArray[uint8, hashlib.SHA512_DIGEST_LEN]
+    sha512_buf: [hashlib.SHA512_DIGEST_LEN]uint8
     s5ctx = hashlib.sha512()
     s5ctx.update(plain)
     s5ctx.final(sha512_buf)
@@ -69,8 +67,8 @@ def main() -> int | t.CExport:
 
     # ---------- base64 encode/decode tests ----------
     testcheck.section("BASE64")
-    b64_out: t.CArray[char, 256]
-    b64_dec: t.CArray[uint8, 256]
+    b64_out: [256]char
+    b64_dec: [256]uint8
     base64.b64encode(plain, b64_out)
     print("Base64 编码:", b64_out)
     dlen: sizet = base64.b64decode(b64_out, b64_dec)
@@ -106,8 +104,8 @@ def main() -> int | t.CExport:
         stdlib.free(uu_out)
     testcheck.ok("BINASCII b2a_uu completed")
 
-    hqx_in: t.CArray[char, 4] = ['A', 'B', 'C', '\0']
-    hqx_crc: t.CUnsignedShort = 0
+    hqx_in: [4]char = ['A', 'B', 'C', '\0']
+    hqx_crc: ushort = 0
     hqx_out: str
     unhqx: str
     hqx_out, hqx_crc = binascii.b2a_hqx(hqx_in, 3)

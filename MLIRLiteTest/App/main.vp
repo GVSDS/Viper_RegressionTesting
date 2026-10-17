@@ -2,7 +2,7 @@ from stdint import *
 import stdio
 import string
 import stdlib
-import w32.fileio as fileio
+import win32.fileio as fileio
 import memhub
 import testcheck
 import viperlib

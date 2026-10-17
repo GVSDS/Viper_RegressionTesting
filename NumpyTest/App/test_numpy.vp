@@ -2,11 +2,8 @@ from stdint import *
 import numpy
 from stdio import printf
 from stdlib import calloc, free
-import string
-import math
 import memhub
 import win32.win32base
-import t, c
 
 # ============================================================
 # Constants

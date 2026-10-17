@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import stdio
 
 
@@ -225,8 +225,8 @@ def Check(name: str, rc: int, fails: int) -> int:
 
 
 export def main() -> int:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     fails: int = 0
     fails = Check("CaseBasic", CaseBasic(), fails)

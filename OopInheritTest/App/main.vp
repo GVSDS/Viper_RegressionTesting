@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CPtr, CChar, CInt32T, CUInt64T, CFloat64T, CExport, State
 import viperlib
 import stdlib
 import testcheck
@@ -9,56 +7,53 @@ import testcheck
 
 # === OOP inheritance + virtual methods ===
 
-@t.CVTable
-class Shape:
-    x: CFloat64T
-    y: CFloat64T
+virtual class Shape:
+    x: double
+    y: double
 
-    def __init__(self, x: CFloat64T, y: CFloat64T):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
-    def area(self) -> CFloat64T:
+    def area(self) -> double:
         return 0.0
-    def perimeter(self) -> CFloat64T:
+    def perimeter(self) -> double:
         return 0.0
-    def describe(self) -> CFloat64T:
+    def describe(self) -> double:
         return self.area() + self.perimeter()
 
-@t.CVTable
-class Circle(Shape):
-    r: CFloat64T
+virtual class Circle(Shape):
+    r: double
 
-    def __init__(self, x: CFloat64T, y: CFloat64T, r: CFloat64T):
+    def __init__(self, x: double, y: double, r: double):
         self.x = x
         self.y = y
         self.r = r
-    def area(self) -> CFloat64T:
+    def area(self) -> double:
         return 3.14159265 * self.r * self.r
-    def perimeter(self) -> CFloat64T:
+    def perimeter(self) -> double:
         return 2.0 * 3.14159265 * self.r
-    def scale(self, factor: CFloat64T) -> 'Circle' | CPtr:
+    def scale(self, factor: double) -> 'Circle' | CPtr:
         self.r = self.r * factor
         return self
-    def move(self, dx: CFloat64T, dy: CFloat64T) -> 'Circle' | CPtr:
+    def move(self, dx: double, dy: double) -> 'Circle' | CPtr:
         self.x = self.x + dx
         self.y = self.y + dy
         return self
 
-@t.CVTable
-class Rect(Shape):
-    w: CFloat64T
-    h: CFloat64T
+virtual class Rect(Shape):
+    w: double
+    h: double
 
-    def __init__(self, x: CFloat64T, y: CFloat64T, w: CFloat64T, h: CFloat64T):
+    def __init__(self, x: double, y: double, w: double, h: double):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
-    def area(self) -> CFloat64T:
+    def area(self) -> double:
         return self.w * self.h
-    def perimeter(self) -> CFloat64T:
+    def perimeter(self) -> double:
         return 2.0 * (self.w + self.h)
-    def scale(self, factor: CFloat64T) -> 'Rect' | CPtr:
+    def scale(self, factor: double) -> Rect*:
         self.w = self.w * factor
         self.h = self.h * factor
         return self
@@ -67,114 +62,112 @@ class Rect(Shape):
 # === operator overloading + chained calls (heap allocated) ===
 
 class Vec2:
-    x: CFloat64T
-    y: CFloat64T
+    x: double
+    y: double
 
-    def __new__() -> 'Vec2' | CPtr:
+    def __new__() -> Vec2*:
         return stdlib.malloc(16)
 
-    def __init__(self, x: CFloat64T, y: CFloat64T):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
-    def __add__(self, b: 'Vec2' | CPtr) -> 'Vec2' | CPtr:
+    def __add__(self, b: Vec2*) -> Vec2*:
         return Vec2(self.x + b.x, self.y + b.y)
 
-    def __sub__(self, b: 'Vec2' | CPtr) -> 'Vec2' | CPtr:
+    def __sub__(self, b: Vec2*) -> Vec2*:
         return Vec2(self.x - b.x, self.y - b.y)
 
-    def __mul__(self, s: CFloat64T) -> 'Vec2' | CPtr:
+    def __mul__(self, s: double) -> Vec2*:
         return Vec2(self.x * s, self.y * s)
 
-    def __neg__(self) -> 'Vec2' | CPtr:
+    def __neg__(self) -> Vec2*:
         return Vec2(-self.x, -self.y)
 
-    def dot(self, b: 'Vec2' | CPtr) -> CFloat64T:
+    def dot(self, b: Vec2*) -> double:
         return self.x * b.x + self.y * b.y
 
-    def len_sq(self) -> CFloat64T:
+    def len_sq(self) -> double:
         return self.x * self.x + self.y * self.y
 
 
 class Vec3:
-    x: CFloat64T
-    y: CFloat64T
-    z: CFloat64T
+    x: double
+    y: double
+    z: double
 
-    def __new__() -> 'Vec3' | CPtr:
+    def __new__() -> Vec3*:
         return stdlib.malloc(24)
 
-    def __init__(self, x: CFloat64T, y: CFloat64T, z: CFloat64T):
+    def __init__(self, x: double, y: double, z: double):
         self.x = x
         self.y = y
         self.z = z
 
-    def __add__(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+    def __add__(self, b: Vec3*) -> Vec3*:
         return Vec3(self.x + b.x, self.y + b.y, self.z + b.z)
 
-    def __sub__(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+    def __sub__(self, b: Vec3*) -> Vec3*:
         return Vec3(self.x - b.x, self.y - b.y, self.z - b.z)
 
-    def __mul__(self, s: CFloat64T) -> 'Vec3' | CPtr:
+    def __mul__(self, s: double) -> Vec3*:
         return Vec3(self.x * s, self.y * s, self.z * s)
 
-    def __neg__(self) -> 'Vec3' | CPtr:
+    def __neg__(self) -> Vec3*:
         return Vec3(-self.x, -self.y, -self.z)
 
-    def dot(self, b: 'Vec3' | CPtr) -> CFloat64T:
+    def dot(self, b: Vec3*) -> double:
         return self.x * b.x + self.y * b.y + self.z * b.z
 
-    def cross(self, b: 'Vec3' | CPtr) -> 'Vec3' | CPtr:
+    def cross(self, b: Vec3*) -> Vec3*:
         return Vec3(self.y * b.z - self.z * b.y,
                      self.z * b.x - self.x * b.z,
                      self.x * b.y - self.y * b.x)
 
-    def len_sq(self) -> CFloat64T:
+    def len_sq(self) -> double:
         return self.dot(self)
 
 
 # === standalone classes (no inheritance) ===
 
-@t.CVTable
-class Dog:
-    name_val: CInt
-    health: CInt32T
-    bark_power: CInt32T
+virtual class Dog:
+    name_val: int
+    health: int32
+    bark_power: int32
 
-    def __init__(self, name_val: CInt, bark_power: CInt32T):
+    def __init__(self, name_val: int, bark_power: int32):
         self.name_val = name_val
-        self.health = CInt32T(100)
+        self.health = int32(100)
         self.bark_power = bark_power
-    def speak(self) -> CInt:
+    def speak(self) -> int:
         return 1
-    def bite(self) -> CInt32T:
+    def bite(self) -> int32:
         return self.bark_power
-    def take_damage(self, dmg: CInt32T) -> 'Dog' | CPtr:
+    def take_damage(self, dmg: int32) -> Dog*:
         self.health = self.health - dmg
         return self
-    def is_alive(self) -> CInt:
+    def is_alive(self) -> int:
         if self.health > 0:
             return 1
         return 0
 
-@t.CVTable
-class Cat:
-    name_val: CInt
-    health: CInt32T
-    lives: CInt32T
+virtual class Cat:
+    name_val: int
+    health: int32
+    lives: int32
 
-    def __init__(self, name_val: CInt, lives: CInt32T):
+    def __init__(self, name_val: int, lives: int32):
         self.name_val = name_val
-        self.health = CInt32T(80)
+        self.health = int32(80)
         self.lives = lives
-    def speak(self) -> CInt:
+    def speak(self) -> int:
         return 2
-    def scratch(self) -> CInt32T:
-        return CInt32T(15)
-    def take_damage(self, dmg: CInt32T) -> 'Cat' | CPtr:
+    def scratch(self) -> int32:
+        return int32(15)
+    def take_damage(self, dmg: int32) -> Cat*:
         self.health = self.health - dmg
         return self
-    def is_alive(self) -> CInt:
+    def is_alive(self) -> int:
         if self.health > 0:
             return 1
         return 0
@@ -183,17 +176,17 @@ class Cat:
 # === nested object composition (heap allocated) ===
 
 class Transform:
-    px: CFloat64T
-    py: CFloat64T
-    pz: CFloat64T
-    scale_x: CFloat64T
-    scale_y: CFloat64T
-    scale_z: CFloat64T
+    px: double
+    py: double
+    pz: double
+    scale_x: double
+    scale_y: double
+    scale_z: double
 
-    def __new__() -> 'Transform' | CPtr:
+    def __new__() -> Transform*:
         return stdlib.malloc(48)
 
-    def __init__(self, px: CFloat64T, py: CFloat64T, pz: CFloat64T):
+    def __init__(self, px: double, py: double, pz: double):
         self.px = px
         self.py = py
         self.pz = pz
@@ -201,68 +194,65 @@ class Transform:
         self.scale_y = 1.0
         self.scale_z = 1.0
 
-    def apply_scale(self, sx: CFloat64T, sy: CFloat64T, sz: CFloat64T) -> 'Transform' | CPtr:
+    def apply_scale(self, sx: double, sy: double, sz: double) -> Transform*:
         self.scale_x = self.scale_x * sx
         self.scale_y = self.scale_y * sy
         self.scale_z = self.scale_z * sz
         return self
 
-    def world_position(self) -> 'Vec3' | CPtr:
+    def world_position(self) -> Vec3*:
         return Vec3(self.px * self.scale_x, self.py * self.scale_y, self.pz * self.scale_z)
 
 
 # === multilevel inheritance (subclasses override only what they need) ===
 
-@t.CVTable
-class Vehicle:
-    speed: CInt32T
-    fuel: CInt32T
+virtual class Vehicle:
+    speed: int32
+    fuel: int32
 
-    def __init__(self, speed: CInt32T):
+    def __init__(self, speed: int32):
         self.speed = speed
-        self.fuel = CInt32T(100)
-    def move(self) -> CInt:
-        self.fuel = self.fuel - CInt32T(10)
+        self.fuel = int32(100)
+    def move(self) -> int:
+        self.fuel = self.fuel - int32(10)
         return self.speed
-    def is_running(self) -> CInt:
+    def is_running(self) -> int:
         if self.fuel > 0:
             return 1
         return 0
 
-@t.CVTable
-class Car(Vehicle):
-    doors: CInt32T
+virtual class Car(Vehicle):
+    doors: int32
 
-    def __init__(self, speed: CInt32T, doors: CInt32T):
+    def __init__(self, speed: int32, doors: int32):
         self.speed = speed
-        self.fuel = CInt32T(100)
+        self.fuel = int32(100)
         self.doors = doors
-    def honk(self) -> CInt:
+    def honk(self) -> int:
         return 1
 
-@t.CVTable
-class ElectricCar(Car):
-    battery: CInt32T
+virtual class ElectricCar(Car):
+    battery: int32
 
-    def __init__(self, speed: CInt32T, doors: CInt32T, battery: CInt32T):
+    def __init__(self, speed: int32, doors: int32, battery: int32):
         self.speed = speed
-        self.fuel = CInt32T(100)
+        self.fuel = int32(100)
         self.doors = doors
         self.battery = battery
     def charge(self):
-        self.battery = self.battery + CInt32T(20)
-    def move(self) -> CInt:
-        self.battery = self.battery - CInt32T(5)
+        self.battery = self.battery + int32(20)
+    def move(self) -> int:
+        self.battery = self.battery - int32(5)
         return self.speed
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("OopInheritTest: OOP 继承与多态专项测试")
 
-    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+    buf: str = stdlib.malloc(256)
 
     # === OOP inheritance test ===
     testcheck.section("OOP 继承测试")
@@ -351,19 +341,19 @@ def main() -> CInt | CExport:
 
     # === Dog/Cat virtual methods ===
     testcheck.section("Dog/Cat 虚方法")
-    dog = Dog(1, CInt32T(30))
-    cat = Cat(2, CInt32T(9))
+    dog = Dog(1, int32(30))
+    cat = Cat(2, int32(9))
 
     viperlib.snprintf(buf, 256, "Dog speak=%d bite=%d alive=%d", dog.speak(), dog.bite(), dog.is_alive())
     print(buf)
     viperlib.snprintf(buf, 256, "Cat speak=%d scratch=%d alive=%d", cat.speak(), cat.scratch(), cat.is_alive())
     print(buf)
 
-    dog.take_damage(CInt32T(40)).take_damage(CInt32T(30))
+    dog.take_damage(int32(40)).take_damage(int32(30))
     viperlib.snprintf(buf, 256, "Dog after 70dmg: health=%d alive=%d", dog.health, dog.is_alive())
     print(buf)
 
-    cat.take_damage(CInt32T(50))
+    cat.take_damage(int32(50))
     viperlib.snprintf(buf, 256, "Cat after 50dmg: health=%d alive=%d", cat.health, cat.is_alive())
     print(buf)
     testcheck.ok("Dog/Cat 虚方法测试完成")
@@ -385,7 +375,7 @@ def main() -> CInt | CExport:
 
     # === multilevel inheritance ===
     testcheck.section("多层继承")
-    ec = ElectricCar(CInt32T(120), CInt32T(4), CInt32T(80))
+    ec = ElectricCar(int32(120), int32(4), int32(80))
     viperlib.snprintf(buf, 256, "ECar speed=%d doors=%d battery=%d", ec.speed, ec.doors, ec.battery)
     print(buf)
     ec.charge()

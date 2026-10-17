@@ -1,6 +1,4 @@
-import t, c
 from stdint import *
-from t import CInt, CPtr, CUInt8T, CSizeT
 import testcheck
 import viperlib
 import stdlib
@@ -43,7 +41,7 @@ def _cleanup():
         shutil.rmtree(TEST_TREE)
 
 
-def run() -> CInt:
+def run() -> int:
     buf: bytes = stdlib.malloc(512)
 
     testcheck.begin("SysLibTest: 系统兼容层库测试")
@@ -70,10 +68,10 @@ def run() -> CInt:
     p2: bytes = os._mbuddy.alloc(128)
     testcheck.check(p1 != None and p2 != None, "alloc OK", "alloc FAILED")
 
-    p1_c: CUInt8T | CPtr = CPtr(p1)
-    p1_c[0] = CUInt8T(0xAB)
-    p1_c[1] = CUInt8T(0xCD)
-    testcheck.check(p1_c[0] == CUInt8T(0xAB) and p1_c[1] == CUInt8T(0xCD),
+    p1_c: uint8* = uint8*(p1)
+    p1_c[0] = uint8(0xAB)
+    p1_c[1] = uint8(0xCD)
+    testcheck.check(p1_c[0] == uint8(0xAB) and p1_c[1] == uint8(0xCD),
                     "alloc write/read OK", "alloc write/read FAILED")
 
     os._mbuddy.free(p1)
@@ -85,9 +83,9 @@ def run() -> CInt:
 
     cp: bytes = os._mbuddy.calloc(4, 16)
     if cp != None:
-        cp_c: CUInt8T | CPtr = CPtr(cp)
-        all_zero: CInt = 1
-        i: CInt
+        cp_c: uint8* = uint8*(cp)
+        all_zero: int = 1
+        i: int
         for i in range(64):
             if cp_c[i] != 0:
                 all_zero = 0
@@ -99,15 +97,15 @@ def run() -> CInt:
 
     # realloc data preservation test
     rp: bytes = os._mbuddy.alloc(32)
-    rp_c: CUInt8T | CPtr = CPtr(rp)
+    rp_c: uint8* = uint8*(rp)
     for i in range(32):
-        rp_c[i] = CUInt8T(i + 1)
+        rp_c[i] = uint8(i + 1)
     rp2: bytes = os._mbuddy.realloc(rp, 128)
     if rp2 != None:
-        rp2_c: CUInt8T | CPtr = CPtr(rp2)
-        ok: CInt = 1
+        rp2_c: uint8* = uint8*(rp2)
+        ok: int = 1
         for i in range(32):
-            if rp2_c[i] != CUInt8T(i + 1):
+            if rp2_c[i] != uint8(i + 1):
                 ok = 0
                 break
         testcheck.check(ok == 1, "realloc data preserved OK", "realloc data LOST")
@@ -174,7 +172,7 @@ def run() -> CInt:
     testcheck.section("shutil 高级文件操作")
 
     # Create test file
-    f: win32.fileio.File | CPtr = win32.fileio.File(TEST_FILE, win32.fileio.MODE.W)
+    f: win32.fileio.File* = win32.fileio.File(TEST_FILE, win32.fileio.MODE.W)
     testcheck.check(not f.closed, "create test file OK", "create test file FAILED")
     f.write_str("hello shutil")
     f.close()
@@ -203,7 +201,7 @@ def run() -> CInt:
     testcheck.check(os.mkdir(subdir) == 0, "mkdir subdir OK", "mkdir subdir FAILED")
     # Create a file inside the subdir
     subfile: str = os.path.join(subdir, "leaf.txt")
-    sf: win32.fileio.File | CPtr = win32.fileio.File(subfile, win32.fileio.MODE.W)
+    sf: win32.fileio.File* = win32.fileio.File(subfile, win32.fileio.MODE.W)
     sf.write_str("leaf")
     sf.close()
     testcheck.check(os_backend.os_exists(subfile), "create subfile OK", "create subfile FAILED")
@@ -227,7 +225,7 @@ def run() -> CInt:
     testcheck.info(plat)
 
     # getpid
-    pid: CInt = sys.get_pid()
+    pid: int = sys.get_pid()
     viperlib.snprintf(buf, 512, "pid = %d", pid)
     testcheck.info(buf)
     testcheck.check(pid > 0, "getpid > 0 OK", "getpid FAILED")
@@ -238,7 +236,7 @@ def run() -> CInt:
     testcheck.check(sys.maxsize > 0, "maxsize > 0 OK", "maxsize FAILED")
 
     # argv
-    argc: CInt = sys.argc()
+    argc: int = sys.argc()
     viperlib.snprintf(buf, 512, "argc = %d", argc)
     testcheck.info(buf)
     testcheck.check(argc > 0, "argc > 0 OK", "argc FAILED")
@@ -254,7 +252,7 @@ def run() -> CInt:
     testcheck.section("subprocess 子进程")
 
     # Windows: cmd /c echo hello
-    result: subprocess.CompletedProcess | CPtr = subprocess.run("cmd /c echo hello", True, True)
+    result: subprocess.CompletedProcess* = subprocess.run("cmd /c echo hello", True, True)
     testcheck.check(result != None, "run OK", "run FAILED")
     if result != None:
         viperlib.snprintf(buf, 512, "returncode = %d", result.returncode)

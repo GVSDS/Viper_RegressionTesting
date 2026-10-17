@@ -2,9 +2,7 @@ from stdint import *
 import vipersimd
 import numpy
 from stdio import printf
-import stdlib
 from stdlib import calloc
-import t, c
 import memhub
 import testcheck
 
@@ -14,7 +12,7 @@ arena: uint8* = None
 pool: memhub.MemPool* = None
 
 # External function: clock() for performance timing
-def clock() -> t.CLong | t.CExtern: pass
+extern def clock() -> long
 
 define CLOCK_PER_SEC = 1000
 
@@ -356,21 +354,21 @@ def test_llvmir_scalar():
 define N_ELEM = 40000
 define N_ITER = 50000
 
-def scalar_add_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: sizet):
+def scalar_add_array(a: rawptr, b: rawptr, out: rawptr, n: sizet):
     da: double* = a
     db: double* = b
     dout: double* = out
     for i in range(n):
         dout[i] = da[i] + db[i]
 
-def scalar_mul_array(a: t.CPtr, b: t.CPtr, out: t.CPtr, n: sizet):
+def scalar_mul_array(a: rawptr, b: rawptr, out: rawptr, n: sizet):
     da: double* = a
     db: double* = b
     dout: double* = out
     for i in range(n):
         dout[i] = da[i] * db[i]
 
-def scalar_sqrt_array(a: t.CPtr, out: t.CPtr, n: sizet):
+def scalar_sqrt_array(a: rawptr, out: rawptr, n: sizet):
     da: double* = a
     dout: double* = out
     for i in range(n):

@@ -1,6 +1,4 @@
 from stdint import *
-import t, c
-from t import CInt, CExport
 from stdio import printf
 import memhub
 import stdlib
@@ -93,7 +91,7 @@ def classify_print(node: ast.AST*, depth: int):
             classify_print(node.children.get(i), depth + 1)
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 

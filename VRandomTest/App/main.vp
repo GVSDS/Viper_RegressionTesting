@@ -1,21 +1,20 @@
 from stdint import *
-import t, c
 import stdio
 import random
 import testcheck
 
 
 # ============================================================
-# VRandomTest: hardware RNG and standard distribution functions.
+# RandomTest: hardware RNG and standard distribution functions.
 # ============================================================
 
 def main() -> int:
-    testcheck.begin("VRandomTest: Hardware RNG + Distributions")
+    testcheck.begin("RandomTest: Hardware RNG + Distributions")
 
     # --- Test 1: RDRAND basic ---
     testcheck.section("Test 1: RDRAND basic")
-    r32: uint32 = vrandom.rdrand32()
-    r64: uint64 = vrandom.rdrand64()
+    r32: uint32 = random.rdrand32()
+    r64: uint64 = random.rdrand64()
     stdio.printf("  rdrand32() = 0x%08x\n", r32)
     stdio.printf("  rdrand64() = 0x%016llx\n", r64)
     testcheck.ok("RDRAND basic")
@@ -23,105 +22,105 @@ def main() -> int:
     # --- Test 2: randint ---
     testcheck.section("Test 2: randint(1, 100)")
     for _ in range(5):
-        v: int = vrandom.randint(1, 100)
+        v: int = random.randint(1, 100)
         stdio.printf("  randint(1,100) = %d\n", v)
     testcheck.ok("randint range check")
 
     # --- Test 3: randrange ---
     testcheck.section("Test 3: randrange(0, 100, 5)")
     for _ in range(5):
-        v = vrandom.randrange(0, 100, 5)
+        v = random.randrange(0, 100, 5)
         stdio.printf("  randrange(0,100,5) = %d\n", v)
     testcheck.ok("randrange step check")
 
     # --- Test 4: getrandbits ---
     testcheck.section("Test 4: getrandbits(8)")
     for _ in range(3):
-        b: uint64 = vrandom.getrandbits(8)
+        b: uint64 = random.getrandbits(8)
         stdio.printf("  getrandbits(8) = 0x%02llx\n", b)
     testcheck.ok("getrandbits width check")
 
     # --- Test 5: random() [0,1) ---
     testcheck.section("Test 5: random()")
     for _ in range(3):
-        f: double = vrandom.random()
+        f: double = random.random()
         stdio.printf("  random() = %f\n", f)
     testcheck.ok("random() in [0,1)")
 
     # --- Test 6: uniform ---
     testcheck.section("Test 6: uniform(10.0, 20.0)")
     for _ in range(3):
-        f = vrandom.uniform(10.0, 20.0)
+        f = random.uniform(10.0, 20.0)
         stdio.printf("  uniform(10,20) = %f\n", f)
     testcheck.ok("uniform range check")
 
     # --- Test 7: gauss ---
     testcheck.section("Test 7: gauss(0.0, 1.0)")
     for _ in range(3):
-        f = vrandom.gauss(0.0, 1.0)
+        f = random.gauss(0.0, 1.0)
         stdio.printf("  gauss(0,1) = %f\n", f)
     testcheck.ok("gauss distribution")
 
     # --- Test 8: normalvariate ---
     testcheck.section("Test 8: normalvariate(100.0, 15.0)")
     for _ in range(3):
-        f = vrandom.normalvariate(100.0, 15.0)
+        f = random.normalvariate(100.0, 15.0)
         stdio.printf("  normalvariate(100,15) = %f\n", f)
     testcheck.ok("normalvariate distribution")
 
     # --- Test 9: expovariate ---
     testcheck.section("Test 9: expovariate(0.5)")
     for _ in range(3):
-        f = vrandom.expovariate(0.5)
+        f = random.expovariate(0.5)
         stdio.printf("  expovariate(0.5) = %f\n", f)
     testcheck.ok("expovariate distribution")
 
     # --- Test 10: gammavariate ---
     testcheck.section("Test 10: gammavariate(2.0, 1.0)")
     for _ in range(3):
-        f = vrandom.gammavariate(2.0, 1.0)
+        f = random.gammavariate(2.0, 1.0)
         stdio.printf("  gammavariate(2,1) = %f\n", f)
     testcheck.ok("gammavariate distribution")
 
     # --- Test 11: betavariate ---
     testcheck.section("Test 11: betavariate(2.0, 5.0)")
     for _ in range(3):
-        f = vrandom.betavariate(2.0, 5.0)
+        f = random.betavariate(2.0, 5.0)
         stdio.printf("  betavariate(2,5) = %f\n", f)
     testcheck.ok("betavariate distribution")
 
     # --- Test 12: triangular ---
     testcheck.section("Test 12: triangular(0.0, 10.0, 5.0)")
     for _ in range(3):
-        f = vrandom.triangular(0.0, 10.0, 5.0)
+        f = random.triangular(0.0, 10.0, 5.0)
         stdio.printf("  triangular(0,10,5) = %f\n", f)
     testcheck.ok("triangular distribution")
 
     # --- Test 13: lognormvariate ---
     testcheck.section("Test 13: lognormvariate(0.0, 1.0)")
     for _ in range(3):
-        f = vrandom.lognormvariate(0.0, 1.0)
+        f = random.lognormvariate(0.0, 1.0)
         stdio.printf("  lognormvariate(0,1) = %f\n", f)
     testcheck.ok("lognormvariate distribution")
 
     # --- Test 14: paretovariate ---
     testcheck.section("Test 14: paretovariate(1.0)")
     for _ in range(3):
-        f = vrandom.paretovariate(1.0)
+        f = random.paretovariate(1.0)
         stdio.printf("  paretovariate(1) = %f\n", f)
     testcheck.ok("paretovariate distribution")
 
     # --- Test 15: weibullvariate ---
     testcheck.section("Test 15: weibullvariate(1.0, 1.5)")
     for _ in range(3):
-        f = vrandom.weibullvariate(1.0, 1.5)
+        f = random.weibullvariate(1.0, 1.5)
         stdio.printf("  weibullvariate(1,1.5) = %f\n", f)
     testcheck.ok("weibullvariate distribution")
 
     # --- Test 16: vonmisesvariate ---
     testcheck.section("Test 16: vonmisesvariate(0.0, 1.0)")
     for _ in range(3):
-        f = vrandom.vonmisesvariate(0.0, 1.0)
+        f = random.vonmisesvariate(0.0, 1.0)
         stdio.printf("  vonmisesvariate(0,1) = %f\n", f)
     testcheck.ok("vonmisesvariate distribution")
 

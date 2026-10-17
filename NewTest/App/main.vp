@@ -1,5 +1,5 @@
 from stdint import *
-import w32.win32console
+import win32.win32console
 import stdio
 import stdlib
 import memhub
@@ -30,8 +30,8 @@ class Box[T]:
 
 
 export def main() -> int:
-    w32.win32console.SetConsoleCP(65001)
-    w32.win32console.SetConsoleOutputCP(65001)
+    win32.win32console.SetConsoleCP(65001)
+    win32.win32console.SetConsoleOutputCP(65001)
 
     # (1) stack：等价既有写法 &Point(1, 2)，生命期随帧
     p1: Point* = new stack slife Point(1, 2)

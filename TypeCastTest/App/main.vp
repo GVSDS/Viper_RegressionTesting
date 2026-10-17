@@ -1,7 +1,5 @@
 from stdint import *
-import t, c
 import stdio
-import string
 import win32.win32console
 import win32.win32memory
 import testcheck
@@ -158,7 +156,7 @@ def test_ternary():
     testcheck.check(max_val == 20 and min_val == 10, "ternary (max=20 min=10)", "ternary (expected 20,10)")
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 

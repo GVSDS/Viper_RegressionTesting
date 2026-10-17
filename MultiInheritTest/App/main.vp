@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CPtr, CChar, CInt32T, CFloat64T, CExport, State
 import viperlib
 import stdlib
 import testcheck
@@ -10,140 +8,137 @@ import testcheck
 # === 1. multiple inheritance field merging ===
 
 class A:
-    a: CInt
+    a: int
 
-    def __init__(self, a: CInt):
+    def __init__(self, a: int):
         self.a = a
 
-    def get_a(self) -> CInt:
+    def get_a(self) -> int:
         return self.a
 
 
 class B:
-    b: CInt
+    b: int
 
-    def __init__(self, b: CInt):
+    def __init__(self, b: int):
         self.b = b
 
-    def get_b(self) -> CInt:
+    def get_b(self) -> int:
         return self.b
 
 
 # Multiple inheritance C(A, B): fields flatten to layout [a, b, c].
 class C(A, B):
-    c: CInt
+    c: int
 
-    def __init__(self, a: CInt, b: CInt, cc: CInt):
+    def __init__(self, a: int, b: int, cc: int):
         self.a = a
         self.b = b
         self.c = cc
 
-    def get_c(self) -> CInt:
+    def get_c(self) -> int:
         return self.c
 
 
 # === 2. diamond dedup + leftmost priority ===
 
 class Base:
-    shared: CInt
+    shared: int
 
-    def who(self) -> CInt:
+    def who(self) -> int:
         return 1
 
-    def base_method(self) -> CInt:
+    def base_method(self) -> int:
         return 100
 
 
 class Left(Base):
-    def who(self) -> CInt:
+    def who(self) -> int:
         return 2
 
 
 class Right(Base):
-    def who(self) -> CInt:
+    def who(self) -> int:
         return 3
 
 
 # Diamond(Left, Right) shares Base: Base.shared flattens once,
 # and who() resolves to Left (leftmost priority).
 class Diamond(Left, Right):
-    def __init__(self, s: CInt):
+    def __init__(self, s: int):
         self.shared = s
 
 
 # === 3. virtual method multiple-inheritance vtable ===
 
-@t.CVTable
-class ShapeM:
-    def area(self) -> CFloat64T:
+virtual class ShapeM:
+    def area(self) -> double:
         return 0.0
 
 
-@t.CVTable
-class ColorM:
-    color: CInt
+virtual class ColorM:
+    color: int
 
-    def __init__(self, color: CInt):
+    def __init__(self, color: int):
         self.color = color
 
-    def color_code(self) -> CInt:
+    def color_code(self) -> int:
         return self.color
 
 
-@t.CVTable
-class ColoredCircle(ShapeM, ColorM):
-    r: CFloat64T
+virtual class ColoredCircle(ShapeM, ColorM):
+    r: double
 
-    def __init__(self, r: CFloat64T, color: CInt):
+    def __init__(self, r: double, color: int):
         self.color = color
         self.r = r
 
-    def area(self) -> CFloat64T:
+    def area(self) -> double:
         return 3.14159265 * self.r * self.r
 
 
 # === 4. operator overloading + method inheritance chain (MRO) ===
 
 class Vec2M:
-    x: CFloat64T
-    y: CFloat64T
+    x: double
+    y: double
 
-    def __new__() -> 'Vec2M' | CPtr:
+    def __new__() -> Vec2M*:
         return stdlib.malloc(16)
 
-    def __init__(self, x: CFloat64T, y: CFloat64T):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
-    def __add__(self, b: 'Vec2M' | CPtr) -> 'Vec2M' | CPtr:
+    def __add__(self, b: Vec2M*) -> Vec2M*:
         return Vec2M(self.x + b.x, self.y + b.y)
 
 
 class Vec2Extra:
     # Field access uses the defining class's fields (VPC model); does not
     # reference Vec2M's x/y (cross-parent field access is out of scope here).
-    def extra_val(self) -> CInt:
+    def extra_val(self) -> int:
         return 7
 
 
 # Multiple inheritance: __add__ comes from Vec2M (operator-overload MRO),
 # extra_val from Vec2Extra (method lookup MRO).
 class Vec2Both(Vec2M, Vec2Extra):
-    def __new__() -> 'Vec2Both' | CPtr:
+    def __new__() -> Vec2Both*:
         return stdlib.malloc(16)
 
-    def __init__(self, x: CFloat64T, y: CFloat64T):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("MultiInheritTest: 多继承专项测试")
 
-    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+    buf: str = stdlib.malloc(256)
 
     # === 1. field merge + attribute access + method calls ===
     testcheck.section("多继承字段合并")
@@ -171,7 +166,7 @@ def main() -> CInt | CExport:
     # === 3. virtual method multiple-inheritance vtable ===
     testcheck.section("虚方法多继承 vtable")
     cc = ColoredCircle(3.0, 7)
-    area: CFloat64T = cc.area()
+    area: double = cc.area()
     viperlib.snprintf(buf, 256, "ColoredCircle: r=%.1f color=%d area=%.2f code=%d",
                       cc.r, cc.color, area, cc.color_code())
     print(buf)
@@ -189,7 +184,7 @@ def main() -> CInt | CExport:
     print(buf)
     testcheck.check(v3.x == 4.0, "Vec2Both __add__ 继承 OK", "Vec2Both __add__ 继承 FAILED")
     testcheck.check(v3.y == 6.0, "Vec2Both __add__ y OK", "Vec2Both __add__ y FAILED")
-    lsq: CInt = v1.extra_val()
+    lsq: int = v1.extra_val()
     viperlib.snprintf(buf, 256, "Vec2Both extra_val: %d", lsq)
     print(buf)
     testcheck.check(lsq == 7, "extra_val 继承(Vec2Extra) OK", "extra_val 继承(Vec2Extra) FAILED")

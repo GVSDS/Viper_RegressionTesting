@@ -1,41 +1,31 @@
-import t
-from t import CInt
-
-
 # ============================================================
 # Cross-module isinstance test library: classes defined here are imported by
 # main.vp to verify vtable comparison resolves across object files.
 # ============================================================
-
-
-@t.CVTable
 class Shape:
-    def area(self) -> CInt:
+    def area(self) -> int:
         return 0
 
 
-@t.CVTable
-class Circle(Shape):
-    r: CInt
+virtual class Circle(Shape):
+    r: int
 
-    def __init__(self, r: CInt):
+    def __init__(self, r: int):
         self.r = r
 
-    def area(self) -> CInt:
+    def area(self) -> int:
         return self.r
 
 
-@t.CVTable
-class Square(Shape):
-    s: CInt
+virtual class Square(Shape):
+    s: int
 
-    def __init__(self, s: CInt):
+    def __init__(self, s: int):
         self.s = s
 
-    def area(self) -> CInt:
+    def area(self) -> int:
         return self.s
 
 
-@t.NoVTable
-class PlainShape:
-    tag: CInt
+novirtual class PlainShape:
+    tag: int

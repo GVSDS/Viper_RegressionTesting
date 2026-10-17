@@ -1,7 +1,8 @@
-import t
 import stdio
 import string
 import testcheck
+import win32.win32memory
+
 
 def test_for_in_string():
     testcheck.section("Test 1: for-in string iteration")
@@ -15,7 +16,7 @@ def test_for_in_string():
 def test_for_in_char_ptr():
     testcheck.section("Test 2: for-in char* iteration")
     s: char* = "ABC"
-    chars: t.CArray[int, 4] = [0]
+    chars: [4]int = [0]
     idx: int = 0
     for ch in s:
         if idx < 3:
@@ -27,7 +28,6 @@ def test_strcpy_for_in():
     testcheck.section("Test 3: strcpy using for-in")
     src: char* = "test"
     # Implement strcpy by hand with for-in.
-    import win32.win32memory
     buf: char* = win32.win32memory.VirtualAlloc(None, 64, 12288, 4)
     if uint64(buf) == 0:
         stdio.printf("SKIP: VirtualAlloc returned NULL\n")
@@ -42,7 +42,6 @@ def test_strcpy_for_in():
     # '==' on pointers compares addresses (C-like); use strcmp for contents.
     testcheck.check(string.strcmp(buf, "test") == 0, "strcpy for-in (result=test)", "strcpy for-in (cmp mismatch)")
 
-import win32.win32memory
 
 def main() -> int:
     testcheck.begin("IterTest: 指针迭代测试")

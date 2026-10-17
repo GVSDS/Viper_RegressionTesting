@@ -1,10 +1,10 @@
-import t, c
+from stdlib import malloc, free
 
 
 # --- PyObject: base class of all Python objects ---
 class PyObject:
-    ob_refcnt: t.CLong
-    ob_type: t.CPtr
+    ob_refcnt: long
+    ob_type: rawptr
 
 
 # --- Reference counting ---
@@ -43,7 +43,7 @@ class PyPreConfig:
 
 class PyWideStringList:
     length: sizet
-    items: t.CPtr
+    items: rawptr
 
 class PyConfig:
     _config_version: int
@@ -53,7 +53,7 @@ class PyConfig:
     dev_mode: int
     install_signal_handlers: int
     use_hash_seed: int
-    hash_seed: t.CUnsignedLong
+    hash_seed: ulong
     faulthandler: int
     tracemalloc: int
     import_time: int
@@ -101,18 +101,18 @@ extern def PyStatus_Exception(status: PySTATUS) -> int
 
 # --- Integer ops (PyLong) ---
 extern def PyLong_FromLong(v: int) -> PyObject*
-extern def PyLong_FromUnsignedLong(v: t.CUnsignedLong) -> PyObject*
-extern def PyLong_FromLongLong(v: t.CLong) -> PyObject*
-extern def PyLong_FromUnsignedLongLong(v: t.CUnsignedLong) -> PyObject*
-extern def PyLong_FromSsize_t(v: t.CPtrDiffT) -> PyObject*
+extern def PyLong_FromUnsignedLong(v: ulong) -> PyObject*
+extern def PyLong_FromLongLong(v: long) -> PyObject*
+extern def PyLong_FromUnsignedLongLong(v: ulong) -> PyObject*
+extern def PyLong_FromSsize_t(v: ptrdifft) -> PyObject*
 extern def PyLong_FromSize_t(v: sizet) -> PyObject*
 extern def PyLong_FromDouble(v: double) -> PyObject*
 extern def PyLong_AsLong(obj: PyObject*) -> int
-extern def PyLong_AsUnsignedLong(obj: PyObject*) -> t.CUnsignedLong
-extern def PyLong_AsLongLong(obj: PyObject*) -> t.CLongLong
-extern def PyLong_AsUnsignedLongLong(obj: PyObject*) -> t.CUnsignedLongLong
+extern def PyLong_AsUnsignedLong(obj: PyObject*) -> ulong
+extern def PyLong_AsLongLong(obj: PyObject*) -> longlong
+extern def PyLong_AsUnsignedLongLong(obj: PyObject*) -> ulonglong
 extern def PyLong_AsDouble(obj: PyObject*) -> double
-extern def PyLong_AsSsize_t(obj: PyObject*) -> t.CPtrDiffT
+extern def PyLong_AsSsize_t(obj: PyObject*) -> ptrdifft
 extern def PyLong_AsSize_t(obj: PyObject*) -> sizet
 
 
@@ -127,16 +127,16 @@ extern def PyUnicode_FromString(u: const str) -> PyObject*
 extern def PyUnicode_FromStringAndSize(u: const str, size: sizet) -> PyObject*
 extern def PyUnicode_FromFormat(fmt: const str) -> PyObject*
 extern def PyUnicode_AsUTF8(obj: PyObject*) -> str
-extern def PyUnicode_AsUTF8AndSize(obj: PyObject*, size: t.CPtrDiffT*) -> str
-extern def PyUnicode_AsWideChar(obj: PyObject*, wbuf: t.CPtr, bufsize: sizet) -> sizet
-extern def PyUnicode_GetLength(obj: PyObject*) -> t.CPtrDiffT
+extern def PyUnicode_AsUTF8AndSize(obj: PyObject*, size: ptrdifft*) -> str
+extern def PyUnicode_AsWideChar(obj: PyObject*, wbuf: rawptr, bufsize: sizet) -> sizet
+extern def PyUnicode_GetLength(obj: PyObject*) -> ptrdifft
 extern def PyUnicode_ReadChar(obj: PyObject*, idx: sizet) -> uint32
 extern def PyUnicode_WriteChar(obj: PyObject*, idx: sizet, ch: uint32) -> int
 extern def PyUnicode_Compare(l: PyObject*, r: PyObject*) -> int
 extern def PyUnicode_Concat(l: PyObject*, r: PyObject*) -> PyObject*
 extern def PyUnicode_Contains(container: PyObject*, element: PyObject*) -> int
 extern def PyUnicode_Format(fmt: PyObject*, args: PyObject*) -> PyObject*
-extern def PyUnicode_InternInPlace(s: PyObject**): pass
+extern def PyUnicode_InternInPlace(s: PyObject**)
 extern def PyUnicode_InternFromString(u: const str) -> PyObject*
 
 extern def PyBytes_FromString(v: const str) -> PyObject*
@@ -148,11 +148,11 @@ extern def PyBytes_FromFormat(fmt: const str) -> PyObject*
 
 
 # --- Bool / None ---
-extern def PyBool_FromLong(v: t.CLong) -> PyObject*
+extern def PyBool_FromLong(v: long) -> PyObject*
 
-Py_True: PyObject | t.CPtr | t.State
-Py_False: PyObject | t.CPtr | t.State
-Py_None: PyObject | t.CPtr | t.State
+extern Py_True: PyObject*
+extern Py_False: PyObject*
+extern Py_None: PyObject*
 
 
 # --- List ops (PyList) ---
@@ -191,9 +191,9 @@ extern def PyDict_Keys(d: PyObject*) -> PyObject*
 extern def PyDict_Values(d: PyObject*) -> PyObject*
 extern def PyDict_Items(d: PyObject*) -> PyObject*
 extern def PyDict_Copy(d: PyObject*) -> PyObject*
-extern def PyDict_Clear(d: PyObject*): pass
+extern def PyDict_Clear(d: PyObject*)
 extern def PyDict_Contains(d: PyObject*, key: PyObject*) -> int
-extern def PyDict_Next(d: PyObject*, pos: t.CPtrDiffT*, key: PyObject**, val: PyObject**) -> int
+extern def PyDict_Next(d: PyObject*, pos: ptrdifft*, key: PyObject**, val: PyObject**) -> int
 extern def PyDict_Merge(d: PyObject*, other: PyObject*, override: int) -> int
 extern def PyDict_Update(d: PyObject*, other: PyObject*) -> int
 
@@ -220,7 +220,7 @@ extern def PyObject_IsTrue(obj: PyObject*) -> int
 extern def PyObject_Not(obj: PyObject*) -> int
 extern def PyObject_RichCompare(o1: PyObject*, o2: PyObject*, opid: int) -> PyObject*
 extern def PyObject_RichCompareBool(o1: PyObject*, o2: PyObject*, opid: int) -> int
-extern def PyObject_Hash(obj: PyObject*) -> t.CPtrDiffT
+extern def PyObject_Hash(obj: PyObject*) -> ptrdifft
 extern def PyObject_Length(obj: PyObject*) -> sizet
 extern def PyObject_GetItem(obj: PyObject*, key: PyObject*) -> PyObject*
 extern def PyObject_SetItem(obj: PyObject*, key: PyObject*, val: PyObject*) -> int
@@ -231,12 +231,12 @@ extern def PyIter_Next(obj: PyObject*) -> PyObject*
 
 
 # --- Comparison constants ---
-Py_LT: int | t.State
-Py_LE: int | t.State
-Py_EQ: int | t.State
-Py_NE: int | t.State
-Py_GT: int | t.State
-Py_GE: int | t.State
+extern Py_LT: int
+extern Py_LE: int
+extern Py_EQ: int
+extern Py_NE: int
+extern Py_GT: int
+extern Py_GE: int
 
 
 # --- Module ops ---
@@ -252,13 +252,13 @@ extern def PyImport_ImportModuleEx(name: const str, globs: PyObject*, locs: PyOb
 # --- Module creation ---
 class PyMethodDef:
     ml_name: const str
-    ml_meth: t.CPtr
+    ml_meth: rawptr
     ml_flags: int
     ml_doc: const str
 
 class PyModuleDef_Base:
     ob_base: PyObject
-    m_init: t.CPtr
+    m_init: rawptr
     m_index: sizet
     m_copy: PyObject*
 
@@ -266,12 +266,12 @@ class PyModuleDef:
     m_base: PyModuleDef_Base
     m_name: const str
     m_doc: const str
-    m_size: t.CPtrDiffT
+    m_size: ptrdifft
     m_methods: PyMethodDef*
-    m_slots: t.CPtr
-    m_traverse: t.CPtr
-    m_clear: t.CPtr
-    m_free: t.CPtr
+    m_slots: rawptr
+    m_traverse: rawptr
+    m_clear: rawptr
+    m_free: rawptr
 
 extern def PyModule_Create(mod: PyModuleDef*) -> PyObject*
 extern def PyModule_Create2(mod: PyModuleDef*, ver: int) -> PyObject*
@@ -280,66 +280,66 @@ extern def PyModule_GetDict(mod: PyObject*) -> PyObject*
 extern def PyModule_GetFilenameObject(mod: PyObject*) -> PyObject*
 extern def PyModule_AddObject(mod: PyObject*, name: const str, val: PyObject*) -> int
 extern def PyModule_AddObjectRef(mod: PyObject*, name: const str, val: PyObject*) -> int
-extern def PyModule_AddIntConstant(mod: PyObject*, name: const str, val: t.CLong) -> int
+extern def PyModule_AddIntConstant(mod: PyObject*, name: const str, val: long) -> int
 extern def PyModule_AddStringConstant(mod: PyObject*, name: const str, val: const str) -> int
 
 
 # --- GIL management ---
 extern def PyGILState_Ensure() -> int
-extern def PyGILState_Release(state: int): pass
-extern def PyEval_SaveThread() -> t.CPtr
-extern def PyEval_RestoreThread(tstate: t.CPtr): pass
-extern def PyEval_AcquireThread(tstate: t.CPtr): pass
-extern def PyEval_ReleaseThread(tstate: t.CPtr): pass
-extern def PyEval_AcquireLock(): pass
-extern def PyEval_ReleaseLock(): pass
+extern def PyGILState_Release(state: int)
+extern def PyEval_SaveThread() -> rawptr
+extern def PyEval_RestoreThread(tstate: rawptr)
+extern def PyEval_AcquireThread(tstate: rawptr)
+extern def PyEval_ReleaseThread(tstate: rawptr)
+extern def PyEval_AcquireLock()
+extern def PyEval_ReleaseLock()
 extern def PyEval_ThreadsInitialized() -> int
-extern def PyEval_InitThreads(): pass
+extern def PyEval_InitThreads()
 
 
 # --- Error handling ---
 extern def PyErr_Occurred() -> PyObject*
-extern def PyErr_Clear(): pass
-extern def PyErr_Fetch(tp: PyObject**, val: PyObject**, tb: PyObject**): pass
-extern def PyErr_Restore(tp: PyObject*, val: PyObject*, tb: PyObject*): pass
-extern def PyErr_NormalizeException(tp: PyObject**, val: PyObject**, tb: PyObject**): pass
-extern def PyErr_SetString(tp: PyObject*, msg: const str): pass
-extern def PyErr_SetObject(tp: PyObject*, val: PyObject*): pass
-extern def PyErr_BadArgument() -> t.CPtr | t.State: pass
-extern def PyErr_NoMemory() -> t.CPtr | t.State: pass
-extern def PyErr_Print(): pass
-extern def PyErr_ExceptionMatches(exc: PyObject*) -> int | t.State: pass
-extern def PyErr_GivenExceptionMatches(given: PyObject*, exc: PyObject*) -> int | t.State: pass
+extern def PyErr_Clear()
+extern def PyErr_Fetch(tp: PyObject**, val: PyObject**, tb: PyObject**)
+extern def PyErr_Restore(tp: PyObject*, val: PyObject*, tb: PyObject*)
+extern def PyErr_NormalizeException(tp: PyObject**, val: PyObject**, tb: PyObject**)
+extern def PyErr_SetString(tp: PyObject*, msg: const str)
+extern def PyErr_SetObject(tp: PyObject*, val: PyObject*)
+extern def PyErr_BadArgument() -> rawptr
+extern def PyErr_NoMemory() -> rawptr
+extern def PyErr_Print()
+extern def PyErr_ExceptionMatches(exc: PyObject*) -> int
+extern def PyErr_GivenExceptionMatches(given: PyObject*, exc: PyObject*) -> int
 
 
 # --- Built-in exception types ---
-PyExc_BaseException: PyObject | t.CPtr | t.State
-PyExc_Exception: PyObject | t.CPtr | t.State
-PyExc_TypeError: PyObject | t.CPtr | t.State
-PyExc_ValueError: PyObject | t.CPtr | t.State
-PyExc_RuntimeError: PyObject | t.CPtr | t.State
-PyExc_KeyError: PyObject | t.CPtr | t.State
-PyExc_IndexError: PyObject | t.CPtr | t.State
-PyExc_AttributeError: PyObject | t.CPtr | t.State
-PyExc_ImportError: PyObject | t.CPtr | t.State
-PyExc_OSError: PyObject | t.CPtr | t.State
-PyExc_IOError: PyObject | t.CPtr | t.State
-PyExc_ZeroDivisionError: PyObject | t.CPtr | t.State
-PyExc_OverflowError: PyObject | t.CPtr | t.State
-PyExc_MemoryError: PyObject | t.CPtr | t.State
-PyExc_NameError: PyObject | t.CPtr | t.State
-PyExc_StopIteration: PyObject | t.CPtr | t.State
-PyExc_NotImplementedError: PyObject | t.CPtr | t.State
-PyExc_SyntaxError: PyObject | t.CPtr | t.State
-PyExc_FileNotFoundError: PyObject | t.CPtr | t.State
-PyExc_PermissionError: PyObject | t.CPtr | t.State
-PyExc_IsADirectoryError: PyObject | t.CPtr | t.State
-PyExc_NotADirectoryError: PyObject | t.CPtr | t.State
+extern PyExc_BaseException: PyObject*
+extern PyExc_Exception: PyObject*
+extern PyExc_TypeError: PyObject*
+extern PyExc_ValueError: PyObject*
+extern PyExc_RuntimeError: PyObject*
+extern PyExc_KeyError: PyObject*
+extern PyExc_IndexError: PyObject*
+extern PyExc_AttributeError: PyObject*
+extern PyExc_ImportError: PyObject*
+extern PyExc_OSError: PyObject*
+extern PyExc_IOError: PyObject*
+extern PyExc_ZeroDivisionError: PyObject*
+extern PyExc_OverflowError: PyObject*
+extern PyExc_MemoryError: PyObject*
+extern PyExc_NameError: PyObject*
+extern PyExc_StopIteration: PyObject*
+extern PyExc_NotImplementedError: PyObject*
+extern PyExc_SyntaxError: PyObject*
+extern PyExc_FileNotFoundError: PyObject*
+extern PyExc_PermissionError: PyObject*
+extern PyExc_IsADirectoryError: PyObject*
+extern PyExc_NotADirectoryError: PyObject*
 
 
 # --- Built-in functions ---
 extern def Py_BuildValue(fmt: const str) -> PyObject*
-extern def Py_VaBuildValue(fmt: const str, va: t.CPtr) -> PyObject*
+extern def Py_VaBuildValue(fmt: const str, va: rawptr) -> PyObject*
 
 
 # --- Type checks ---
@@ -355,21 +355,21 @@ extern def PyNone_Check(obj: PyObject*) -> int
 
 
 # --- Memory management ---
-extern def PyMem_Malloc(size: sizet) -> t.CPtr
-extern def PyMem_Realloc(ptr: t.CPtr, size: sizet) -> t.CPtr
-extern def PyMem_Free(ptr: t.CPtr)
-extern def PyMem_Calloc(nelem: sizet, elsize: sizet) -> t.CPtr
-extern def PyObject_Malloc(size: sizet) -> t.CPtr
-extern def PyObject_Realloc(ptr: t.CPtr, size: sizet) -> t.CPtr
-extern def PyObject_Free(ptr: t.CPtr)
-extern def PyObject_Calloc(nelem: sizet, elsize: sizet) -> t.CPtr
-extern def PyObject_Init(obj: PyObject*, tp: t.CPtr) -> PyObject*
-extern def PyObject_InitVar(obj: PyObject*, tp: t.CPtr, size: sizet) -> PyObject*
+extern def PyMem_Malloc(size: sizet) -> rawptr
+extern def PyMem_Realloc(ptr: rawptr, size: sizet) -> rawptr
+extern def PyMem_Free(ptr: rawptr)
+extern def PyMem_Calloc(nelem: sizet, elsize: sizet) -> rawptr
+extern def PyObject_Malloc(size: sizet) -> rawptr
+extern def PyObject_Realloc(ptr: rawptr, size: sizet) -> rawptr
+extern def PyObject_Free(ptr: rawptr)
+extern def PyObject_Calloc(nelem: sizet, elsize: sizet) -> rawptr
+extern def PyObject_Init(obj: PyObject*, tp: rawptr) -> PyObject*
+extern def PyObject_InitVar(obj: PyObject*, tp: rawptr, size: sizet) -> PyObject*
 
 
 # --- File ops ---
 extern def PyFile_FromString(filename: const str, mode: const str) -> PyObject*
-extern def PyFile_AsFile(file: PyObject*) -> t.CPtr
+extern def PyFile_AsFile(file: PyObject*) -> rawptr
 extern def PyFile_WriteObject(obj: PyObject*, file: PyObject*, flags: int) -> int
 extern def PyFile_WriteString(s: const str, file: PyObject*) -> int
 
@@ -377,33 +377,33 @@ extern def PyFile_WriteString(s: const str, file: PyObject*) -> int
 # --- Compile/execute ---
 extern def Py_CompileString(s: const str, filename: const str, start: int) -> PyObject*
 extern def PyEval_EvalCode(code: PyObject*, globs: PyObject*, locs: PyObject*) -> PyObject*
-extern def PyEval_EvalCodeEx(code: PyObject*, globs: PyObject*, locs: PyObject*, args: PyObject**, argc: int, kws: PyObject**, kwc: int, defs: PyObject**, defc: int, kwdefs: PyObject*, closure: PyObject*) -> PyObject*: pass
-extern def PyEval_EvalFrame(frame: t.CPtr) -> PyObject*: pass
-extern def PyEval_CallObject(callable: PyObject*, args: PyObject*) -> PyObject*: pass
-extern def PyEval_CallFunction(callable: PyObject*, fmt: const str) -> PyObject*: pass
-extern def PyEval_CallMethod(obj: PyObject*, method: const str, fmt: const str) -> PyObject*: pass
+extern def PyEval_EvalCodeEx(code: PyObject*, globs: PyObject*, locs: PyObject*, args: PyObject**, argc: int, kws: PyObject**, kwc: int, defs: PyObject**, defc: int, kwdefs: PyObject*, closure: PyObject*) -> PyObject*
+extern def PyEval_EvalFrame(frame: rawptr) -> PyObject*
+extern def PyEval_CallObject(callable: PyObject*, args: PyObject*) -> PyObject*
+extern def PyEval_CallFunction(callable: PyObject*, fmt: const str) -> PyObject*
+extern def PyEval_CallMethod(obj: PyObject*, method: const str, fmt: const str) -> PyObject*
 
 
 # --- PyRun ---
 extern def PyRun_SimpleString(cmd: const str) -> int
-extern def PyRun_SimpleFile(fp: t.CPtr, filename: const str) -> int
-extern def PyRun_AnyFile(fp: t.CPtr, filename: const str) -> int
+extern def PyRun_SimpleFile(fp: rawptr, filename: const str) -> int
+extern def PyRun_AnyFile(fp: rawptr, filename: const str) -> int
 extern def PyRun_String(s: const str, start: int, globs: PyObject*, locs: PyObject*) -> PyObject*
-extern def PyRun_File(fp: t.CPtr, filename: const str, start: int, globs: PyObject*, locs: PyObject*) -> PyObject*
+extern def PyRun_File(fp: rawptr, filename: const str, start: int, globs: PyObject*, locs: PyObject*) -> PyObject*
 
-Py_single_input: int | t.State
-Py_file_input: int | t.State
-Py_eval_input: int | t.State
+extern Py_single_input: int
+extern Py_file_input: int
+extern Py_eval_input: int
 
 
 # --- Capsule ---
-extern def PyCapsule_New(ptr: t.CPtr, name: const str, dtor: t.CPtr) -> PyObject*
-extern def PyCapsule_GetPointer(cap: PyObject*, name: const str) -> t.CPtr
+extern def PyCapsule_New(ptr: rawptr, name: const str, dtor: rawptr) -> PyObject*
+extern def PyCapsule_GetPointer(cap: PyObject*, name: const str) -> rawptr
 extern def PyCapsule_GetName(cap: PyObject*) -> str
 extern def PyCapsule_IsValid(cap: PyObject*, name: const str) -> int
-extern def PyCapsule_SetPointer(cap: PyObject*, ptr: t.CPtr) -> int
+extern def PyCapsule_SetPointer(cap: PyObject*, ptr: rawptr) -> int
 extern def PyCapsule_SetName(cap: PyObject*, name: const str) -> int
-extern def PyCapsule_SetDestructor(cap: PyObject*, dtor: t.CPtr) -> int
+extern def PyCapsule_SetDestructor(cap: PyObject*, dtor: rawptr) -> int
 
 
 # --- Sequence ops ---
@@ -471,15 +471,15 @@ extern def PyWeakref_Check(obj: PyObject*) -> int
 # --- Property descriptors ---
 class PyGetSetDef:
     name: const str
-    get: t.CPtr
-    set: t.CPtr
+    get: rawptr
+    set: rawptr
     doc: const str
-    closure: t.CPtr
+    closure: rawptr
 
 class PyMemberDef:
     name: const str
     type: int
-    offset: t.CPtrDiffT
+    offset: ptrdifft
     flags: int
     doc: const str
 
@@ -487,13 +487,13 @@ class PyMemberDef:
 # --- sys module ---
 extern def PySys_GetObject(name: const str) -> PyObject*
 extern def PySys_SetObject(name: const str, val: PyObject*) -> int
-extern def PySys_ResetWarnOptions(): pass
-extern def PySys_AddWarnOption(s: PyObject*): pass
-extern def PySYS_AddXOption(s: PyObject*): pass
-extern def PySys_WriteStdout(fmt: const str): pass
-extern def PySys_WriteStderr(fmt: const str): pass
-extern def PySys_FormatStdout(fmt: const str): pass
-extern def PySys_FormatStderr(fmt: const str): pass
+extern def PySys_ResetWarnOptions()
+extern def PySys_AddWarnOption(s: PyObject*)
+extern def PySYS_AddXOption(s: PyObject*)
+extern def PySys_WriteStdout(fmt: const str)
+extern def PySys_WriteStderr(fmt: const str)
+extern def PySys_FormatStdout(fmt: const str)
+extern def PySys_FormatStderr(fmt: const str)
 
 
 # --- Memory view ---
@@ -508,7 +508,7 @@ extern def PySet_Add(s: PyObject*, key: PyObject*) -> int
 extern def PySet_Discard(s: PyObject*, key: PyObject*) -> int
 extern def PySet_Contains(s: PyObject*, key: PyObject*) -> int
 extern def PySet_Size(s: PyObject*) -> sizet
-extern def PySet_Clear(s: PyObject*): pass
+extern def PySet_Clear(s: PyObject*)
 extern def PySet_Check(obj: PyObject*) -> int
 extern def PyFrozenSet_New(iterable: PyObject*) -> PyObject*
 extern def PyFrozenSet_Check(obj: PyObject*) -> int
@@ -517,8 +517,8 @@ extern def PyFrozenSet_Check(obj: PyObject*) -> int
 # --- slice ---
 extern def PySlice_New(start: PyObject*, stop: PyObject*, step: PyObject*) -> PyObject*
 extern def PySlice_GetIndicesEx(sl: PyObject*, length: sizet, start: sizet*, stop: sizet*, step: sizet*, slicelen: sizet*) -> int
-extern def PySlice_Unpack(sl: PyObject*, start: t.CPtrDiffT*, stop: t.CPtrDiffT*, step: t.CPtrDiffT*): pass
-extern def PySlice_AdjustIndices(length: sizet, start: t.CPtrDiffT*, stop: t.CPtrDiffT*, step: t.CPtrDiffT) -> sizet
+extern def PySlice_Unpack(sl: PyObject*, start: ptrdifft*, stop: ptrdifft*, step: ptrdifft*)
+extern def PySlice_AdjustIndices(length: sizet, start: ptrdifft*, stop: ptrdifft*, step: ptrdifft) -> sizet
 extern def PySlice_Check(obj: PyObject*) -> int
 
 
@@ -528,36 +528,36 @@ extern def PySlice_Check(obj: PyObject*) -> int
 class PyLongObj:
     ptr: PyObject*
 
-    def __new__(self) -> 'PyLongObj' | t.CPtr:
-        return t.CPtr(malloc(PyLongObj.__sizeof__()))
+    def __new__(self) -> PyLongObj*:
+        return rawptr(malloc(PyLongObj.__sizeof__()))
 
     @staticmethod
-    def from_long(val: t.CLong) -> 'PyLongObj' | t.CPtr:
+    def from_long(val: long) -> PyLongObj*:
         obj: PyLongObj* = PyLongObj()
         obj.ptr = PyLong_FromLong(val)
         return obj
 
-    def __add__(self, other: PyLongObj*) -> 'PyLongObj' | t.CPtr:
+    def __add__(self, other: PyLongObj*) -> PyLongObj*:
         res: PyLongObj* = PyLongObj()
         res.ptr = PyNumber_Add(self.ptr, other.ptr)
         return res
 
-    def __sub__(self, other: PyLongObj*) -> 'PyLongObj' | t.CPtr:
+    def __sub__(self, other: PyLongObj*) -> PyLongObj*:
         res: PyLongObj* = PyLongObj()
         res.ptr = PyNumber_Subtract(self.ptr, other.ptr)
         return res
 
-    def __mul__(self, other: PyLongObj*) -> 'PyLongObj' | t.CPtr:
+    def __mul__(self, other: PyLongObj*) -> PyLongObj*:
         res: PyLongObj* = PyLongObj()
         res.ptr = PyNumber_Multiply(self.ptr, other.ptr)
         return res
 
-    def __neg__(self) -> 'PyLongObj' | t.CPtr:
+    def __neg__(self) -> PyLongObj*:
         res: PyLongObj* = PyLongObj()
         res.ptr = PyNumber_Negative(self.ptr)
         return res
 
-    def to_long(self) -> t.CLong:
+    def to_long(self) -> long:
         return PyLong_AsLong(self.ptr)
 
     def __str__(self) -> PyObject*:
@@ -571,36 +571,36 @@ class PyLongObj:
 class PyFloatObj:
     ptr: PyObject*
 
-    def __new__(self) -> 'PyFloatObj' | t.CPtr:
-        return t.CPtr(malloc(PyFloatObj.__sizeof__()))
+    def __new__(self) -> PyFloatObj*:
+        return rawptr(malloc(PyFloatObj.__sizeof__()))
 
     @staticmethod
-    def from_double(val: double) -> 'PyFloatObj' | t.CPtr:
+    def from_double(val: double) -> PyFloatObj*:
         obj: PyFloatObj* = PyFloatObj()
         obj.ptr = PyFloat_FromDouble(val)
         return obj
 
-    def __add__(self, other: PyFloatObj*) -> 'PyFloatObj' | t.CPtr:
+    def __add__(self, other: PyFloatObj*) -> PyFloatObj*:
         res: PyFloatObj* = PyFloatObj()
         res.ptr = PyNumber_Add(self.ptr, other.ptr)
         return res
 
-    def __sub__(self, other: PyFloatObj*) -> 'PyFloatObj' | t.CPtr:
+    def __sub__(self, other: PyFloatObj*) -> PyFloatObj*:
         res: PyFloatObj* = PyFloatObj()
         res.ptr = PyNumber_Subtract(self.ptr, other.ptr)
         return res
 
-    def __mul__(self, other: PyFloatObj*) -> 'PyFloatObj' | t.CPtr:
+    def __mul__(self, other: PyFloatObj*) -> PyFloatObj*:
         res: PyFloatObj* = PyFloatObj()
         res.ptr = PyNumber_Multiply(self.ptr, other.ptr)
         return res
 
-    def __truediv__(self, other: PyFloatObj*) -> 'PyFloatObj' | t.CPtr:
+    def __truediv__(self, other: PyFloatObj*) -> PyFloatObj*:
         res: PyFloatObj* = PyFloatObj()
         res.ptr = PyNumber_TrueDivide(self.ptr, other.ptr)
         return res
 
-    def __neg__(self) -> 'PyFloatObj' | t.CPtr:
+    def __neg__(self) -> PyFloatObj*:
         res: PyFloatObj* = PyFloatObj()
         res.ptr = PyNumber_Negative(self.ptr)
         return res
@@ -619,21 +619,21 @@ class PyFloatObj:
 class PyUnicodeObj:
     ptr: PyObject*
 
-    def __new__(self) -> 'PyUnicodeObj' | t.CPtr:
-        return t.CPtr(malloc(PyUnicodeObj.__sizeof__()))
+    def __new__(self) -> PyUnicodeObj*:
+        return rawptr(malloc(PyUnicodeObj.__sizeof__()))
 
     @staticmethod
-    def from_string(s: char*) -> 'PyUnicodeObj' | t.CPtr:
+    def from_string(s: char*) -> PyUnicodeObj*:
         obj: PyUnicodeObj* = PyUnicodeObj()
         obj.ptr = PyUnicode_FromString(s)
         return obj
 
-    def __add__(self, other: PyUnicodeObj*) -> 'PyUnicodeObj' | t.CPtr:
+    def __add__(self, other: PyUnicodeObj*) -> PyUnicodeObj*:
         res: PyUnicodeObj* = PyUnicodeObj()
         res.ptr = PyUnicode_Concat(self.ptr, other.ptr)
         return res
 
-    def __len__(self) -> t.CPtrDiffT:
+    def __len__(self) -> ptrdifft:
         return PyUnicode_GetLength(self.ptr)
 
     def as_utf8(self) -> char*:
@@ -650,11 +650,11 @@ class PyUnicodeObj:
 class PyListObj:
     ptr: PyObject*
 
-    def __new__(self) -> 'PyListObj' | t.CPtr:
-        return t.CPtr(malloc(PyListObj.__sizeof__()))
+    def __new__(self) -> 'PyListObj' | rawptr:
+        return rawptr(malloc(PyListObj.__sizeof__()))
 
     @staticmethod
-    def new() -> 'PyListObj' | t.CPtr:
+    def new() -> 'PyListObj' | rawptr:
         obj: PyListObj* = PyListObj()
         obj.ptr = PyList_New(0)
         return obj
@@ -679,11 +679,11 @@ class PyListObj:
 class PyDictObj:
     ptr: PyObject*
 
-    def __new__(self) -> 'PyDictObj' | t.CPtr:
-        return t.CPtr(malloc(PyDictObj.__sizeof__()))
+    def __new__(self) -> PyDictObj*:
+        return rawptr(malloc(PyDictObj.__sizeof__()))
 
     @staticmethod
-    def new() -> 'PyDictObj' | t.CPtr:
+    def new() -> PyDictObj*:
         obj: PyDictObj* = PyDictObj()
         obj.ptr = PyDict_New()
         return obj

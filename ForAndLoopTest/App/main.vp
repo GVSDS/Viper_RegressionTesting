@@ -1,8 +1,5 @@
-import t
-import c
 import stdio
 import stdlib
-import string
 import memhub
 import testcheck
 

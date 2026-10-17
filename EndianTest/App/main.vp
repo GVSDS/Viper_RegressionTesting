@@ -1,10 +1,9 @@
 import testcheck
-import t
 
 
 # 大小端字节序专项：
-#   · 标记 `t.BigEndian` 的槽位，在（默认的）小端目标上必须以**大端字节序列**存放；
-#   · 标记 `t.LittleEndian` 的槽位与目标序一致，按目标序存放；
+#   · 标记 `bigend` 的槽位，在（默认的）小端目标上必须以**大端字节序列**存放；
+#   · 标记 `littlend` 的槽位与目标序一致，按目标序存放；
 #   · 无标记 = native，不参与任何交换。
 # 因此本测试既校验「读写成对交换」的语义不变式（round-trip），
 # 又**直接检查内存里的字节序列** —— 只有后者能真正证明交换发生了
@@ -19,7 +18,7 @@ def read_byte(p: rawptr, i: int) -> int:
 def test_big_endian_local() -> None:
     """大端局部变量：内存字节必须是 12 34 56 78（MSB 在前），读回值不变。"""
     testcheck.section("BigEndian local variable")
-    x: t.CInt32T | t.BigEndian = 0x12345678
+    x: bigend int32 = 0x12345678
     px: rawptr = rawptr(&x)
     testcheck.check(read_byte(px, 0) == 0x12, "BigEndian memory byte[0] = 0x12 (MSB first)", "expect 0x12")
     testcheck.check(read_byte(px, 1) == 0x34, "BigEndian memory byte[1] = 0x34", "expect 0x34")
@@ -31,7 +30,7 @@ def test_big_endian_local() -> None:
 def test_little_endian_local() -> None:
     """小端局部变量：小端目标上与目标序一致，内存字节是 78 56 34 12（LSB 在前）。"""
     testcheck.section("LittleEndian local variable")
-    y: t.CInt32T | t.LittleEndian = 0x12345678
+    y: littlend int32 = 0x12345678
     py: rawptr = rawptr(&y)
     testcheck.check(read_byte(py, 0) == 0x78, "LittleEndian memory byte[0] = 0x78 (LSB first)", "expect 0x78")
     testcheck.check(read_byte(py, 3) == 0x12, "LittleEndian memory byte[3] = 0x12", "expect 0x12")
@@ -41,8 +40,8 @@ def test_little_endian_local() -> None:
 def test_be_le_differ() -> None:
     """同一值分别按大端/小端存放，内存字节序列必须互为反转。"""
     testcheck.section("BigEndian vs LittleEndian memory layout")
-    a: t.CInt32T | t.BigEndian = 0x22334455
-    b: t.CInt32T | t.LittleEndian = 0x22334455
+    a: bigend int32 = 0x22334455
+    b: littlend int32 = 0x22334455
     pa: rawptr = rawptr(&a)
     pb: rawptr = rawptr(&b)
     testcheck.check(read_byte(pa, 0) == read_byte(pb, 3), "BE byte[0] == LE byte[3]", "expect reversed byte order")
@@ -53,9 +52,9 @@ def test_be_le_differ() -> None:
 class NetHeader:
     """经典用法：结构体成员带字节序标记（对齐 TransPyC 文档里的 NetHeader）。"""
 
-    magic: t.CInt32T | t.BigEndian
-    length: t.CInt16T | t.BigEndian
-    body: t.CInt32T
+    magic: bigend int32
+    length: littlend int16
+    body: int32
 
 
 def test_struct_field_roundtrip() -> None:
@@ -75,11 +74,11 @@ def test_struct_field_roundtrip() -> None:
 def test_repeated_write() -> None:
     """反复写入不同值，读回始终正确（交换必须成对且不残留）。"""
     testcheck.section("Repeated writes")
-    x: t.CInt32T | t.BigEndian = 0
+    x: bigend int32 = 0
     i: int = 0
     ok: int = 1
     for i in range(int(4)):
-        v: t.CInt32T = t.CInt32T(0x10000000 * (i + 1))
+        v: int32 = int32(0x10000000 * (i + 1))
         x = v
         if x != v:
             ok = 0

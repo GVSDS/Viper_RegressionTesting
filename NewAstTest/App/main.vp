@@ -1,5 +1,3 @@
-import t, c
-from t import CInt, CExport, CPtr
 from stdio import printf
 import memhub
 import stdlib
@@ -15,10 +13,10 @@ from ast import (
 )
 
 
-ARENA_SIZE: CInt = 16777216
+ARENA_SIZE: int = 16777216
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     printf("=== NewAstTest Start ===\n")
 
     # Initialize allocator
@@ -26,17 +24,17 @@ def main() -> CInt | CExport:
     if arena is None:
         printf("FAIL: arena alloc failed\n")
         return 1
-    pool: memhub.MemBuddy | CPtr = memhub.MemBuddy(arena, ARENA_SIZE)
+    pool: memhub.MemBuddy* = memhub.MemBuddy(arena, ARENA_SIZE)
     if pool is None:
         printf("FAIL: pool init failed\n")
         return 1
 
-    passed: CInt = 0
-    failed: CInt = 0
+    passed: int = 0
+    failed: int = 0
 
     # --- Allocate dump buffer for AST round-trip output tests ---
     DUMP_BUF_SIZE: sizet = 8192
-    dump_buf: char | CPtr = stdlib.malloc(DUMP_BUF_SIZE)
+    dump_buf: char* = stdlib.malloc(DUMP_BUF_SIZE)
     if dump_buf is None:
         printf("FAIL: dump_buf alloc failed\n")
         stdlib.free(arena)
@@ -49,7 +47,7 @@ def main() -> CInt | CExport:
     case _:
         pass
 """
-    match_mod: Module | CPtr = parse(match_src, pool)
+    match_mod: Module* = parse(match_src, pool)
     if match_mod is not None and match_mod.kind() == ASTKind.Module:
         passed += 1
         printf("PASS: parse('match x: case 1: ... case _: ...') -> Module\n")
@@ -58,7 +56,7 @@ def main() -> CInt | CExport:
         printf("FAIL: parse match with cases failed\n")
 
     # --- Test 1: Name node creation ---
-    name_x: Name | CPtr = Name(pool, "x", ASTCtx.Load)
+    name_x: Name* = Name(pool, "x", ASTCtx.Load)
     if name_x is None:
         printf("FAIL: Name creation\n")
         failed += 1
@@ -67,7 +65,7 @@ def main() -> CInt | CExport:
         printf("PASS: Name('x'), kind=%d\n", name_x.kind())
 
     # --- Test 2: ConstantInt node ---
-    int_42: Constant | CPtr = Constant(pool, CONST_INT, 42, 0.0, None, 1, 0)
+    int_42: Constant* = Constant(pool, CONST_INT, 42, 0.0, None, 1, 0)
     if int_42 is None:
         printf("FAIL: ConstantInt creation\n")
         failed += 1
@@ -77,7 +75,7 @@ def main() -> CInt | CExport:
                int_42.kind(), int_42.int_val)
 
     # --- Test 3: ConstantStr node ---
-    str_hello: Constant | CPtr = Constant(pool, CONST_STR, 0, 0.0, "hello", 2, 0)
+    str_hello: Constant* = Constant(pool, CONST_STR, 0, 0.0, "hello", 2, 0)
     if str_hello is None:
         printf("FAIL: ConstantStr creation\n")
         failed += 1
@@ -86,7 +84,7 @@ def main() -> CInt | CExport:
         printf("PASS: ConstantStr('hello'), kind=%d\n", str_hello.kind())
 
     # --- Test 4: ConstantNone node ---
-    const_none: Constant | CPtr = Constant(pool, CONST_NONE, 0, 0.0, None, 3, 0)
+    const_none: Constant* = Constant(pool, CONST_NONE, 0, 0.0, None, 3, 0)
     if const_none is None:
         printf("FAIL: ConstantNone creation\n")
         failed += 1
@@ -95,7 +93,7 @@ def main() -> CInt | CExport:
         printf("PASS: ConstantNone, kind=%d\n", const_none.kind())
 
     # --- Test 5: BinOp node (x + 42) ---
-    binop: BinOp | CPtr = BinOp(pool, name_x, OpKind.Add, int_42)
+    binop: BinOp* = BinOp(pool, name_x, OpKind.Add, int_42)
     if binop is None:
         printf("FAIL: BinOp creation\n")
         failed += 1
@@ -104,7 +102,7 @@ def main() -> CInt | CExport:
         printf("PASS: BinOp(Add), kind=%d\n", binop.kind())
 
     # --- Test 6: UnaryOp node (-x) ---
-    unary: UnaryOp | CPtr = UnaryOp(pool, OpKind.USub, name_x)
+    unary: UnaryOp* = UnaryOp(pool, OpKind.USub, name_x)
     if unary is None:
         printf("FAIL: UnaryOp creation\n")
         failed += 1
@@ -112,8 +110,8 @@ def main() -> CInt | CExport:
         passed += 1
         printf("PASS: UnaryOp(USub), kind=%d\n", unary.kind())
 
-    # --- Test 7: list[AST | CPtr] container ---
-    body: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    # --- Test 7: list[AST*] container ---
+    body: list[AST*]* = list[AST*](pool, 8)
     if body is None:
         printf("FAIL: list creation\n")
         failed += 1
@@ -130,9 +128,9 @@ def main() -> CInt | CExport:
 
     # --- Test 8: list get + kind dispatch ---
     if body is not None:
-        item0: AST | CPtr = body.get(0)
+        item0: AST* = body.get(0)
         if item0 is not None:
-            k: CInt = item0.kind()
+            k: int = item0.kind()
             if k == ASTKind.BinOp:
                 passed += 1
                 printf("PASS: list get(0).kind()=%d (BinOp)\n", k)
@@ -144,7 +142,7 @@ def main() -> CInt | CExport:
             printf("FAIL: list get(0) returned None\n")
 
     # --- Test 9: Module node (Module(pool) + append) ---
-    mod: Module | CPtr = Module(pool)
+    mod: Module* = Module(pool)
     if mod is None:
         printf("FAIL: Module creation\n")
         failed += 1
@@ -155,8 +153,8 @@ def main() -> CInt | CExport:
         printf("PASS: Module, kind=%d\n", mod.kind())
 
     # --- Test 10: polymorphic dispatch via AST base pointer kind() ---
-    ast_ptr: AST | CPtr = mod
-    poly_kind: CInt = ast_ptr.kind()
+    ast_ptr: AST* = mod
+    poly_kind: int = ast_ptr.kind()
     if poly_kind == ASTKind.Module:
         passed += 1
         printf("PASS: polymorphic kind()=%d (Module via AST ptr)\n", poly_kind)
@@ -166,9 +164,9 @@ def main() -> CInt | CExport:
 
     # --- Test 11: polymorphic dispatch on list elements ---
     if body is not None:
-        ast_item: AST | CPtr = body.get(1)
+        ast_item: AST* = body.get(1)
         if ast_item is not None:
-            pk2: CInt = ast_item.kind()
+            pk2: int = ast_item.kind()
             if pk2 == ASTKind.UnaryOp:
                 passed += 1
                 printf("PASS: polymorphic kind()=%d (UnaryOp via AST ptr)\n", pk2)
@@ -180,7 +178,7 @@ def main() -> CInt | CExport:
             printf("FAIL: list get(1) returned None\n")
 
     # --- Test 12: Return node ---
-    ret: Return | CPtr = Return(pool, binop)
+    ret: Return* = Return(pool, binop)
     if ret is None:
         printf("FAIL: Return creation\n")
         failed += 1
@@ -189,7 +187,7 @@ def main() -> CInt | CExport:
         printf("PASS: Return, kind=%d\n", ret.kind())
 
     # --- Test 13: Expr statement node ---
-    expr_stmt: Expr | CPtr = Expr(pool, binop)
+    expr_stmt: Expr* = Expr(pool, binop)
     if expr_stmt is None:
         printf("FAIL: Expr creation\n")
         failed += 1
@@ -198,8 +196,8 @@ def main() -> CInt | CExport:
         printf("PASS: Expr, kind=%d\n", expr_stmt.kind())
 
     # --- Test 14: If node (If(pool, test, orelse), body = children) ---
-    empty_else: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
-    if_stmt: If | CPtr = If(pool, binop, empty_else)
+    empty_else: list[AST*]* = list[AST*](pool, 8)
+    if_stmt: If* = If(pool, binop, empty_else)
     if if_stmt is None:
         printf("FAIL: If creation\n")
         failed += 1
@@ -210,11 +208,11 @@ def main() -> CInt | CExport:
         printf("PASS: If, kind=%d\n", if_stmt.kind())
 
     # --- Test 15: Compare node ---
-    cmp_ops: list[int] | CPtr = list[int](pool)
+    cmp_ops: list[int]* = list[int](pool)
     cmp_ops.append(OpKind.Lt)
-    cmp_comparators: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    cmp_comparators: list[AST*]* = list[AST*](pool, 8)
     cmp_comparators.append(int_42)
-    cmp_node: Compare | CPtr = Compare(pool, name_x, cmp_ops, cmp_comparators)
+    cmp_node: Compare* = Compare(pool, name_x, cmp_ops, cmp_comparators)
     if cmp_node is None:
         printf("FAIL: Compare creation\n")
         failed += 1
@@ -223,9 +221,9 @@ def main() -> CInt | CExport:
         printf("PASS: Compare, kind=%d\n", cmp_node.kind())
 
     # --- Test 16: Assign node ---
-    assign_targets: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    assign_targets: list[AST*]* = list[AST*](pool, 8)
     assign_targets.append(name_x)
-    assign_node: Assign | CPtr = Assign(pool, assign_targets, int_42)
+    assign_node: Assign* = Assign(pool, assign_targets, int_42)
     if assign_node is None:
         printf("FAIL: Assign creation\n")
         failed += 1
@@ -234,10 +232,10 @@ def main() -> CInt | CExport:
         printf("PASS: Assign, kind=%d\n", assign_node.kind())
 
     # --- Test 17: Call node ---
-    call_args: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
+    call_args: list[AST*]* = list[AST*](pool, 8)
     call_args.append(int_42)
-    call_kwargs: list[AST | CPtr] | CPtr = list[AST | CPtr](pool, 8)
-    call_node: Call | CPtr = Call(pool, name_x, call_args, call_kwargs)
+    call_kwargs: list[AST*]* = list[AST*](pool, 8)
+    call_node: Call* = Call(pool, name_x, call_args, call_kwargs)
     if call_node is None:
         printf("FAIL: Call creation\n")
         failed += 1
@@ -282,11 +280,11 @@ def main() -> CInt | CExport:
 
     # --- Test 21: Module.children polymorphic dispatch ---
     if mod is not None and mod.children is not None:
-        c0: AST | CPtr = mod.children.get(0)
-        c1: AST | CPtr = mod.children.get(1)
+        c0: AST* = mod.children.get(0)
+        c1: AST* = mod.children.get(1)
         if c0 is not None and c1 is not None:
-            k0: CInt = c0.kind()
-            k1: CInt = c1.kind()
+            k0: int = c0.kind()
+            k1: int = c1.kind()
             if k0 == ASTKind.BinOp and k1 == ASTKind.UnaryOp:
                 passed += 1
                 printf("PASS: Module.children[0]=BinOp, [1]=UnaryOp\n")
@@ -315,7 +313,7 @@ def main() -> CInt | CExport:
 
     # --- Test 23: parent upward traversal (child.parent == if_stmt) ---
     if if_stmt is not None and if_stmt.children is not None:
-        first_child: AST | CPtr = if_stmt.children.get(0)
+        first_child: AST* = if_stmt.children.get(0)
         if first_child is not None and first_child.parent is if_stmt:
             passed += 1
             printf("PASS: If.children[0].parent == If\n")
@@ -328,7 +326,7 @@ def main() -> CInt | CExport:
 
     # --- Test 24: parse_expression on "x + 42" ---
     expr_src: str = "x + 42"
-    expr_tree: AST | CPtr = parse_expression(expr_src, pool)
+    expr_tree: AST* = parse_expression(expr_src, pool)
     if expr_tree is not None:
         passed += 1
         printf("PASS: parse_expression('x + 42') -> kind=%d\n", expr_tree.kind())
@@ -338,7 +336,7 @@ def main() -> CInt | CExport:
 
     # --- Test 25: parse simple module "x = 42" ---
     mod_src: str = "x = 42\n"
-    parsed_mod: Module | CPtr = parse(mod_src, pool)
+    parsed_mod: Module* = parse(mod_src, pool)
     if parsed_mod is not None and parsed_mod.kind() == ASTKind.Module:
         passed += 1
         printf("PASS: parse('x = 42') -> Module, kind=%d\n", parsed_mod.kind())
@@ -361,9 +359,9 @@ def main() -> CInt | CExport:
 
     # --- Test 27: parsed module child kind check (Assign) ---
     if parsed_mod is not None and parsed_mod.children is not None:
-        pmod_child: AST | CPtr = parsed_mod.children.get(0)
+        pmod_child: AST* = parsed_mod.children.get(0)
         if pmod_child is not None:
-            pmod_k: CInt = pmod_child.kind()
+            pmod_k: int = pmod_child.kind()
             if pmod_k == ASTKind.Assign:
                 passed += 1
                 printf("PASS: parsed Module.children[0].kind()=%d (Assign)\n", pmod_k)
@@ -383,7 +381,7 @@ def main() -> CInt | CExport:
 b = 2
 c = a + b
 """
-    multi_mod: Module | CPtr = parse(multi_src, pool)
+    multi_mod: Module* = parse(multi_src, pool)
     if multi_mod is not None and multi_mod.children is not None:
         multi_cnt: sizet = multi_mod.children.__len__()
         if multi_cnt == 3:
@@ -400,10 +398,10 @@ c = a + b
     if_src: str = """if x > 0:
     y = 1
 """
-    if_mod: Module | CPtr = parse(if_src, pool)
+    if_mod: Module* = parse(if_src, pool)
     if if_mod is not None and if_mod.children is not None:
         if_cnt2: sizet = if_mod.children.__len__()
-        if_k: CInt = if_mod.children.get(0).kind()
+        if_k: int = if_mod.children.get(0).kind()
         if if_cnt2 == 1 and if_k == ASTKind.If:
             passed += 1
             printf("PASS: parse if, children=%zu kind=%d (If)\n", if_cnt2, if_k)
@@ -418,10 +416,10 @@ c = a + b
     for_src: str = """for i in range(10):
     pass
 """
-    for_mod: Module | CPtr = parse(for_src, pool)
+    for_mod: Module* = parse(for_src, pool)
     if for_mod is not None and for_mod.children is not None:
         for_cnt: sizet = for_mod.children.__len__()
-        for_k: CInt = for_mod.children.get(0).kind()
+        for_k: int = for_mod.children.get(0).kind()
         if for_cnt == 1 and for_k == ASTKind.For:
             passed += 1
             printf("PASS: parse for, children=%zu kind=%d (For)\n", for_cnt, for_k)
@@ -436,10 +434,10 @@ c = a + b
     while_src: str = """while x < 100:
     x = x + 1
 """
-    while_mod: Module | CPtr = parse(while_src, pool)
+    while_mod: Module* = parse(while_src, pool)
     if while_mod is not None and while_mod.children is not None:
         while_cnt: sizet = while_mod.children.__len__()
-        while_k: CInt = while_mod.children.get(0).kind()
+        while_k: int = while_mod.children.get(0).kind()
         if while_cnt == 1 and while_k == ASTKind.While:
             passed += 1
             printf("PASS: parse while, children=%zu kind=%d (While)\n", while_cnt, while_k)
@@ -454,10 +452,10 @@ c = a + b
     def_src: str = """def foo(a, b):
     return a + b
 """
-    def_mod: Module | CPtr = parse(def_src, pool)
+    def_mod: Module* = parse(def_src, pool)
     if def_mod is not None and def_mod.children is not None:
         def_cnt: sizet = def_mod.children.__len__()
-        def_k: CInt = def_mod.children.get(0).kind()
+        def_k: int = def_mod.children.get(0).kind()
         if def_cnt == 1 and def_k == ASTKind.FunctionDef:
             passed += 1
             printf("PASS: parse def, children=%zu kind=%d (FunctionDef)\n", def_cnt, def_k)
@@ -470,9 +468,9 @@ c = a + b
 
     # --- Test 33: parse complex expression (a + b * c - 1) ---
     complex_expr_src: str = "a + b * c - 1"
-    complex_expr: AST | CPtr = parse_expression(complex_expr_src, pool)
+    complex_expr: AST* = parse_expression(complex_expr_src, pool)
     if complex_expr is not None:
-        ce_k: CInt = complex_expr.kind()
+        ce_k: int = complex_expr.kind()
         if ce_k == ASTKind.Expression:
             passed += 1
             printf("PASS: parse complex expr, kind=%d (Expression)\n", ce_k)
@@ -488,10 +486,10 @@ c = a + b
     if i > 5:
         x = 1
 """
-    nested_mod: Module | CPtr = parse(nested_src, pool)
+    nested_mod: Module* = parse(nested_src, pool)
     if nested_mod is not None and nested_mod.children is not None:
         nested_cnt: sizet = nested_mod.children.__len__()
-        nested_k: CInt = nested_mod.children.get(0).kind()
+        nested_k: int = nested_mod.children.get(0).kind()
         if nested_cnt == 1 and nested_k == ASTKind.For:
             passed += 1
             printf("PASS: parse nested for-if, children=%zu kind=%d (For)\n", nested_cnt, nested_k)
@@ -511,7 +509,7 @@ else:
     z = 0
 w = z * 2
 """
-    mixed_mod: Module | CPtr = parse(mixed_src, pool)
+    mixed_mod: Module* = parse(mixed_src, pool)
     if mixed_mod is not None and mixed_mod.children is not None:
         mixed_cnt: sizet = mixed_mod.children.__len__()
         if mixed_cnt == 4:
@@ -616,7 +614,7 @@ w = z * 2
 
     # --- Test 42: type_name polymorphic dispatch check ---
     if parsed_mod is not None and parsed_mod.children is not None:
-        tn_node: AST | CPtr = parsed_mod.children.get(0)
+        tn_node: AST* = parsed_mod.children.get(0)
         if tn_node is not None:
             tn: str = tn_node.type_name()
             if tn is not None and string.strcmp(tn, "Assign") == 0:
@@ -638,10 +636,10 @@ w = z * 2
     def bar(self):
         return self.x
 """
-    class_mod: Module | CPtr = parse(class_src, pool)
+    class_mod: Module* = parse(class_src, pool)
     if class_mod is not None and class_mod.children is not None:
         class_cnt: sizet = class_mod.children.__len__()
-        class_k: CInt = class_mod.children.get(0).kind()
+        class_k: int = class_mod.children.get(0).kind()
         if class_cnt == 1 and class_k == ASTKind.ClassDef:
             passed += 1
             printf("PASS: parse class, children=%zu kind=%d (ClassDef)\n", class_cnt, class_k)
@@ -658,10 +656,10 @@ w = z * 2
 except:
     x = 0
 """
-    try_mod: Module | CPtr = parse(try_src, pool)
+    try_mod: Module* = parse(try_src, pool)
     if try_mod is not None and try_mod.children is not None:
         try_cnt: sizet = try_mod.children.__len__()
-        try_k: CInt = try_mod.children.get(0).kind()
+        try_k: int = try_mod.children.get(0).kind()
         if try_cnt == 1 and try_k == ASTKind.Try:
             passed += 1
             printf("PASS: parse try/except, children=%zu kind=%d (Try)\n", try_cnt, try_k)
@@ -676,11 +674,11 @@ except:
     import_src: str = """import os
 from sys import path
 """
-    import_mod: Module | CPtr = parse(import_src, pool)
+    import_mod: Module* = parse(import_src, pool)
     if import_mod is not None and import_mod.children is not None:
         import_cnt: sizet = import_mod.children.__len__()
-        k0: CInt = import_mod.children.get(0).kind()
-        k1: CInt = import_mod.children.get(1).kind()
+        k0: int = import_mod.children.get(0).kind()
+        k1: int = import_mod.children.get(1).kind()
         if import_cnt == 2 and k0 == ASTKind.Import and k1 == ASTKind.ImportFrom:
             passed += 1
             printf("PASS: parse import, children=%zu k0=%d(Import) k1=%d(ImportFrom)\n",
@@ -696,10 +694,10 @@ from sys import path
     aug_src: str = """x = 0
 x += 1
 """
-    aug_mod: Module | CPtr = parse(aug_src, pool)
+    aug_mod: Module* = parse(aug_src, pool)
     if aug_mod is not None and aug_mod.children is not None:
         aug_cnt: sizet = aug_mod.children.__len__()
-        aug_k: CInt = aug_mod.children.get(1).kind()
+        aug_k: int = aug_mod.children.get(1).kind()
         if aug_cnt == 2 and aug_k == ASTKind.AugAssign:
             passed += 1
             printf("PASS: parse AugAssign, children=%zu kind=%d (AugAssign)\n", aug_cnt, aug_k)
@@ -712,10 +710,10 @@ x += 1
 
     # --- Test 47: parse conditional expression (x if y else z) ---
     ifexp_src: str = "x if y else z"
-    ifexp_tree: AST | CPtr = parse_expression(ifexp_src, pool)
-    ifexp_expr: Expression | CPtr = (Expression | CPtr)(ifexp_tree)
+    ifexp_tree: AST* = parse_expression(ifexp_src, pool)
+    ifexp_expr: Expression* = (Expression*)(ifexp_tree)
     if ifexp_expr is not None and ifexp_expr.body is not None:
-        ie_k: CInt = ifexp_expr.body.kind()
+        ie_k: int = ifexp_expr.body.kind()
         if ie_k == ASTKind.IfExp:
             passed += 1
             printf("PASS: parse IfExp, kind=%d (IfExp)\n", ie_k)
@@ -733,10 +731,10 @@ x += 1
         return x
     return inner()
 """
-    nested_def_mod: Module | CPtr = parse(nested_def_src, pool)
+    nested_def_mod: Module* = parse(nested_def_src, pool)
     if nested_def_mod is not None and nested_def_mod.children is not None:
         nd_cnt: sizet = nested_def_mod.children.__len__()
-        nd_k: CInt = nested_def_mod.children.get(0).kind()
+        nd_k: int = nested_def_mod.children.get(0).kind()
         if nd_cnt == 1 and nd_k == ASTKind.FunctionDef:
             passed += 1
             printf("PASS: parse nested def, children=%zu kind=%d (FunctionDef)\n", nd_cnt, nd_k)
@@ -757,7 +755,7 @@ except:
 def bar():
     return y
 """
-    complex_mod: Module | CPtr = parse(complex_src, pool)
+    complex_mod: Module* = parse(complex_src, pool)
     if complex_mod is not None:
         dump(complex_mod, dump_buf, DUMP_BUF_SIZE)
         printf("--- AST dump of complex module ---\n%s\n--- end dump ---\n", dump_buf)
@@ -789,7 +787,7 @@ elif x == 1:
 else:
     y = 0
 """
-    cmix_mod: Module | CPtr = parse(complex_mixed_src, pool)
+    cmix_mod: Module* = parse(complex_mixed_src, pool)
     if cmix_mod is not None and cmix_mod.children is not None:
         cmix_cnt: sizet = cmix_mod.children.__len__()
         dump(cmix_mod, dump_buf, DUMP_BUF_SIZE)
@@ -821,7 +819,7 @@ else:
 
     # --- Test 51: Lambda expression ---
     lambda_src: str = "f = lambda x: x + 1"
-    lambda_mod: Module | CPtr = parse(lambda_src, pool)
+    lambda_mod: Module* = parse(lambda_src, pool)
     if lambda_mod is not None:
         dump(lambda_mod, dump_buf, DUMP_BUF_SIZE)
         has_lambda: str = string.strstr(dump_buf, "Lambda(")
@@ -839,7 +837,7 @@ else:
 
     # --- Test 52: List comprehension ---
     listcomp_src: str = "squares = [x*x for x in range(10)]"
-    lc_mod: Module | CPtr = parse(listcomp_src, pool)
+    lc_mod: Module* = parse(listcomp_src, pool)
     if lc_mod is not None:
         dump(lc_mod, dump_buf, DUMP_BUF_SIZE)
         has_lc: str = string.strstr(dump_buf, "ListComp(")
@@ -857,7 +855,7 @@ else:
 
     # --- Test 53: Dict comprehension ---
     dictcomp_src: str = "d = {k: v for k, v in items}"
-    dc_mod: Module | CPtr = parse(dictcomp_src, pool)
+    dc_mod: Module* = parse(dictcomp_src, pool)
     if dc_mod is not None:
         dump(dc_mod, dump_buf, DUMP_BUF_SIZE)
         has_dc: str = string.strstr(dump_buf, "DictComp(")
@@ -873,7 +871,7 @@ else:
 
     # --- Test 54: Set comprehension ---
     setcomp_src: str = "s = {x for x in items}"
-    sc_mod: Module | CPtr = parse(setcomp_src, pool)
+    sc_mod: Module* = parse(setcomp_src, pool)
     if sc_mod is not None:
         dump(sc_mod, dump_buf, DUMP_BUF_SIZE)
         has_sc: str = string.strstr(dump_buf, "SetComp(")
@@ -891,7 +889,7 @@ else:
     with_src: str = """with open('f') as f:
     data = f.read()
 """
-    with_mod: Module | CPtr = parse(with_src, pool)
+    with_mod: Module* = parse(with_src, pool)
     if with_mod is not None and with_mod.children is not None:
         dump(with_mod, dump_buf, DUMP_BUF_SIZE)
         has_with: str = string.strstr(dump_buf, "With(")
@@ -909,7 +907,7 @@ else:
 
     # --- Test 56: Raise statement ---
     raise_src: str = "raise ValueError('bad')"
-    raise_mod: Module | CPtr = parse(raise_src, pool)
+    raise_mod: Module* = parse(raise_src, pool)
     if raise_mod is not None:
         dump(raise_mod, dump_buf, DUMP_BUF_SIZE)
         has_raise: str = string.strstr(dump_buf, "Raise(")
@@ -925,7 +923,7 @@ else:
 
     # --- Test 57: Assert statement ---
     assert_src: str = "assert x > 0, 'x must be positive'"
-    assert_mod: Module | CPtr = parse(assert_src, pool)
+    assert_mod: Module* = parse(assert_src, pool)
     if assert_mod is not None:
         dump(assert_mod, dump_buf, DUMP_BUF_SIZE)
         has_assert: str = string.strstr(dump_buf, "Assert(")
@@ -941,7 +939,7 @@ else:
 
     # --- Test 58: Del statement ---
     del_src: str = "del x"
-    del_mod: Module | CPtr = parse(del_src, pool)
+    del_mod: Module* = parse(del_src, pool)
     if del_mod is not None:
         dump(del_mod, dump_buf, DUMP_BUF_SIZE)
         has_del: str = string.strstr(dump_buf, "Delete(")
@@ -957,7 +955,7 @@ else:
 
     # --- Test 59: Subscript + Slice ---
     slice_src: str = "y = a[1:3]"
-    slice_mod: Module | CPtr = parse(slice_src, pool)
+    slice_mod: Module* = parse(slice_src, pool)
     if slice_mod is not None:
         dump(slice_mod, dump_buf, DUMP_BUF_SIZE)
         has_sub: str = string.strstr(dump_buf, "Subscript(")
@@ -975,7 +973,7 @@ else:
 
     # --- Test 60: Tuple unpacking ---
     tuple_src: str = "a, b = 1, 2"
-    tuple_mod: Module | CPtr = parse(tuple_src, pool)
+    tuple_mod: Module* = parse(tuple_src, pool)
     if tuple_mod is not None:
         dump(tuple_mod, dump_buf, DUMP_BUF_SIZE)
         has_tuple: str = string.strstr(dump_buf, "Tuple(")
@@ -991,7 +989,7 @@ else:
 
     # --- Test 61: default args + keyword args signature ---
     defdef_src: str = "def f(a, b=10): return a + b"
-    defdef_mod: Module | CPtr = parse(defdef_src, pool)
+    defdef_mod: Module* = parse(defdef_src, pool)
     if defdef_mod is not None:
         dump(defdef_mod, dump_buf, DUMP_BUF_SIZE)
         has_fdef: str = string.strstr(dump_buf, "FunctionDef(name='f'")
@@ -1012,7 +1010,7 @@ else:
 def f():
     pass
 """
-    deco_mod: Module | CPtr = parse(deco_src, pool)
+    deco_mod: Module* = parse(deco_src, pool)
     if deco_mod is not None:
         dump(deco_mod, dump_buf, DUMP_BUF_SIZE)
         has_dec: str = string.strstr(dump_buf, "decorator_list=[Name(id='my_dec'")
@@ -1028,7 +1026,7 @@ def f():
 
     # --- Test 63: chained assignment ---
     chain_src: str = "a = b = c = 42"
-    chain_mod: Module | CPtr = parse(chain_src, pool)
+    chain_mod: Module* = parse(chain_src, pool)
     if chain_mod is not None:
         dump(chain_mod, dump_buf, DUMP_BUF_SIZE)
         has_chain: str = string.strstr(dump_buf, "Assign(targets=[Name(id='a'")
@@ -1047,7 +1045,7 @@ def f():
 
     # --- Test 64: bitwise ops ---
     bit_src: str = "y = (a | b) & c ^ d << 2"
-    bit_mod: Module | CPtr = parse(bit_src, pool)
+    bit_mod: Module* = parse(bit_src, pool)
     if bit_mod is not None:
         dump(bit_mod, dump_buf, DUMP_BUF_SIZE)
         has_bor: str = string.strstr(dump_buf, "op=BitOr")
@@ -1070,7 +1068,7 @@ def f():
 class C(Base1, Base2):
     pass
 """
-    multi_mod: Module | CPtr = parse(multi_src, pool)
+    multi_mod: Module* = parse(multi_src, pool)
     if multi_mod is not None:
         dump(multi_mod, dump_buf, DUMP_BUF_SIZE)
         m_dec1: str = string.strstr(dump_buf, "Name(id='dec1'")
@@ -1094,7 +1092,7 @@ class C(Base1, Base2):
     global x
     x = 1
 """
-    glob_mod: Module | CPtr = parse(glob_src, pool)
+    glob_mod: Module* = parse(glob_src, pool)
     if glob_mod is not None:
         dump(glob_mod, dump_buf, DUMP_BUF_SIZE)
         has_glob: str = string.strstr(dump_buf, "Global(")
@@ -1110,7 +1108,7 @@ class C(Base1, Base2):
 
     # --- Test 67: f-string (FormattedValue) ---
     fstr_src: str = "s = f'value={x}'"
-    fstr_mod: Module | CPtr = parse(fstr_src, pool)
+    fstr_mod: Module* = parse(fstr_src, pool)
     if fstr_mod is not None:
         dump(fstr_mod, dump_buf, DUMP_BUF_SIZE)
         has_fv: str = string.strstr(dump_buf, "FormattedValue(")
@@ -1133,7 +1131,7 @@ class C(Base1, Base2):
         return x + 1
     return inner()
 """
-    nested_mod: Module | CPtr = parse(nested_src, pool)
+    nested_mod: Module* = parse(nested_src, pool)
     if nested_mod is not None and nested_mod.children is not None:
         dump(nested_mod, dump_buf, DUMP_BUF_SIZE)
         n_outer: str = string.strstr(dump_buf, "FunctionDef(name='outer'")
@@ -1154,7 +1152,7 @@ class C(Base1, Base2):
     case 1:
         pass
 """
-    m_lit_mod: Module | CPtr = parse(m_lit_src, pool)
+    m_lit_mod: Module* = parse(m_lit_src, pool)
     if m_lit_mod is not None:
         dump(m_lit_mod, dump_buf, DUMP_BUF_SIZE)
         has_mv: str = string.strstr(dump_buf, "MatchValue(")
@@ -1173,7 +1171,7 @@ class C(Base1, Base2):
     case "hello":
         pass
 """
-    m_str_mod: Module | CPtr = parse(m_str_src, pool)
+    m_str_mod: Module* = parse(m_str_src, pool)
     if m_str_mod is not None:
         dump(m_str_mod, dump_buf, DUMP_BUF_SIZE)
         has_mv2: str = string.strstr(dump_buf, "MatchValue(")
@@ -1192,7 +1190,7 @@ class C(Base1, Base2):
     case -1:
         pass
 """
-    m_neg_mod: Module | CPtr = parse(m_neg_src, pool)
+    m_neg_mod: Module* = parse(m_neg_src, pool)
     if m_neg_mod is not None:
         dump(m_neg_mod, dump_buf, DUMP_BUF_SIZE)
         has_mv3: str = string.strstr(dump_buf, "MatchValue(")
@@ -1211,7 +1209,7 @@ class C(Base1, Base2):
     case None:
         pass
 """
-    m_none_mod: Module | CPtr = parse(m_none_src, pool)
+    m_none_mod: Module* = parse(m_none_src, pool)
     if m_none_mod is not None:
         dump(m_none_mod, dump_buf, DUMP_BUF_SIZE)
         has_ms: str = string.strstr(dump_buf, "MatchSingleton(")
@@ -1230,7 +1228,7 @@ class C(Base1, Base2):
     case True:
         pass
 """
-    m_true_mod: Module | CPtr = parse(m_true_src, pool)
+    m_true_mod: Module* = parse(m_true_src, pool)
     if m_true_mod is not None:
         dump(m_true_mod, dump_buf, DUMP_BUF_SIZE)
         has_ms2: str = string.strstr(dump_buf, "MatchSingleton(")
@@ -1249,7 +1247,7 @@ class C(Base1, Base2):
     case False:
         pass
 """
-    m_false_mod: Module | CPtr = parse(m_false_src, pool)
+    m_false_mod: Module* = parse(m_false_src, pool)
     if m_false_mod is not None:
         dump(m_false_mod, dump_buf, DUMP_BUF_SIZE)
         has_ms3: str = string.strstr(dump_buf, "MatchSingleton(")
@@ -1268,7 +1266,7 @@ class C(Base1, Base2):
     case _:
         pass
 """
-    m_wild_mod: Module | CPtr = parse(m_wild_src, pool)
+    m_wild_mod: Module* = parse(m_wild_src, pool)
     if m_wild_mod is not None:
         dump(m_wild_mod, dump_buf, DUMP_BUF_SIZE)
         has_ma: str = string.strstr(dump_buf, "MatchAs(")
@@ -1287,7 +1285,7 @@ class C(Base1, Base2):
     case y:
         pass
 """
-    m_cap_mod: Module | CPtr = parse(m_cap_src, pool)
+    m_cap_mod: Module* = parse(m_cap_src, pool)
     if m_cap_mod is not None:
         dump(m_cap_mod, dump_buf, DUMP_BUF_SIZE)
         has_ma2: str = string.strstr(dump_buf, "name='y'")
@@ -1306,7 +1304,7 @@ class C(Base1, Base2):
     case Color.RED:
         pass
 """
-    m_val_mod: Module | CPtr = parse(m_val_src, pool)
+    m_val_mod: Module* = parse(m_val_src, pool)
     if m_val_mod is not None:
         dump(m_val_mod, dump_buf, DUMP_BUF_SIZE)
         has_mv4: str = string.strstr(dump_buf, "MatchValue(")
@@ -1327,7 +1325,7 @@ class C(Base1, Base2):
     case [1, 2]:
         pass
 """
-    m_seq_mod: Module | CPtr = parse(m_seq_src, pool)
+    m_seq_mod: Module* = parse(m_seq_src, pool)
     if m_seq_mod is not None:
         dump(m_seq_mod, dump_buf, DUMP_BUF_SIZE)
         has_msq: str = string.strstr(dump_buf, "MatchSequence(")
@@ -1346,7 +1344,7 @@ class C(Base1, Base2):
     case [a, *rest]:
         pass
 """
-    m_star_mod: Module | CPtr = parse(m_star_src, pool)
+    m_star_mod: Module* = parse(m_star_src, pool)
     if m_star_mod is not None:
         dump(m_star_mod, dump_buf, DUMP_BUF_SIZE)
         has_mstar: str = string.strstr(dump_buf, "MatchStar(name='rest')")
@@ -1365,7 +1363,7 @@ class C(Base1, Base2):
     case Point(x, y):
         pass
 """
-    m_cls_mod: Module | CPtr = parse(m_cls_src, pool)
+    m_cls_mod: Module* = parse(m_cls_src, pool)
     if m_cls_mod is not None:
         dump(m_cls_mod, dump_buf, DUMP_BUF_SIZE)
         has_mc: str = string.strstr(dump_buf, "MatchClass(")
@@ -1384,7 +1382,7 @@ class C(Base1, Base2):
     case Point(x=0, y=0):
         pass
 """
-    m_kwcls_mod: Module | CPtr = parse(m_kwcls_src, pool)
+    m_kwcls_mod: Module* = parse(m_kwcls_src, pool)
     if m_kwcls_mod is not None:
         dump(m_kwcls_mod, dump_buf, DUMP_BUF_SIZE)
         has_mc2: str = string.strstr(dump_buf, "MatchClass(")
@@ -1403,7 +1401,7 @@ class C(Base1, Base2):
     case 1 | 2:
         pass
 """
-    m_or_mod: Module | CPtr = parse(m_or_src, pool)
+    m_or_mod: Module* = parse(m_or_src, pool)
     if m_or_mod is not None:
         dump(m_or_mod, dump_buf, DUMP_BUF_SIZE)
         has_mo: str = string.strstr(dump_buf, "MatchOr(")
@@ -1422,7 +1420,7 @@ class C(Base1, Base2):
     case [x] as p:
         pass
 """
-    m_as_mod: Module | CPtr = parse(m_as_src, pool)
+    m_as_mod: Module* = parse(m_as_src, pool)
     if m_as_mod is not None:
         dump(m_as_mod, dump_buf, DUMP_BUF_SIZE)
         has_mas: str = string.strstr(dump_buf, "MatchAs(pattern=")
@@ -1443,7 +1441,7 @@ class C(Base1, Base2):
     case x if x > 0:
         pass
 """
-    m_guard_mod: Module | CPtr = parse(m_guard_src, pool)
+    m_guard_mod: Module* = parse(m_guard_src, pool)
     if m_guard_mod is not None:
         dump(m_guard_mod, dump_buf, DUMP_BUF_SIZE)
         has_guard: str = string.strstr(dump_buf, "guard=Compare(")
@@ -1462,7 +1460,7 @@ class C(Base1, Base2):
     case {"k": v}:
         pass
 """
-    m_map_mod: Module | CPtr = parse(m_map_src, pool)
+    m_map_mod: Module* = parse(m_map_src, pool)
     if m_map_mod is not None:
         dump(m_map_mod, dump_buf, DUMP_BUF_SIZE)
         has_mm: str = string.strstr(dump_buf, "MatchMapping(")
@@ -1481,7 +1479,7 @@ class C(Base1, Base2):
     case {"k": v, **rest}:
         pass
 """
-    m_map2_mod: Module | CPtr = parse(m_map2_src, pool)
+    m_map2_mod: Module* = parse(m_map2_src, pool)
     if m_map2_mod is not None:
         dump(m_map2_mod, dump_buf, DUMP_BUF_SIZE)
         has_mm2: str = string.strstr(dump_buf, "MatchMapping(")
@@ -1502,7 +1500,7 @@ class C(Base1, Base2):
     case (1 | 2) as p:
         pass
 """
-    m_combo_mod: Module | CPtr = parse(m_combo_src, pool)
+    m_combo_mod: Module* = parse(m_combo_src, pool)
     if m_combo_mod is not None:
         dump(m_combo_mod, dump_buf, DUMP_BUF_SIZE)
         has_combo_or: str = string.strstr(dump_buf, "MatchOr(")
@@ -1522,13 +1520,13 @@ class C(Base1, Base2):
     adef_src: str = """async def f():
     pass
 """
-    adef_mod: Module | CPtr = parse(adef_src, pool)
+    adef_mod: Module* = parse(adef_src, pool)
     if adef_mod is not None and adef_mod.children is not None:
         adef_cnt: sizet = adef_mod.children.__len__()
         if adef_cnt == 1:
-            adef_child: AST | CPtr = adef_mod.children.get(0)
+            adef_child: AST* = adef_mod.children.get(0)
             if adef_child is not None and adef_child.kind() == ASTKind.FunctionDef:
-                adef_fd: FunctionDef | CPtr = (FunctionDef | CPtr)(adef_child)
+                adef_fd: FunctionDef* = (FunctionDef*)(adef_child)
                 if (adef_fd.flags & FLAG_IS_ASYNC) != 0:
                     passed += 1
                     printf("PASS: async def f() -> FunctionDef with FLAG_IS_ASYNC\n")
@@ -1551,18 +1549,18 @@ class C(Base1, Base2):
     async for x in y:
         pass
 """
-    afor_mod: Module | CPtr = parse(afor_src, pool)
+    afor_mod: Module* = parse(afor_src, pool)
     if afor_mod is not None and afor_mod.children is not None:
         afor_cnt: sizet = afor_mod.children.__len__()
         if afor_cnt == 1:
-            afor_child: AST | CPtr = afor_mod.children.get(0)
+            afor_child: AST* = afor_mod.children.get(0)
             if afor_child is not None and afor_child.kind() == ASTKind.FunctionDef:
-                afor_fd2: FunctionDef | CPtr = (FunctionDef | CPtr)(afor_child)
+                afor_fd2: FunctionDef* = (FunctionDef*)(afor_child)
                 if (afor_fd2.flags & FLAG_IS_ASYNC) != 0:
                     if afor_fd2.children is not None:
-                        afor_inner: AST | CPtr = afor_fd2.children.get(0)
+                        afor_inner: AST* = afor_fd2.children.get(0)
                         if afor_inner is not None and afor_inner.kind() == ASTKind.For:
-                            afor_for: For | CPtr = (For | CPtr)(afor_inner)
+                            afor_for: For* = (For*)(afor_inner)
                             if (afor_for.flags & FLAG_IS_ASYNC) != 0:
                                 passed += 1
                                 printf("PASS: async for -> For with FLAG_IS_ASYNC\n")
@@ -1595,18 +1593,18 @@ class C(Base1, Base2):
     async with ctx:
         pass
 """
-    awith_mod: Module | CPtr = parse(awith_src, pool)
+    awith_mod: Module* = parse(awith_src, pool)
     if awith_mod is not None and awith_mod.children is not None:
         awith_cnt: sizet = awith_mod.children.__len__()
         if awith_cnt == 1:
-            awith_child: AST | CPtr = awith_mod.children.get(0)
+            awith_child: AST* = awith_mod.children.get(0)
             if awith_child is not None and awith_child.kind() == ASTKind.FunctionDef:
-                awith_fd: FunctionDef | CPtr = (FunctionDef | CPtr)(awith_child)
+                awith_fd: FunctionDef* = (FunctionDef*)(awith_child)
                 if (awith_fd.flags & FLAG_IS_ASYNC) != 0:
                     if awith_fd.children is not None:
-                        awith_inner: AST | CPtr = awith_fd.children.get(0)
+                        awith_inner: AST* = awith_fd.children.get(0)
                         if awith_inner is not None and awith_inner.kind() == ASTKind.With:
-                            awith_w: With | CPtr = (With | CPtr)(awith_inner)
+                            awith_w: With* = (With*)(awith_inner)
                             if (awith_w.flags & FLAG_IS_ASYNC) != 0:
                                 passed += 1
                                 printf("PASS: async with -> With with FLAG_IS_ASYNC\n")
@@ -1645,7 +1643,7 @@ class C(Base1, Base2):
     case _:
         pass
 """
-    m_complex_mod: Module | CPtr = parse(m_complex_src, pool)
+    m_complex_mod: Module* = parse(m_complex_src, pool)
     if m_complex_mod is not None:
         dump(m_complex_mod, dump_buf, DUMP_BUF_SIZE)
         has_c_mv:  str = string.strstr(dump_buf, "MatchValue(")
@@ -1671,13 +1669,13 @@ class C(Base1, Base2):
         async for x in y:
             pass
 """
-    acombo_mod: Module | CPtr = parse(acombo_src, pool)
+    acombo_mod: Module* = parse(acombo_src, pool)
     if acombo_mod is not None and acombo_mod.children is not None:
         acombo_cnt: sizet = acombo_mod.children.__len__()
         if acombo_cnt == 1:
-            acombo_child: AST | CPtr = acombo_mod.children.get(0)
+            acombo_child: AST* = acombo_mod.children.get(0)
             if acombo_child is not None and acombo_child.kind() == ASTKind.FunctionDef:
-                acombo_fd2: FunctionDef | CPtr = (FunctionDef | CPtr)(acombo_child)
+                acombo_fd2: FunctionDef* = (FunctionDef*)(acombo_child)
                 if (acombo_fd2.flags & FLAG_IS_ASYNC) != 0:
                     passed += 1
                     printf("PASS: async def + async with + async for combo\n")

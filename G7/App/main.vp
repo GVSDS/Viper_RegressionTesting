@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 import stdlib
 import memhub
@@ -7,7 +5,7 @@ from conflict_node import Value
 
 # G7: global variable 'Value' collides with class 'Value'
 # Variable registration overrides the struct symbol, so struct body setup is skipped.
-Value: t.CPtr = None
+Value: rawptr = None
 
 
 def test_value_struct_fields():

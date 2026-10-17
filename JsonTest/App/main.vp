@@ -1,4 +1,3 @@
-import t, c
 from stdint import *
 from stdio import printf
 import memhub

@@ -1,21 +1,19 @@
 import stdio
 import stdlib
-import stdint
-import t, c
 
 
-class SimpleData():
+struct SimpleData:
     x: int
     y: int
 
 
-class Point3D():
+struct Point3D:
     x: float
     y: float
     z: float
 
 
-class Student():
+class Student:
     name: char*
     age: int
     score: int
@@ -32,7 +30,7 @@ class Student():
         return self.score
 
 
-class Counter():
+class Counter:
     value: int
 
     def __init__(self, initial: int):
@@ -45,9 +43,9 @@ class Counter():
         return self.value
 
 
-class StackObj():
+struct StackObj:
     data: int
-    next_ptr: t.CPtr
+    next_ptr: rawptr
 
 
 def TestBasicDataClass():
@@ -100,7 +98,7 @@ def TestStackAllocation():
 
 def TestHeapAllocation():
     stdio.printf("=== Test Heap Allocation ===\n")
-    ptr: t.CPtr = stdlib.malloc(1024)
+    ptr: rawptr = stdlib.malloc(1024)
     if ptr != 0:
         stdio.printf("Allocated 1024 bytes at %p\n", ptr)
         stdlib.free(ptr)
@@ -112,7 +110,7 @@ def TestHeapAllocation():
 def TestHeapObjectWithInit():
     stdio.printf("=== Test Heap Object with Init ===\n")
     mem_size: sizet = 256
-    ptr: t.CPtr = stdlib.malloc(mem_size)
+    ptr: rawptr = stdlib.malloc(mem_size)
     if ptr != 0:
         stdio.printf("Allocated %d bytes\n", mem_size)
         stdlib.free(ptr)
@@ -156,7 +154,7 @@ def TestClassWithBitFields():
 
 def TestIntArray():
     stdio.printf("=== Test Int Array ===\n")
-    arr: t.CArray[int, 5] = t.CArray[int, 5]()
+    arr: [5]int = None
     for i in range(5):
         arr[i] = i * 10
     for i in range(5):
@@ -165,37 +163,21 @@ def TestIntArray():
 
 def TestFloatArray():
     stdio.printf("=== Test Float Array ===\n")
-    farr: t.CArray[float, 4] = t.CArray[float, 4]()
-    farr[0] = 1.5
-    farr[1] = 2.5
-    farr[2] = 3.5
-    farr[3] = 4.5
+    farr: [4]float = [1.5, 2.5, 3.5, 4.5]
     for i in range(4):
         stdio.printf("farr[%d]=%.1f\n", i, farr[i])
 
 
 def TestCharArray():
     stdio.printf("=== Test Char Array (String) ===\n")
-    str_arr: t.CArray[char, 32] = t.CArray[char, 32]()
-    str_arr[0] = 'H'
-    str_arr[1] = 'e'
-    str_arr[2] = 'l'
-    str_arr[3] = 'l'
-    str_arr[4] = 'o'
-    str_arr[5] = '\0'
+    str_arr: [32]char = ['H', 'e', 'l', 'l', 'o', '\0']
     stdio.printf("String: %s\n", str_arr)
 
 
 def TestNestedArray():
     stdio.printf("=== Test Nested Array (Array of Arrays) ===\n")
-    row0: t.CArray[int, 3] = t.CArray[int, 3]()
-    row1: t.CArray[int, 3] = t.CArray[int, 3]()
-    row0[0] = 0
-    row0[1] = 1
-    row0[2] = 2
-    row1[0] = 10
-    row1[1] = 11
-    row1[2] = 12
+    row0: [3]int = [0, 1, 2]
+    row1: [3]int = [10, 11, 12]
     for i in range(3):
         stdio.printf("row0[%d]=%d ", i, row0[i])
     stdio.printf("\n")
@@ -206,7 +188,7 @@ def TestNestedArray():
 
 def TestArrayWithStruct():
     stdio.printf("=== Test Array with Struct ===\n")
-    points: t.CArray[SimpleData, 3] = t.CArray[SimpleData, 3]()
+    points: [3]SimpleData = None
     for i in range(3):
         points[i].x = i * 10
         points[i].y = i * 100
@@ -216,10 +198,7 @@ def TestArrayWithStruct():
 
 def TestArrayPointer():
     stdio.printf("=== Test Array Pointer ===\n")
-    data: t.CArray[int, 8] = t.CArray[int, 8]()
-    data[0] = 100
-    data[1] = 200
-    data[2] = 300
+    data: [8]int = [100, 200, 300]
     ptr: int* = data
     stdio.printf("ptr[0]=%d\n", ptr[0])
     stdio.printf("ptr[1]=%d\n", ptr[1])
@@ -228,5 +207,5 @@ def TestArrayPointer():
 
 def TestDynamicString():
     stdio.printf("=== Test Dynamic String ===\n")
-    name: str = "TransPyC"
+    name: str = "ViperC"
     stdio.printf("Hello %s!\n", name)

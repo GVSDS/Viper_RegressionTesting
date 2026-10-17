@@ -1,5 +1,4 @@
 import config
-import t, c
 
 
 def AboutSizeTWhileTest(length: sizet):

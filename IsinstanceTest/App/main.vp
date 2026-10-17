@@ -1,8 +1,6 @@
 from stdint import *
-import t, c
 import testcheck
 import geom_lib
-from t import CInt, CPtr, CExport
 
 
 # ============================================================
@@ -12,9 +10,7 @@ from t import CInt, CPtr, CExport
 
 
 # ========== CVTable inheritance ==========
-
-@t.CVTable
-class Animal:
+virtual class Animal:
     Name: str
 
     def __init__(self, name: str):
@@ -24,8 +20,7 @@ class Animal:
         return "..."
 
 
-@t.CVTable
-class Dog(Animal):
+virtual class Dog(Animal):
     def __init__(self, name: str):
         self.Name = name
 
@@ -33,49 +28,42 @@ class Dog(Animal):
         return "Woof"
 
 
-@t.CVTable
-class Cat(Animal):
+virtual class Cat(Animal):
     def speak(self) -> str:
         return "Meow"
 
 
 # ========== multiple inheritance ==========
+virtual class A:
+    a: int
 
-@t.CVTable
-class A:
-    a: CInt
-
-    def get_a(self) -> CInt:
+    def get_a(self) -> int:
         return self.a
 
 
-@t.CVTable
-class B:
-    b: CInt
+virtual class B:
+    b: int
 
-    def get_b(self) -> CInt:
+    def get_b(self) -> int:
         return self.b
 
 
-@t.CVTable
-class AB(A, B):
-    def __init__(self, a: CInt, b: CInt):
+virtual class AB(A, B):
+    def __init__(self, a: int, b: int):
         self.a = a
         self.b = b
 
 
 # ========== NoVTable (compile-time) ==========
-
-@t.NoVTable
-class Plain:
-    v: CInt
+novirtual class Plain:
+    v: int
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     testcheck.begin("IsinstanceTest: isinstance 内建函数测试")
 
     # --- 1. self type and subclass -> base ---
-    d: Dog | CPtr = Dog("dog")
+    d: Dog* = Dog("dog")
     testcheck.check(isinstance(d, Dog) == 1, "isinstance(d, Dog) 自身 OK",
                     "isinstance(d, Dog) FAILED")
     testcheck.check(isinstance(d, Animal) == 1, "isinstance(d, Animal) 子类→基类 OK",
@@ -84,7 +72,7 @@ def main() -> CInt | CExport:
                     "isinstance(d, Cat) FAILED")
 
     # --- 2. runtime polymorphism: base pointer to subclass object ---
-    a: Animal | CPtr = (Animal | CPtr)(d)
+    a: Animal* = Animal*(d)
     testcheck.check(isinstance(a, Dog) == 1,
                     "isinstance(Animal*, Dog 对象) 运行时多态 OK",
                     "isinstance(Animal*, Dog) FAILED")
@@ -102,7 +90,7 @@ def main() -> CInt | CExport:
                     "isinstance 元组未命中 FAILED")
 
     # --- 4. multiple inheritance ---
-    ab: AB | CPtr = AB(1, 2)
+    ab: AB* = AB(1, 2)
     testcheck.check(isinstance(ab, A) == 1, "isinstance(AB, A) 多继承 OK",
                     "isinstance(AB, A) FAILED")
     testcheck.check(isinstance(ab, B) == 1, "isinstance(AB, B) 多继承 OK",
@@ -113,33 +101,33 @@ def main() -> CInt | CExport:
                     "AB 字段/方法 FAILED")
 
     # --- 5. NoVTable (compile-time static) ---
-    p: Plain | CPtr = Plain()
+    p: Plain* = Plain()
     p.v = 42
     testcheck.check(isinstance(p, Plain) == 1, "isinstance NoVTable 编译时 OK",
                     "isinstance NoVTable FAILED")
     testcheck.check(p.v == 42, "NoVTable 字段正常 OK", "NoVTable 字段 FAILED")
 
     # --- 6. cross-module isinstance (vtable resolved at link time) ---
-    cc: geom_lib.Circle | CPtr = geom_lib.Circle(5)
+    cc: geom_lib.Circle* = geom_lib.Circle(5)
     testcheck.check(isinstance(cc, geom_lib.Circle) == 1,
                     "跨模块 isinstance 自身 OK", "跨模块 isinstance 自身 FAILED")
     testcheck.check(isinstance(cc, geom_lib.Shape) == 1,
                     "跨模块 isinstance 子类→基类 OK", "跨模块 isinstance 子类→基类 FAILED")
     testcheck.check(isinstance(cc, geom_lib.Square) == 0,
                     "跨模块 isinstance 不匹配 OK", "跨模块 isinstance 不匹配 FAILED")
-    sq: geom_lib.Square | CPtr = geom_lib.Square(3)
+    sq: geom_lib.Square* = geom_lib.Square(3)
     testcheck.check(isinstance(sq, geom_lib.Shape) == 1,
                     "跨模块 Square→Shape OK", "跨模块 Square→Shape FAILED")
     testcheck.check(isinstance(sq, geom_lib.Circle) == 0,
                     "跨模块 Square vs Circle OK", "跨模块 Square vs Circle FAILED")
-    shp: geom_lib.Shape | CPtr = (geom_lib.Shape | CPtr)(cc)
+    shp: geom_lib.Shape* = geom_lib.Shape*(cc)
     testcheck.check(isinstance(shp, geom_lib.Circle) == 1,
                     "跨模块运行时多态 OK", "跨模块运行时多态 FAILED")
     testcheck.check(shp.area() == 5, "跨模块虚方法分派 OK", "跨模块虚方法分派 FAILED")
     testcheck.check(cc.area() == 5, "跨模块 Circle.area OK", "跨模块 Circle.area FAILED")
 
     # --- 7. NoVTable cross-module static ---
-    ps: geom_lib.PlainShape | CPtr = geom_lib.PlainShape()
+    ps: geom_lib.PlainShape* = geom_lib.PlainShape()
     testcheck.check(isinstance(ps, geom_lib.PlainShape) == 1,
                     "跨模块 NoVTable 静态 OK", "跨模块 NoVTable 静态 FAILED")
 

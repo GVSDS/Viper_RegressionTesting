@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CExport
 import memhub
 import stdlib
 import sys
@@ -18,7 +16,7 @@ import syslibtest_impl
 define ARENA_SIZE = 1048576
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 

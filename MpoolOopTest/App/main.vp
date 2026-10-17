@@ -1,9 +1,8 @@
-import t, c
 import testcheck
 import mpooltest
 
 
-def main() -> int | t.CExport:
+export def main() -> int:
     testcheck.begin("MpoolOopTest: MemPool OOP 测试")
     testcheck.section("MPool OOP")
     mpooltest.mpool_main()

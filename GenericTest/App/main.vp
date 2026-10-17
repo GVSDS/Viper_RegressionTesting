@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 
 # ============================================================
@@ -85,7 +83,7 @@ def test_generic_pair():
 # ============================================================
 def test_fixed_array():
     testcheck.section("Test 6: list[T, N] fixed array")
-    arr: t.CArray[int, 5] = [0]
+    arr: [5]int = [0]
     for i in range(5):
         arr[i] = i * 10
     total: int = 0
@@ -99,7 +97,7 @@ def test_fixed_array():
 # ============================================================
 def test_char_array():
     testcheck.section("Test 7: list[t.CChar, N] char array")
-    buf: t.CArray[char, 32] = [0]
+    buf: [32]char = [0]
     buf[0] = 72   # H
     buf[1] = 105  # i
     buf[2] = 0

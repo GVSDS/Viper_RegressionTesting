@@ -1,6 +1,4 @@
-import t
 import stdio
-import c
 
 # Test: class with inline list[struct, N] field
 
@@ -9,7 +7,7 @@ class Inner:
     bits: int
 
 class Container:
-    items: t.CArray[Inner, 10]
+    items: [10]Inner
     count: int
 
     def __init__(self):

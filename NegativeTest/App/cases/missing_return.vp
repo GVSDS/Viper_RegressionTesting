@@ -1,4 +1,2 @@
-import t, c
-
 def h(x: int) -> int:
     x = x + 1

@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CExport
 import stdio
 import stdlib
 import string
@@ -9,7 +7,7 @@ import memhub
 import testcheck
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
@@ -31,11 +29,11 @@ def main() -> CInt | CExport:
 
     # dict int values are stored as i32; reading back requires a typed pointer
     # because c.Deref uses the pointee width (i8* always reads 1 byte).
-    p1: t.CPtr = d["alpha"]
+    p1: rawptr = d["alpha"]
     stdio.printf("p1=%p\n", p1)
-    p2: t.CPtr = d["beta"]
+    p2: rawptr = d["beta"]
     stdio.printf("p2=%p\n", p2)
-    p3: t.CPtr = d["gamma"]
+    p3: rawptr = d["gamma"]
     stdio.printf("p3=%p\n", p3)
     v1: int = *(int*)(p1)
     stdio.printf("v1=%d\n", v1)
@@ -49,7 +47,7 @@ def main() -> CInt | CExport:
     # === Test 2: update existing key ===
     testcheck.section("Test 2: 更新已有键")
     d.set_int("beta", 99)
-    p2b: t.CPtr = d["beta"]
+    p2b: rawptr = d["beta"]
     v2b: int = *(int*)(p2b)
     stdio.printf("beta(updated)=%d\n", v2b)
     testcheck.check(v2b == 99, "dict update OK", "dict update FAILED")
@@ -57,10 +55,10 @@ def main() -> CInt | CExport:
 
     # === Test 3: get with default ===
     testcheck.section("Test 3: get with default")
-    gv: t.CPtr = d.get("missing", None)
+    gv: rawptr = d.get("missing", None)
     testcheck.check(gv == None, "dict get missing OK (None)", "dict get missing FAILED")
 
-    gp: t.CPtr = d.get("alpha", None)
+    gp: rawptr = d.get("alpha", None)
     ga: int = *(int*)(gp)
     stdio.printf("get(alpha)=%d\n", ga)
     testcheck.check(ga == 10, "dict get existing OK", "dict get existing FAILED")
@@ -77,7 +75,7 @@ def main() -> CInt | CExport:
     testcheck.section("Test 5: 迭代器 for key in dict")
     iter_count: int = 0
     for key in d:
-        kp: t.CPtr = d[key]
+        kp: rawptr = d[key]
         val: int = *(int*)(kp)
         stdio.printf("dict[%s]=%d\n", key, val)
         iter_count += 1
@@ -93,9 +91,9 @@ def main() -> CInt | CExport:
     stdio.printf("d2 len=%lu\n", n2)
     testcheck.check(n2 == 3, "dict set_str len OK (3)", "dict set_str len FAILED")
 
-    name_p: t.CPtr = d2["name"]
-    city_p: t.CPtr = d2["city"]
-    lang_p: t.CPtr = d2["lang"]
+    name_p: rawptr = d2["name"]
+    city_p: rawptr = d2["city"]
+    lang_p: rawptr = d2["lang"]
     name: str = name_p
     city: str = city_p
     lang: str = lang_p
@@ -109,7 +107,7 @@ def main() -> CInt | CExport:
     testcheck.section("Test 7: dict 迭代 (str values)")
     str_iter_count: int = 0
     for k in d2:
-        svp: t.CPtr = d2[k]
+        svp: rawptr = d2[k]
         sv: str = svp
         stdio.printf("d2[%s]=%s\n", k, sv)
         str_iter_count += 1
@@ -129,14 +127,14 @@ def main() -> CInt | CExport:
     # verify a few values
     k5: str = stdlib.malloc(16)
     stdio.sprintf(k5, "key5")
-    p5: t.CPtr = d3[k5]
+    p5: rawptr = d3[k5]
     v5: int = *(int*)(p5)
     stdio.printf("d3[key5]=%d\n", v5)
     testcheck.check(v5 == 500, "dict expand key5 OK", "dict expand key5 FAILED")
 
     k15: str = stdlib.malloc(16)
     stdio.sprintf(k15, "key15")
-    p15: t.CPtr = d3[k15]
+    p15: rawptr = d3[k15]
     v15: int = *(int*)(p15)
     stdio.printf("d3[key15]=%d\n", v15)
     testcheck.check(v15 == 1500, "dict expand key15 OK", "dict expand key15 FAILED")
@@ -159,9 +157,9 @@ def main() -> CInt | CExport:
     testcheck.section("Test 10: JSON loads")
     jd2: dict = dict(bd)
     jd2.loads(pool, "{\"x\":1,\"y\":2,\"z\":3}")
-    xp: t.CPtr = jd2["x"]
-    yp: t.CPtr = jd2["y"]
-    zp: t.CPtr = jd2["z"]
+    xp: rawptr = jd2["x"]
+    yp: rawptr = jd2["y"]
+    zp: rawptr = jd2["z"]
     xv: int = *(int*)(xp)
     yv: int = *(int*)(yp)
     zv: int = *(int*)(zp)
@@ -189,8 +187,8 @@ def main() -> CInt | CExport:
     stdio.printf("round-trip dump: %s\n", rt_str)
     rt2: dict = dict(bd)
     rt2.loads(pool, rt_str)
-    rta_p: t.CPtr = rt2["a"]
-    rtb_p: t.CPtr = rt2["b"]
+    rta_p: rawptr = rt2["a"]
+    rtb_p: rawptr = rt2["b"]
     rta: int = *(int*)(rta_p)
     rtb: int = *(int*)(rtb_p)
     stdio.printf("round-trip: a=%d b=%d\n", rta, rtb)
@@ -206,8 +204,8 @@ def main() -> CInt | CExport:
     outer.set_dict("sub", inner)
 
     sub: dict* = outer["sub"]
-    sa_p: t.CPtr = sub["a"]
-    sb_p: t.CPtr = sub["b"]
+    sa_p: rawptr = sub["a"]
+    sb_p: rawptr = sub["b"]
     sa: int = *(int*)(sa_p)
     sb: int = *(int*)(sb_p)
     stdio.printf("nested: sub.a=%d sub.b=%d\n", sa, sb)

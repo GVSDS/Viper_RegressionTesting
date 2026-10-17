@@ -1,5 +1,4 @@
 from stdint import *
-import t, c
 import stdio
 import stdlib
 import testcheck
@@ -8,8 +7,7 @@ import string
 
 
 # SprintfTest: runtime verification of viperlib.snprintf %a/%A against glibc printf
-@t.CExport
-def main() -> int:
+export def main() -> int:
     testcheck.begin("SprintfTest: %a/%A runtime verification")
     buf: bytes = stdlib.malloc(256)
 

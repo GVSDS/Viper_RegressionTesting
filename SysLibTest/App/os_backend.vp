@@ -1,4 +1,3 @@
-import t, c
 from stdint import *
 import platmacro
 import os._win32

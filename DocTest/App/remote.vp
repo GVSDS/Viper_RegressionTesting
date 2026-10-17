@@ -1,6 +1,3 @@
-import t
-
-
 def remote_func() -> int:
     "Remote function docstring."
     return 0

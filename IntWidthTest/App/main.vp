@@ -1,0 +1,131 @@
+import testcheck
+
+# 浮现点：整型“最小宽度”回绕 + i64 移位不收敛（同一族 bug 的四个面）。
+# 现场来源：
+#   ① Gargantua: define V3_POOL_BYTES = V3_POOL_SIZE * 24 + 512（8192*24 被按 i16 算成 0 → 得 512）
+#   ② vpsdk/window.vp: define WINBUF_MAX_BYTES = 1024 * 1024 * 4（按 i16 → 0；随后内核 memcpy 越界）
+#   ③ ViperC 自身: `while t != 0: t = t >> 1`（t 为 int64）在生成代码里不收敛 → 编译期死循环
+# 注：ViperC 由 TPC 引导，本用例同时用来照 TPC 侧的同源实现。
+
+define V3_POOL_SIZE = 8192
+define V3_POOL_BYTES = V3_POOL_SIZE * 24 + 512
+
+
+def test_static_defines():
+    """静态 define 算式必须按**结果值**拓宽，不能按最小宽度回绕。"""
+    testcheck.section("Test 1: define 算式（静态求值）不按最小宽度回绕")
+    testcheck.check(V3_POOL_BYTES == 197120, "V3_POOL_SIZE * 24 + 512 == 197120",
+                    "按 i16 回绕会得到 512（8192*24 = 196608 = 0x30000，低 16 位正好为 0）")
+
+
+def test_runtime_const_expr():
+    """运行期纯常量算式同样不能按最小宽度回绕。"""
+    testcheck.section("Test 2: 运行期纯常量算式不按最小宽度回绕")
+    v: int = 1024 * 1024 * 4
+    testcheck.check(v == 4194304, "1024 * 1024 * 4 == 4194304", "按 i16 回绕会得到 0")
+
+
+def test_i64_shift_value():
+    """i64 的 >> 必须是真 64 位移位（移位计数需与左操作数同宽）。"""
+    testcheck.section("Test 3: i64 >> 的值正确")
+    x: int64 = 0x30000
+    y: int64 = x >> 1
+    testcheck.check(y == 0x18000, "i64 0x30000 >> 1 == 0x18000", "窄移位会保留高位 → 值错")
+
+
+def test_i64_shift_loop_converges():
+    """核心浮现点：i64 右移循环必须收敛。
+
+    若 `>>` 的计数没有与左操作数同宽（按最小宽度 i32 发射），只会移低 32 位，
+    i64 高位永不清零，而 `x != 0` 是全宽比较 → 永不收敛（ViperC 曾在编译期死在这里）。
+    这里加 200 次上限：出 bug 时以“次数不对”报错，而不是把测试挂死。
+    """
+    testcheck.section("Test 4: i64 右移循环收敛（0x30000 需 18 次归零）")
+    x: int64 = 0x30000
+    n: int = 0
+    while x != 0:
+        x = x >> 1
+        n += 1
+        if n > 200: break
+    testcheck.check(n == 18, "0x30000 右移 18 次归零", "窄移位则永不归零（次数 > 32 或触发 200 次上限）")
+
+
+def test_i64_negative_shift():
+    """负数形态：钉死 ViperC 编译期死循环的真正机理。
+
+    `-196608 >> 1` 是**算术**右移（= -98304）；负数直接右移永远停在负数、`!= 0` 永不成立
+    ——这正是当时 ViperC 里 `while t != 0: t = t >> 1`（t 为负）死循环的形态。
+    这里用 200 次上限把它“有界复现”：m 应为 201（说明是算术右移，永不归零）；
+    若 m 明显更小（例如 ~49）说明按**逻辑**右移处理了负数（把负数当无符号）。
+    """
+    testcheck.section("Test 5: 负数 i64 的算术右移（死循环原形态，有界复现）")
+    x: int64 = -196608
+    y: int64 = x >> 1
+    testcheck.check(y == -98304, "-196608 >> 1 == -98304（算术右移）", "按逻辑右移会得到很大的正数")
+
+    w: int64 = -196608
+    m: int = 0
+    while w != 0:
+        w = w >> 1
+        m += 1
+        if m > 200: break
+    testcheck.check(m == 201, "负数直接右移永不归零（触发 200 次上限）", "m 偏小说明被按逻辑右移处理，语义不对")
+
+    # 定宽实现必须先取反再数位（本次修复采用），验证它对负数也能收敛
+    z: int64 = x ^ int64(-1)      # ~(-196608) = 196607
+    n: int = 0
+    while z != 0:
+        z = z >> 1
+        n += 1
+        if n > 200: break
+    testcheck.check(n == 18, "~(-196608) = 196607 右移 18 次归零", "先取反再数位应能收敛（ViperC 修复后的写法）")
+
+
+def test_negative_source():
+    """判别：负数来自**负字面量**（一元负号）还是**运算结果** —— 用来定位 TPC 把谁登记成无符号。
+
+    TPC 的 `>>` 符号性取自 `var_signedness[name]`（按变量名登记，登记源是某类型串）。
+    若下面第 1 条 FAIL、第 2 条 PASS ⇒ 是“负字面量”被判成无符号（字面量一元负号路径）；
+    若两条都 FAIL ⇒ 是对“负值”一律按无符号处理。
+    """
+    testcheck.section("Test 6: 负数的来源（字面量 vs 运算）")
+    b: int64 = -196608          # 一元负号作用于字面量
+    cb: int64 = b >> 1
+    # 直接断言裸值：赋值/物化阶段就必须是 -196608（曾被 zext 成 4294770688 = 0x00000000FFFD0000）。
+    testcheck.check(b == -196608, "负字面量赋值本身正确（b == -196608）",
+                    "FAIL ⇒ 赋值/物化阶段就把 -196608 弄错了")
+    testcheck.check(cb == -98304, "负**字面量**变量右移仍为算术右移", "FAIL ⇒ 负字面量被登记成无符号")
+
+    c: int64 = 0 - 196608       # 由运算产生的负数
+    cc: int64 = c >> 1
+    testcheck.check(cc == -98304, "由**运算**得到负数的变量右移为算术右移", "FAIL ⇒ 对负值一律按无符号处理")
+
+
+def test_explicit_cast_widths():
+    """显式强转：加宽保符号（sext）、窄化截断（trunc）——不受“隐式窄化禁止”约束。
+
+    现场：TPC 编译 ViperC 时 `LONG(BUF_B)`（sizet/u64 → int32，Windows LLP64 下 LONG 为 32 位）
+    被判成“隐式窄化禁止”而 FailFastError（TypeGenResolve.vp:1065）。显式转换必须允许 trunc；
+    加宽必须 sext，否则 `int64(int32(-1))` 会变成 4294967295。
+    """
+    testcheck.section("Test 7: 显式强转的加宽/窄化")
+    n: sizet = 65536
+    n32: int32 = int32(n)
+    testcheck.check(n32 == 65536, "int32(sizet 65536) == 65536（显式窄化=截断）",
+                    "编译失败/FAIL ⇒ 显式窄化被当成隐式窄化拒绝（FailFastError）")
+    neg: int32 = -1
+    wide: int64 = int64(neg)
+    testcheck.check(wide == -1, "int64(int32 -1) == -1（显式加宽保符号）",
+                    "FAIL ⇒ 显式加宽用了 zext，-1 变 4294967295")
+
+
+def main() -> int:
+    testcheck.begin("IntWidthTest: 整型常量/移位的最小宽度回绕与 i64 移位收敛")
+    test_static_defines()
+    test_runtime_const_expr()
+    test_i64_shift_value()
+    test_i64_shift_loop_converges()
+    test_i64_negative_shift()
+    test_negative_source()
+    test_explicit_cast_widths()
+    return testcheck.end()

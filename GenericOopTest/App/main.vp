@@ -1,7 +1,5 @@
 from stdint import *
 import win32.win32console
-import t, c
-from t import CInt, CPtr, CChar, CInt32T, CUInt64T, CFloat64T, CExport, State
 import viperlib
 import stdlib
 import testcheck
@@ -12,11 +10,11 @@ import testcheck
 def add[T](a: T, b: T) -> T:
     return a + b
 
-def add_u64[T](a: T, b: T, c: CUInt64T) -> T:
+def add_u64[T](a: T, b: T, c: u64) -> T:
     return a + b + T(c)
 
 def fxi[T1, T2](a: T1, b: T2) -> T1:
-    return a + fxi2(a, b, CUInt64T(178900))
+    return a + fxi2(a, b, u64(178900))
 
 def fxi2[T1, T2, T3](a: T1, b: T2, c: T3) -> T1:
     return a + T1(b) + T1(c)
@@ -59,29 +57,29 @@ class Calculator[T]():
 
 class Container[T]():
     value: T
-    flag: CInt32T
+    flag: u32
     def __init__(self, v: T):
         self.value = T(v)
-        self.flag = CInt32T(1)
+        self.flag = u32(1)
     def get_value(self) -> T:
         return self.value
-    def get_flag(self) -> CInt32T:
+    def get_flag(self) -> u32:
         return self.flag
 
 
-def main() -> CInt | CExport:
+export def main() -> int:
     win32.win32console.SetConsoleCP(65001)
     win32.win32console.SetConsoleOutputCP(65001)
 
     testcheck.begin("GenericOopTest: 泛型专项测试")
 
-    buf: CChar | CPtr = CPtr(stdlib.malloc(256))
+    buf: char = stdlib.malloc(256)
 
     # === Basic generic functions ===
     testcheck.section("基础函数泛型")
     print(add(3, 5))
     print(add(1.5, 2.5))
-    print(add_u64(1, 2, CUInt64T(3000000000000000)))
+    print(add_u64(1, 2, u64(3000000000000000)))
     print(fxi(0.2, 6))
     print(wrap_add(10, 20))
     print(double_add(5, 7))
@@ -118,7 +116,7 @@ def main() -> CInt | CExport:
 
     # === New cast syntax (t1|t2)(x) ===
     testcheck.section("新语法类型强转 (t1|t2)(x)")
-    val_i64: CUInt64T = CUInt64T(42)
+    val_i64: u64 = u64(42)
     val_i32 = (int)(val_i64)
     print(val_i32)
 

@@ -1,4 +1,3 @@
-import t
 import stdio
 import testcheck
 
@@ -64,7 +63,7 @@ def test_global_cross_functions():
 # ============================================================
 def test_nested_ref_capture():
     testcheck.section("Test 4: nested function ref capture")
-    arr: t.CArray[int, 4] = [0]
+    arr: [4]int = None
     def fill():
         nonlocal arr
         for i in range(4):
@@ -186,7 +185,7 @@ def test_nonlocal_while():
 # ============================================================
 # Test 12: nested function modifies struct fields
 # ============================================================
-class Point:
+struct Point:
     x: int
     y: int
 

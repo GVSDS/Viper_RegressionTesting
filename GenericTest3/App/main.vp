@@ -1,5 +1,3 @@
-import t
-import stdio
 import testcheck
 
 # Test 1: generic function with explicit type arg - basic call
